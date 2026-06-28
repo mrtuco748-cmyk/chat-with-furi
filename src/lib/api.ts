@@ -10,6 +10,7 @@ export interface ApiMessage {
   seen: boolean;
   isChunked?: boolean;
   totalChunks?: number;
+  status?: 'sending' | 'sent' | 'delivered' | 'seen';
 }
 
 export async function fetchMessages(): Promise<ApiMessage[]> {

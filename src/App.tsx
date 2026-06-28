@@ -6,7 +6,7 @@ import StickerPicker from './components/StickerPicker';
 import DrawingCanvas from './components/DrawingCanvas';
 import Lightbox from './components/Lightbox';
 import { fetchMessages, sendMessage, markAsSeen, deleteMessage, clearMessages, fetchChunks, updatePresence, sendTyping, addReaction, removeReaction } from './lib/api';
-import { Smile, Paperclip, Camera, Mic, Send, Check, Trash2, LogOut, Video, Palette, Bell, BellOff, MoreVertical, ArrowUp } from 'lucide-react';
+import { Smile, Paperclip, Mic, Send, Check, Clock, Trash2, LogOut, Palette, Bell, BellOff, MoreVertical, ArrowUp } from 'lucide-react';
 
 
 // --- Helper for formatted timestamps ---
@@ -163,7 +163,6 @@ export default function App() {
   // Hidden file triggers
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
-  const videoInputRef = useRef<HTMLInputElement | null>(null);
   const audioInputRef = useRef<HTMLInputElement | null>(null);
   const genericInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -308,6 +307,7 @@ export default function App() {
           seen: d.seen || false,
           replyTo: d.replyTo || undefined,
           reactions: d.reactions || undefined,
+          status: d.seen ? 'seen' : ('delivered' as 'seen' | 'delivered'),
         }));
 
         // Handle chunked messages
@@ -376,7 +376,15 @@ export default function App() {
         switch (data.type) {
           case 'message_new': {
             setMessages(prev => {
-              if (prev.some(m => m.id === data.message.id)) return prev;
+              const existing = prev.find(m => m.id === data.message.id);
+              if (existing) {
+                if (existing.status === 'sending' || existing.status === 'sent') {
+                  const updated = prev.map(m => m.id === data.message.id ? { ...m, status: 'delivered' } : m);
+                  saveMessagesToLocalCache(updated);
+                  return updated;
+                }
+                return prev;
+              }
               const newMsg: Message = {
                 id: data.message.id,
                 sender: data.message.sender,
@@ -390,6 +398,7 @@ export default function App() {
                 seen: data.message.seen || false,
                 replyTo: data.message.replyTo || undefined,
                 reactions: data.message.reactions || undefined,
+                status: 'delivered',
               };
               if (newMsg.content === '__chunked__' && newMsg.isChunked && newMsg.totalChunks) {
                 const cached = sessionStorage.getItem(`chunk_cache_${newMsg.id}`);
@@ -428,7 +437,7 @@ export default function App() {
           case 'message_seen': {
             setMessages(prev => {
               const updated = prev.map(m =>
-                m.id === data.messageId ? { ...m, seen: true } : m
+                m.id === data.messageId ? { ...m, seen: true, status: 'seen' } : m
               );
               const merged = processMessages(updated);
               localStorage.setItem('amor_chat_messages', JSON.stringify(merged));
@@ -616,6 +625,7 @@ export default function App() {
       content,
       timestamp: Date.now(),
       ...extra,
+      status: 'sending',
       replyTo: replyToMsg ? { id: replyToMsg.id, sender: replyToMsg.sender, content: replyToMsg.content, type: replyToMsg.type } : undefined,
     };
 
@@ -642,6 +652,11 @@ export default function App() {
         fileName: newMsg.fileName,
         duration: newMsg.duration,
         replyTo: newMsg.replyTo,
+      });
+      setMessages(prev => {
+        const updated = prev.map(m => m.id === newMsg.id ? { ...m, status: 'sent' } : m);
+        saveMessagesToLocalCache(updated);
+        return updated;
       });
     } catch (err) {
       console.error('Error transmitting message to server:', err);
@@ -676,6 +691,22 @@ export default function App() {
 
     processAndSendFile(file, type);
     e.target.value = ''; // reset trigger
+  };
+
+  const handleMultipleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const maxSizeMB = 12;
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (file.size > maxSizeMB * 1024 * 1024) {
+        alert(`¡Amor! "${file.name}" supera el límite de ${maxSizeMB}MB. Se saltará. 💕`);
+        continue;
+      }
+      const isVideo = file.type.startsWith('video/');
+      processAndSendFile(file, isVideo ? 'video' : 'image');
+    }
+    e.target.value = '';
   };
 
   const handleAudioFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -857,18 +888,10 @@ export default function App() {
       <input
         ref={cameraInputRef}
         type="file"
-        id="camera-capture-input"
-        accept="image/*"
-        capture="environment"
-        onChange={(e) => handleFileInputChange(e, 'image')}
-        className="hidden"
-      />
-      <input
-        ref={videoInputRef}
-        type="file"
-        id="video-picker-input"
-        accept="video/*"
-        onChange={(e) => handleFileInputChange(e, 'video')}
+        id="gallery-picker-input"
+        accept="image/*,video/*"
+        multiple
+        onChange={(e) => handleMultipleFileInput(e)}
         className="hidden"
       />
       <input
@@ -1137,7 +1160,8 @@ export default function App() {
 
                       {/* Render by type */}
                       {msg.type === 'text' && (
-                        <p className="break-words whitespace-pre-wrap select-text leading-relaxed text-left">
+                        <p className="whitespace-pre-wrap select-text leading-relaxed text-left"
+                           style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
                           {msg.content}
                         </p>
                       )}
@@ -1156,7 +1180,7 @@ export default function App() {
                             src={msg.content}
                             alt="Dibujo / Doodle"
                             onClick={() => setActiveLightbox({ src: msg.content, sender: msg.sender, timestamp: formatMessageTime(msg.timestamp) })}
-                            className="max-w-44 object-contain max-h-44 hover:opacity-90 transition-opacity"
+                            className="max-w-60 object-contain max-h-60 hover:opacity-90 transition-opacity"
                           />
                         </div>
                       )}
@@ -1167,19 +1191,29 @@ export default function App() {
                             src={msg.content}
                             alt="Foto"
                             onClick={() => setActiveLightbox({ src: msg.content, sender: msg.sender, timestamp: formatMessageTime(msg.timestamp) })}
-                            className="max-w-44 object-contain max-h-44 hover:opacity-90 transition-opacity"
+                            className="max-w-60 object-contain max-h-60 hover:opacity-90 transition-opacity"
                           />
+                          {msg.status === 'sending' && (
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                              <div className="w-8 h-8 border-2 border-white/60 border-t-white rounded-full animate-spin" />
+                            </div>
+                          )}
                         </div>
                       )}
 
                       {msg.type === 'video' && (
-                        <div className="rounded-xl overflow-hidden border border-black/5 bg-black/90 shadow-inner max-w-full">
+                        <div className="relative rounded-xl overflow-hidden border border-black/5 bg-black/90 shadow-inner max-w-full">
                           <video
                             src={msg.content}
                             controls
                             playsInline
-                            className="max-w-44 max-h-44 object-contain"
+                            className="max-w-60 max-h-60 object-contain"
                           />
+                          {msg.status === 'sending' && (
+                            <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-xl">
+                              <div className="w-8 h-8 border-2 border-white/60 border-t-white rounded-full animate-spin" />
+                            </div>
+                          )}
                         </div>
                       )}
 
@@ -1197,10 +1231,20 @@ export default function App() {
                         {formatMessageTime(msg.timestamp)}
                       </span>
                       {isMe && (
-                        msg.seen ? (
-                          <Check className="w-3 h-3 text-white/70 stroke-[2.5] shrink-0" title="Leído" />
+                        msg.status === 'sending' ? (
+                          <Clock className="w-3 h-3 text-white/40 stroke-[2.5] shrink-0 animate-pulse" title="Enviando..." />
+                        ) : msg.status === 'seen' ? (
+                          <div className="flex items-center -space-x-0.5" title="Visto">
+                            <Check className="w-3 h-3 text-[#53bdeb] stroke-[3] shrink-0" />
+                            <Check className="w-3 h-3 text-[#53bdeb] stroke-[3] shrink-0" />
+                          </div>
+                        ) : msg.status === 'delivered' ? (
+                          <div className="flex items-center -space-x-0.5" title="Entregado">
+                            <Check className="w-3 h-3 text-white/50 stroke-[3] shrink-0" />
+                            <Check className="w-3 h-3 text-white/50 stroke-[3] shrink-0" />
+                          </div>
                         ) : (
-                          <Check className="w-3 h-3 text-white/40 stroke-[2.5] shrink-0" title="Entregado" />
+                          <Check className="w-3 h-3 text-white/40 stroke-[2.5] shrink-0" title="Enviado" />
                         )
                       )}
                       </div>
@@ -1351,18 +1395,18 @@ export default function App() {
               <Paperclip className="w-[19px] h-[19px] stroke-[2.2]" />
             </button>
 
-            {/* Quick Camera file select */}
+            {/* Quick Gallery button (photos & videos) */}
             <button
               type="button"
-              id="quick-camera-btn"
+              id="quick-gallery-btn"
               onClick={() => {
                 cameraInputRef.current?.click();
                 setShowAttachmentMenu(false);
               }}
               className="p-1.5 text-gray-400 hover:text-blue-500 rounded-full transition-colors shrink-0"
-              title="Tomar foto 📷"
+              title="Galería"
             >
-              <Camera className="w-[20px] h-[20px] stroke-[2.2]" />
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
             </button>
           </div>
           </div>{/* end wrapper */}
@@ -1434,7 +1478,7 @@ export default function App() {
               <span className="text-[10px] text-gray-500 font-bold">Sticker</span>
             </button>
 
-            {/* Camera */}
+            {/* Galería (photos & videos, multiple) */}
             <button
               type="button"
               onClick={() => {
@@ -1442,28 +1486,12 @@ export default function App() {
                 setShowAttachmentMenu(false);
               }}
               className="flex flex-col items-center gap-1 hover:scale-105 active:scale-95 transition-transform"
-              title="Tomar Foto"
+              title="Enviar fotos o videos"
             >
               <div className="w-11 h-11 bg-teal-500 hover:bg-teal-600 text-white rounded-full flex items-center justify-center shadow-md shadow-teal-200">
-                <Camera className="w-5 h-5" />
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
               </div>
-              <span className="text-[10px] text-gray-500 font-bold">Foto</span>
-            </button>
-
-            {/* Video */}
-            <button
-              type="button"
-              onClick={() => {
-                videoInputRef.current?.click();
-                setShowAttachmentMenu(false);
-              }}
-              className="flex flex-col items-center gap-1 hover:scale-105 active:scale-95 transition-transform"
-              title="Enviar Video"
-            >
-              <div className="w-11 h-11 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-md shadow-indigo-200">
-                <Video className="w-5 h-5 stroke-[2.2]" />
-              </div>
-              <span className="text-[10px] text-gray-500 font-bold">Video</span>
+              <span className="text-[10px] text-gray-500 font-bold">Galería</span>
             </button>
 
             {/* Audio File */}

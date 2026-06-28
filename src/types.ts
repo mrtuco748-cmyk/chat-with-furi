@@ -25,6 +25,7 @@ export interface Message {
   seen?: boolean;
   replyTo?: ReplyTo;
   reactions?: Reaction[];
+  status?: 'sending' | 'sent' | 'delivered' | 'seen';
 }
 
 export interface Sticker {
