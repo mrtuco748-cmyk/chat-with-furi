@@ -4,10 +4,9 @@ import UserSelector from './components/UserSelector';
 import EmojiPicker from './components/EmojiPicker';
 import StickerPicker from './components/StickerPicker';
 import DrawingCanvas from './components/DrawingCanvas';
-import VoiceRecorder from './components/VoiceRecorder';
 import Lightbox from './components/Lightbox';
 import { fetchMessages, sendMessage, markAsSeen, deleteMessage, clearMessages, fetchChunks, updatePresence, sendTyping, addReaction, removeReaction } from './lib/api';
-import { Smile, Paperclip, Camera, Mic, Send, Check, CheckCheck, Trash2, LogOut, Image as ImageIcon, Video, Palette, Bell, BellOff, MoreVertical } from 'lucide-react';
+import { Smile, Paperclip, Camera, Mic, Send, Check, Trash2, LogOut, Image as ImageIcon, Video, Palette, Bell, BellOff, MoreVertical, ArrowUp } from 'lucide-react';
 
 
 // --- Helper for formatted timestamps ---
@@ -85,11 +84,11 @@ function AudioBubblePlayer({ src, duration }: { src: string; duration: number })
   };
 
   return (
-    <div className="flex items-center gap-3 bg-white/40 dark:bg-black/10 p-2.5 rounded-xl border border-white/20 min-w-44 max-w-full">
+    <div className="flex items-center gap-3 p-2 min-w-36 max-w-full">
       <button
         type="button"
         onClick={togglePlay}
-        className="w-8 h-8 rounded-full bg-pink-500 hover:bg-pink-600 text-white flex items-center justify-center shadow transition-all active:scale-95 duration-150 shrink-0"
+        className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 flex items-center justify-center transition-all active:scale-95 shrink-0"
       >
         {isPlaying ? (
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
@@ -99,20 +98,18 @@ function AudioBubblePlayer({ src, duration }: { src: string; duration: number })
       </button>
 
       <div className="flex-1 flex flex-col gap-1 min-w-0">
-        {/* Equalizer Wave simulation */}
-        <div className="flex items-end gap-0.5 h-6 opacity-80 py-0.5">
+        <div className="flex items-end gap-0.5 h-6 py-0.5">
           {Array.from({ length: 16 }).map((_, i) => {
-            // Generate heights for wave simulation
             const baseHeights = [3, 5, 2, 7, 4, 8, 3, 6, 2, 8, 4, 7, 3, 5, 2, 4];
             const height = baseHeights[i % baseHeights.length];
             return (
               <span
                 key={i}
-                className="w-1 bg-pink-600 rounded-full transition-all duration-150"
+                className="w-0.5 bg-gray-400 dark:bg-gray-500 rounded-full transition-all duration-150"
                 style={{
                   height: `${height * 3}px`,
                   transform: isPlaying ? `scaleY(${1 + Math.random() * 0.4})` : 'scaleY(1)',
-                  opacity: isPlaying && Math.random() > 0.3 ? 1 : 0.6,
+                  opacity: isPlaying && Math.random() > 0.3 ? 1 : 0.4,
                 }}
               />
             );
@@ -120,7 +117,7 @@ function AudioBubblePlayer({ src, duration }: { src: string; duration: number })
         </div>
         
         {/* Progress slide indicator and duration details */}
-        <div className="flex justify-between items-center text-[9px] text-gray-500 font-mono font-medium">
+        <div className="flex justify-between items-center text-[10px] text-gray-400 font-medium">
           <span>{formatSecs(isPlaying ? currentTime : 0)}</span>
           <span>{formatSecs(duration)}</span>
         </div>
@@ -139,7 +136,7 @@ export default function App() {
   const [showEmojiPicker, setShowEmojiPicker] = useState<boolean>(false);
   const [showStickerPicker, setShowStickerPicker] = useState<boolean>(false);
   const [showDrawingCanvas, setShowDrawingCanvas] = useState<boolean>(false);
-  const [showVoiceRecorder, setShowVoiceRecorder] = useState<boolean>(false);
+  // voice recording now uses press-and-hold via the mic button
   const [activeLightbox, setActiveLightbox] = useState<{ src: string; sender: string; timestamp: string } | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState<boolean>(false);
 
@@ -172,6 +169,7 @@ export default function App() {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const touchStartX = useRef<number>(0);
   const ARCHIVED_KEY = 'amor_chat_archived';
   const archivedRef = useRef<Message[]>([]);
 
@@ -734,6 +732,93 @@ export default function App() {
     }
   };
 
+  // WhatsApp-style voice recording
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [recordingLocked, setRecordingLocked] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordingChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const recordingStartY = useRef<number>(0);
+
+  const handleVoiceStart = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    recordingStartY.current = clientY;
+    setRecordingLocked(false);
+    setRecordingDuration(0);
+    recordingChunksRef.current = [];
+
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      recorder.ondataavailable = (e) => { recordingChunksRef.current.push(e.data); };
+      recorder.start();
+      setIsRecording(true);
+
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration(d => d + 1);
+      }, 1000);
+    }).catch(() => {});
+  };
+
+  const handleVoiceMove = (e: React.TouchEvent) => {
+    if (!isRecording) return;
+    const y = e.touches[0].clientY;
+    if (recordingStartY.current - y > 100) {
+      setRecordingLocked(true);
+    }
+  };
+
+  const handleVoiceEnd = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!mediaRecorderRef.current || !isRecording) return;
+    if (recordingLocked) {
+      // Keep recording, show send UI
+      return;
+    }
+    stopAndSendRecording();
+  };
+
+  const stopAndSendRecording = () => {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder) return;
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+
+    recorder.onstop = () => {
+      const blob = new Blob(recordingChunksRef.current, { type: 'audio/webm' });
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string' && currentUser) {
+          handleSendMessage('audio', reader.result, { duration: recordingDuration });
+        }
+      };
+      reader.readAsDataURL(blob);
+      recorder.stream?.getTracks().forEach(t => t.stop());
+    };
+    recorder.stop();
+    setIsRecording(false);
+    setRecordingLocked(false);
+    setRecordingDuration(0);
+  };
+
+  const cancelRecording = () => {
+    const recorder = mediaRecorderRef.current;
+    if (recorder) {
+      recorder.stream?.getTracks().forEach(t => t.stop());
+      recorder.stop();
+    }
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+    setIsRecording(false);
+    setRecordingLocked(false);
+    setRecordingDuration(0);
+  };
+
+  const formatDuration = (secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
   if (!currentUser) {
     return <UserSelector onSelectUser={handleSelectUser} />;
   }
@@ -741,7 +826,7 @@ export default function App() {
   return (
     <div 
       id="app-chat-viewport"
-      className="h-screen w-full bg-linear-to-tr from-pink-100/40 via-orange-50/40 to-purple-100/40 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-0 md:p-4 select-none"
+      className="h-screen w-full bg-white dark:bg-black flex items-center justify-center p-0 md:p-4 select-none"
     >
       {/* Invisible HTML File Inputs */}
       <input
@@ -780,47 +865,43 @@ export default function App() {
       {/* Main chat preview container */}
       <div 
         id="chat-frame-container"
-        className="w-full h-full md:max-w-md md:h-[90vh] bg-white dark:bg-gray-900 rounded-none md:rounded-3xl shadow-2xl border border-pink-100/60 dark:border-gray-700 overflow-hidden flex flex-col relative"
+        className="w-full h-full md:max-w-md md:h-[90vh] bg-white dark:bg-black rounded-none md:rounded-2xl shadow-lg border-0 overflow-hidden flex flex-col relative"
       >
         {/* Chat Header */}
         <div 
           id="chat-header"
-          className="bg-white dark:bg-gray-800 border-b border-pink-100 dark:border-gray-700 px-4 py-3 flex justify-between items-center shrink-0 z-20 shadow-xs"
+          className="bg-white dark:bg-black border-b border-gray-100 dark:border-gray-800 px-4 py-2.5 flex justify-between items-center shrink-0 z-20"
         >
-          <div className="flex items-center gap-2.5">
-            {/* User status avatar indicator showing the OTHER person */}
-            <div className="relative">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl font-bold shadow-inner border border-pink-100 ${
-                currentUser === 'Facu' ? 'bg-pink-100 text-pink-600' : 'bg-orange-100 text-orange-600'
-              }`}>
-                {currentUser === 'Facu' ? '🌸' : '👨‍💻'}
-              </div>
-              <span className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white transition-all duration-300 ${
-                otherUserOnline ? 'bg-green-500 animate-pulse' : 'bg-gray-300'
-              }`} />
-            </div>
- 
-            <div className="flex flex-col text-left">
-              <span className="font-bold text-gray-800 dark:text-gray-100 text-sm md:text-base leading-tight">
-                {currentUser === 'Facu' ? 'Rocío' : 'Facu'}
-              </span>
-              <div className="flex items-center gap-1 mt-0.5 text-[10px]">
-                {otherUserTyping ? (
-                  <span className="text-pink-500 font-semibold animate-pulse">escribiendo...</span>
-                ) : otherUserOnline ? (
-                  <span className="text-green-500 font-semibold animate-pulse">en línea</span>
-                ) : (
-                  <span className="text-gray-400">desconectado(a)</span>
-                )}
-                <span className="text-gray-200">•</span>
-                <span className={`inline-flex items-center gap-0.5 font-medium ${
-                  serverStatus === 'connected' ? 'text-pink-400' : 'text-amber-500'
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold ${
+                  currentUser === 'Facu' ? 'bg-pink-100 text-pink-600' : 'bg-orange-100 text-orange-600'
                 }`}>
-                  {serverStatus === 'connected' ? 'Nube synced' : 'Conectando...'}
-                </span>
+                  {currentUser === 'Facu' ? '🌸' : '👨‍💻'}
+                </div>
+                <span className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-black transition-all duration-300 ${
+                  otherUserOnline ? 'bg-green-500 animate-pulse' : 'bg-gray-300'
+                }`} />
+              </div>
+ 
+              <div className="flex flex-col text-left">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-gray-900 dark:text-gray-100 text-sm leading-tight">
+                    {currentUser === 'Facu' ? 'Rocío' : 'Facu'}
+                  </span>
+                  <span className={`text-[10px] font-medium ${
+                    otherUserOnline ? 'text-green-500' : 'text-gray-400'
+                  }`}>
+                    {otherUserOnline ? 'en línea' : 'desconectado(a)'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1 mt-0.5">
+                  {otherUserTyping && (
+                    <span className="text-[11px] text-pink-500 font-medium animate-pulse">escribiendo...</span>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
  
           <div className="flex items-center gap-1.5">
             {/* Dark Mode Toggle */}
@@ -855,7 +936,7 @@ export default function App() {
                 }
               }}
               className={`p-2 rounded-full transition-colors duration-150 ${
-                notificationsEnabled ? 'text-pink-500 hover:bg-pink-50/50' : 'text-gray-400 hover:bg-gray-100/50'
+                notificationsEnabled ? 'text-blue-500 hover:bg-blue-50/50' : 'text-gray-400 hover:bg-gray-100/50'
               }`}
               title={notificationsEnabled ? 'Silenciar Notificaciones' : 'Activar Notificaciones'}
             >
@@ -882,7 +963,7 @@ export default function App() {
               type="button"
               id="logout-btn"
               onClick={handleLogout}
-              className="p-2 text-gray-400 hover:text-pink-600 rounded-full hover:bg-pink-50 transition-colors duration-150"
+              className="p-2 text-gray-400 hover:text-red-500 rounded-full hover:bg-red-50 transition-colors duration-150"
               title="Cerrar sesión"
             >
               <LogOut className="w-[18px] h-[18px]" />
@@ -893,11 +974,7 @@ export default function App() {
         {/* Message Thread Body */}
         <div 
           id="chat-messages-container"
-          className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3 scrollbar-thin scrollbar-thumb-pink-200 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent select-text relative dark:bg-gray-900"
-          style={{
-            backgroundImage: 'radial-gradient(rgba(244, 63, 94, 0.08) 1.5px, transparent 1.5px)',
-            backgroundSize: '20px 20px',
-          }}
+          className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-2 scrollbar-none select-text relative bg-gray-50 dark:bg-black"
         >
           {messages.length === 0 ? (
             <div id="no-messages-prompt" className="flex-1 flex flex-col items-center justify-center text-center p-6 gap-3">
@@ -917,9 +994,17 @@ export default function App() {
                   className={`flex gap-2 items-end max-w-[85%] animate-in slide-in-from-bottom-2 duration-200 ${
                     isMe ? 'self-end flex-row-reverse' : 'self-start flex-row'
                   }`}
+                  onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; }}
+                  onTouchEnd={(e) => {
+                    const diff = e.changedTouches[0].clientX - touchStartX.current;
+                    if (diff > 50) {
+                      setReplyToMsg(msg);
+                      textareaRef.current?.focus();
+                    }
+                  }}
                 >
                   {/* Small avatar for bubbles */}
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border border-pink-100/40 shrink-0 select-none shadow-xs ${
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] shrink-0 select-none ${
                     msg.sender === 'Facu' ? 'bg-orange-100 text-orange-600' : 'bg-pink-100 text-pink-600'
                   }`}>
                     {msg.sender === 'Facu' ? '👨‍💻' : '🌸'}
@@ -960,14 +1045,10 @@ export default function App() {
                     </div>
 
                     <div 
-                      className={`rounded-2xl px-3.5 py-2 text-sm shadow-xs border relative flex flex-col gap-1 min-w-16 ${
+                      className={`px-3.5 py-2 text-sm relative flex flex-col gap-1 min-w-16 ${
                         isMe
-                          ? msg.sender === 'Facu'
-                            ? 'bg-linear-to-b from-orange-400 to-orange-500 text-white border-orange-400'
-                            : 'bg-linear-to-b from-pink-400 to-pink-500 text-white border-pink-400'
-                          : msg.sender === 'Facu'
-                            ? 'bg-orange-50/95 dark:bg-orange-900/40 text-gray-800 dark:text-gray-100 border-orange-100/80 dark:border-orange-800/50'
-                            : 'bg-purple-50/95 dark:bg-purple-900/40 text-gray-800 dark:text-gray-100 border-purple-100/80 dark:border-purple-800/50'
+                          ? 'bg-[#3797f0] dark:bg-[#3797f0] text-white rounded-2xl rounded-br-md'
+                          : 'bg-[#efefef] dark:bg-[#262626] text-gray-800 dark:text-gray-100 rounded-2xl rounded-bl-md'
                       }`}
                     >
                       {/* ReplyTo quote */}
@@ -1034,20 +1115,20 @@ export default function App() {
 
                       {/* Timestamp overlay with WhatsApp ticks */}
                       <div className="flex items-center gap-1 self-end mt-0.5 select-none">
-                        <span 
-                          className={`text-[9px] font-medium font-mono tracking-tight opacity-80 ${
-                            isMe ? 'text-white/90' : 'text-gray-400'
-                          }`}
-                        >
-                          {formatMessageTime(msg.timestamp)}
-                        </span>
-                        {isMe && (
-                          msg.seen ? (
-                            <CheckCheck className="w-3.5 h-3.5 text-sky-200 stroke-[2.5] shrink-0" title="Leído" />
-                          ) : (
-                            <CheckCheck className="w-3.5 h-3.5 text-white/60 stroke-[2.5] shrink-0" title="Entregado" />
-                          )
-                        )}
+                      <span 
+                        className={`text-[10px] font-medium opacity-70 ${
+                          isMe ? 'text-white/80' : 'text-gray-400'
+                        }`}
+                      >
+                        {formatMessageTime(msg.timestamp)}
+                      </span>
+                      {isMe && (
+                        msg.seen ? (
+                          <Check className="w-3 h-3 text-white/70 stroke-[2.5] shrink-0" title="Leído" />
+                        ) : (
+                          <Check className="w-3 h-3 text-white/40 stroke-[2.5] shrink-0" title="Entregado" />
+                        )
+                      )}
                       </div>
 
                       {/* Reactions display */}
@@ -1108,15 +1189,15 @@ export default function App() {
         {/* Bottom Toolbar & Text Input Panel (WhatsApp Style) */}
         <div 
           id="chat-toolbar-input-panel"
-          className="bg-pink-50/20 dark:bg-gray-800 px-3 py-2.5 shrink-0 flex items-end gap-2 relative z-20 border-t border-pink-50 dark:border-gray-700"
+          className="bg-white dark:bg-black px-3 py-2 shrink-0 flex items-end gap-2 relative z-20 border-t border-gray-100 dark:border-gray-800"
         >
           <div className="flex-1 flex flex-col gap-1">
             {/* Reply preview bar */}
             {replyToMsg && (
-              <div className="flex items-center gap-2 bg-white dark:bg-gray-800 rounded-xl px-3 py-1.5 shadow-xs border border-pink-100 dark:border-gray-700 text-xs">
-                <div className="w-1 h-8 rounded-full bg-pink-400 shrink-0" />
+              <div className="flex items-center gap-2 bg-gray-100 dark:bg-[#262626] rounded-lg px-3 py-1.5 text-xs">
+                <div className="w-0.5 h-8 rounded-full bg-[#3797f0] shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <span className="font-bold text-pink-500 dark:text-pink-400 text-[11px]">
+                  <span className="font-semibold text-[#3797f0] text-[11px]">
                     {replyToMsg.sender === currentUser ? 'Tú' : replyToMsg.sender}
                   </span>
                   <p className="truncate text-gray-500 dark:text-gray-400 text-[11px]">{replyToMsg.content}</p>
@@ -1124,14 +1205,14 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setReplyToMsg(null)}
-                  className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-gray-400 hover:text-gray-600 shrink-0"
+                  className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full text-gray-400 shrink-0"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M18.3 5.71a.996.996 0 00-1.41 0L12 10.59 7.11 5.7A.996.996 0 105.7 7.11L10.59 12 5.7 16.89a.996.996 0 101.41 1.41L12 13.41l4.89 4.89a.996.996 0 101.41-1.41L13.41 12l4.89-4.89c.38-.38.38-1.02 0-1.4z"/></svg>
                 </button>
               </div>
             )}
             {/* Main Input Pill Capsule */}
-            <div className="flex bg-white dark:bg-gray-800 rounded-2xl px-2.5 py-1 items-center gap-1.5 min-w-0 shadow-xs border border-pink-100 dark:border-gray-700">
+            <div className="flex bg-gray-100 dark:bg-[#262626] rounded-full px-4 py-1.5 items-center gap-1.5 min-w-0">
             {/* Smile Emoji Selector Button */}
             <button
               type="button"
@@ -1142,11 +1223,11 @@ export default function App() {
                 setShowAttachmentMenu(false);
               }}
               className={`p-1.5 rounded-full transition-colors shrink-0 ${
-                showEmojiPicker ? 'text-pink-500 bg-pink-50' : 'text-gray-400 hover:text-pink-400'
+                showEmojiPicker ? 'text-blue-500 bg-blue-50 dark:bg-blue-900/30' : 'text-gray-500 dark:text-gray-400 hover:text-blue-500'
               }`}
               title="Emojis 😊"
             >
-              <Smile className="w-[21px] h-[21px] stroke-[2.2]" />
+              <Smile className="w-[20px] h-[20px]" />
             </button>
 
             {/* Input Text Area */}
@@ -1180,7 +1261,7 @@ export default function App() {
                 setShowStickerPicker(false);
               }}
               className={`p-1.5 rounded-full transition-colors shrink-0 ${
-                showAttachmentMenu ? 'text-pink-500 bg-pink-50' : 'text-gray-400 hover:text-pink-400'
+                showAttachmentMenu ? 'text-blue-500 bg-blue-50 dark:bg-blue-900/30' : 'text-gray-500 dark:text-gray-400 hover:text-blue-500'
               }`}
               title="Adjuntar"
             >
@@ -1195,7 +1276,7 @@ export default function App() {
                 imageInputRef.current?.click();
                 setShowAttachmentMenu(false);
               }}
-              className="p-1.5 text-gray-400 hover:text-pink-400 rounded-full transition-colors shrink-0"
+              className="p-1.5 text-gray-400 hover:text-blue-500 rounded-full transition-colors shrink-0"
               title="Tomar / Enviar Foto 📷"
             >
               <Camera className="w-[20px] h-[20px] stroke-[2.2]" />
@@ -1209,25 +1290,25 @@ export default function App() {
               type="button"
               id="send-message-btn"
               onClick={() => handleSendMessage('text', inputText)}
-              className="w-11 h-11 bg-pink-500 text-white rounded-full flex items-center justify-center shrink-0 transition-all duration-150 shadow-md hover:bg-pink-600 hover:scale-105 active:scale-95"
+              className="w-10 h-10 bg-[#3797f0] text-white rounded-full flex items-center justify-center shrink-0 transition-all duration-150 hover:bg-[#3182d6] active:scale-95"
               title="Enviar mensaje"
             >
-              <Send className="w-[18px] h-[18px] ml-0.5 stroke-[2.2]" />
+              <Send className="w-[16px] h-[16px] ml-0.5" />
             </button>
           ) : (
             <button
               type="button"
               id="voice-recorder-trigger-btn"
-              onClick={() => {
-                setShowVoiceRecorder(true);
-                setShowAttachmentMenu(false);
-                setShowEmojiPicker(false);
-                setShowStickerPicker(false);
-              }}
-              className="w-11 h-11 bg-pink-500 text-white rounded-full flex items-center justify-center shrink-0 transition-all duration-150 shadow-md hover:bg-pink-600 hover:scale-105 active:scale-95"
-              title="Grabar nota de voz"
+              onMouseDown={(e) => handleVoiceStart(e)}
+              onTouchStart={(e) => handleVoiceStart(e)}
+              onMouseUp={(e) => handleVoiceEnd(e)}
+              onTouchEnd={(e) => handleVoiceEnd(e)}
+              onMouseLeave={(e) => handleVoiceEnd(e)}
+              onTouchMove={(e) => handleVoiceMove(e)}
+              className="w-10 h-10 bg-gray-100 dark:bg-[#262626] text-gray-600 dark:text-gray-300 rounded-full flex items-center justify-center shrink-0 transition-all duration-150 active:scale-95"
+              title="Presiona para grabar"
             >
-              <Mic className="w-[19px] h-[19px] stroke-[2.2]" />
+              <Mic className="w-[18px] h-[18px]" />
             </button>
           )}
         </div>
@@ -1321,6 +1402,35 @@ export default function App() {
         )}
       </div>
 
+      {/* WhatsApp-style Recording Overlay */}
+      {isRecording && !recordingLocked && (
+        <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-2 pointer-events-none animate-bounce">
+          <div className="bg-black/80 text-white text-xs font-medium px-3 py-1.5 rounded-full">
+            {formatDuration(recordingDuration)}
+          </div>
+          <div className="flex items-center gap-1 text-white/60 text-[10px]">
+            <ArrowUp className="w-3 h-3" />
+            <span>desliza para bloquear</span>
+          </div>
+        </div>
+      )}
+
+      {isRecording && recordingLocked && (
+        <div className="absolute bottom-0 left-0 right-0 z-50 bg-white dark:bg-black border-t border-gray-200 dark:border-gray-800 px-4 py-3 flex items-center gap-3">
+          <button onClick={cancelRecording} className="w-10 h-10 rounded-full bg-red-50 dark:bg-red-900/30 flex items-center justify-center text-red-500">
+            <Trash2 className="w-5 h-5" />
+          </button>
+          <div className="flex-1 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            <span className="text-sm font-medium">{formatDuration(recordingDuration)}</span>
+            <span className="text-xs text-gray-400">grabando...</span>
+          </div>
+          <button onClick={stopAndSendRecording} className="w-10 h-10 rounded-full bg-[#3797f0] flex items-center justify-center text-white">
+            <Send className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Drawing Canvas Overlays */}
       {showDrawingCanvas && (
         <DrawingCanvas
@@ -1330,12 +1440,6 @@ export default function App() {
       )}
 
       {/* Voice Recorder Overlays */}
-      {showVoiceRecorder && (
-        <VoiceRecorder
-          onSendAudio={(base64, durationSec) => handleSendMessage('audio', base64, { duration: durationSec })}
-          onClose={() => setShowVoiceRecorder(false)}
-        />
-      )}
 
       {/* Fullscreen Zoom Lightbox overlay */}
       {activeLightbox && (
@@ -1351,26 +1455,22 @@ export default function App() {
       {showClearConfirm && (
         <div 
           id="clear-confirm-modal"
-          className="fixed inset-0 z-50 bg-black/55 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
         >
-          <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-2xl border border-pink-100 dark:border-gray-700 max-w-sm w-full text-center flex flex-col gap-4 animate-in zoom-in-95 duration-200">
-            <div className="w-14 h-14 bg-red-100 dark:bg-red-900/50 text-red-500 rounded-full flex items-center justify-center mx-auto text-2xl">
-              🥺
-            </div>
-            
-            <div className="flex flex-col gap-1.5">
-              <h3 className="text-base font-bold text-gray-800 dark:text-gray-100">¿De verdad quieres borrarlo?</h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed px-2">
-                Se eliminarán permanentemente todas nuestras fotitos, audios, dibujos y bonitos mensajes de este historial local. Esta acción no se puede deshacer. 
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-sm w-full text-center flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <h3 className="text-base font-semibold text-gray-800 dark:text-gray-100">Borrar historial</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                ¿Estás seguro? No podrás deshacer esta acción.
               </p>
             </div>
 
-            <div className="flex gap-2 mt-2">
+            <div className="flex gap-2">
               <button
                 type="button"
                 id="cancel-clear-btn"
                 onClick={() => setShowClearConfirm(false)}
-                className="flex-1 py-2.5 rounded-2xl border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-xs font-semibold text-gray-600 dark:text-gray-300 transition-colors"
+                className="flex-1 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-medium text-gray-600 dark:text-gray-300"
               >
                 Cancelar
               </button>
@@ -1378,9 +1478,9 @@ export default function App() {
                 type="button"
                 id="confirm-clear-btn"
                 onClick={clearHistory}
-                className="flex-1 py-2.5 rounded-2xl bg-red-500 hover:bg-red-600 text-xs font-semibold text-white transition-colors shadow"
+                className="flex-1 py-2.5 rounded-lg bg-red-500 hover:bg-red-600 text-sm font-medium text-white"
               >
-                Sí, borrar todo 🗑️
+                Borrar
               </button>
             </div>
           </div>

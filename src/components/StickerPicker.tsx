@@ -46,35 +46,19 @@ const STICKER_CATEGORIES: StickerCategory[] = [
     icon: '🐻',
     stickers: [
       { id: 'cute_1', emoji: '🐻', label: 'Oso' },
-      { id: 'cute_2', emoji: 'Panda', label: 'Panda' }, // we can use 🐼 but let's make it a string 🐼
+      { id: 'cute_2', emoji: '🐼', label: 'Panda' },
       { id: 'cute_3', emoji: '🐱', label: 'Gato' },
       { id: 'cute_4', emoji: '🐰', label: 'Conejo' },
       { id: 'cute_5', emoji: '🦊', label: 'Zorro' },
-      { id: 'cute_6', emoji: 'Koala', label: 'Koala' }, // we can use 🐨
+      { id: 'cute_6', emoji: '🐨', label: 'Koala' },
       { id: 'cute_7', emoji: '🦁', label: 'León' },
-      { id: 'cute_8', emoji: 'Hamster', label: 'Hamster' }, // we can use 🐹
+      { id: 'cute_8', emoji: '🐹', label: 'Hámster' },
       { id: 'cute_9', emoji: '🐧', label: 'Pingüino' },
       { id: 'cute_10', emoji: '🐥', label: 'Pollito' },
       { id: 'cute_11', emoji: '🦄', label: 'Unicornio' },
-      { id: 'cute_12', emoji: 'Otter', label: 'Nutria' } // we can use 🦦
+      { id: 'cute_12', emoji: '🦦', label: 'Nutria' }
     ]
   }
-];
-
-// Re-write cute categories with solid standard emojis to prevent any missing assets
-STICKER_CATEGORIES[2].stickers = [
-  { id: 'cute_1', emoji: '🐻', label: 'Oso' },
-  { id: 'cute_2', emoji: '🐼', label: 'Panda' },
-  { id: 'cute_3', emoji: '🐱', label: 'Gato' },
-  { id: 'cute_4', emoji: '🐰', label: 'Conejo' },
-  { id: 'cute_5', emoji: '🦊', label: 'Zorro' },
-  { id: 'cute_6', emoji: '🐨', label: 'Koala' },
-  { id: 'cute_7', emoji: '🦁', label: 'León' },
-  { id: 'cute_8', emoji: '🐹', label: 'Hámster' },
-  { id: 'cute_9', emoji: '🐧', label: 'Pingüino' },
-  { id: 'cute_10', emoji: '🐥', label: 'Pollito' },
-  { id: 'cute_11', emoji: '🦄', label: 'Unicornio' },
-  { id: 'cute_12', emoji: '🦦', label: 'Nutria' }
 ];
 
 interface StickerPickerProps {
@@ -88,10 +72,9 @@ export default function StickerPicker({ onSelectSticker, onClose }: StickerPicke
   return (
     <div 
       id="sticker-picker-container"
-      className="absolute bottom-16 left-2 right-2 md:left-12 md:right-auto md:w-80 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-pink-100/80 z-50 flex flex-col overflow-hidden max-h-80 animate-in fade-in slide-in-from-bottom-4 duration-200"
+      className="absolute bottom-16 left-2 right-2 md:left-12 md:right-auto md:w-80 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 z-50 flex flex-col overflow-hidden max-h-80"
     >
-      {/* Header Tabs */}
-      <div className="flex bg-pink-50/50 p-2 border-b border-pink-100 justify-between items-center gap-1">
+      <div className="flex bg-gray-50 dark:bg-gray-900 p-2 border-b border-gray-100 dark:border-gray-700 justify-between items-center gap-1">
         <div className="flex gap-1 overflow-x-auto scrollbar-none">
           {STICKER_CATEGORIES.map(category => (
             <button
@@ -99,10 +82,10 @@ export default function StickerPicker({ onSelectSticker, onClose }: StickerPicke
               type="button"
               id={`sticker-tab-${category.id}`}
               onClick={() => setActiveTab(category.id)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all duration-150 flex items-center gap-1 relative shrink-0 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all flex items-center gap-1 shrink-0 ${
                 activeTab === category.id
-                  ? 'bg-white shadow-sm text-pink-600 scale-102 border border-pink-100'
-                  : 'hover:bg-pink-100/40 text-gray-600'
+                  ? 'bg-white dark:bg-gray-700 shadow-sm border border-gray-200 dark:border-gray-600'
+                  : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500'
               }`}
             >
               <span>{category.name}</span>
@@ -113,16 +96,15 @@ export default function StickerPicker({ onSelectSticker, onClose }: StickerPicke
           type="button"
           id="close-sticker-picker-btn"
           onClick={onClose}
-          className="p-1 text-gray-400 hover:text-pink-500 rounded-full hover:bg-pink-100 transition-colors duration-150 shrink-0 ml-1"
+          className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors shrink-0 ml-1"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
         </button>
       </div>
 
-      {/* Sticker Grid */}
       <div 
         id="sticker-grid"
-        className="p-4 overflow-y-auto grid grid-cols-3 gap-3 h-52 scrollbar-thin scrollbar-thumb-pink-200 scrollbar-track-transparent"
+        className="p-4 overflow-y-auto grid grid-cols-3 gap-3 h-52 scrollbar-none"
       >
         {STICKER_CATEGORIES.find(c => c.id === activeTab)?.stickers.map(sticker => (
           <button
@@ -130,9 +112,9 @@ export default function StickerPicker({ onSelectSticker, onClose }: StickerPicke
             type="button"
             id={`sticker-item-${sticker.id}`}
             onClick={() => onSelectSticker(sticker.emoji)}
-            className="group flex flex-col items-center justify-center p-2 rounded-xl hover:bg-pink-50 border border-transparent hover:border-pink-100/50 transition-all duration-200 active:scale-95"
+            className="group flex flex-col items-center justify-center p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 border border-transparent transition-all active:scale-95"
           >
-            <span className="text-5xl group-hover:scale-115 transition-transform duration-200 select-none filter drop-shadow-sm">
+            <span className="text-5xl group-hover:scale-110 transition-transform select-none">
               {sticker.emoji}
             </span>
             <span className="text-[10px] text-gray-400 mt-1 select-none font-medium">
