@@ -142,10 +142,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /* ===== THEME ===== */
 function applyTheme() {
-  document.documentElement.classList.toggle('light', !isDark);
+  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
   if (themeToggle) themeToggle.classList.toggle('on', isDark);
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.content = isDark ? '#00a884' : '#008069';
+  if (meta) meta.content = isDark ? '#0b141a' : '#075e54';
 }
 
 function applyFontSize() {
