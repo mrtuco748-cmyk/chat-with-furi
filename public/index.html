@@ -6,40 +6,49 @@
   <meta name="theme-color" content="#00a884">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <title>WhatsApp — Chat de Facu y Rocío</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>💬</text></svg>">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="application-name" content="Amor Chat">
+  <meta name="description" content="Chat de Facu y Rocío">
+  <title>Chat de Facu y Rocío</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='28' font-size='28'%3E💬%3C/text%3E%3C/svg%3E">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='28' font-size='28'%3E💬%3C/text%3E%3C/svg%3E">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <!-- User Selector -->
-  <div id="user-selector" class="user-selector">
+  <div id="user-selector" class="user-selector" role="dialog" aria-label="Seleccionar usuario">
     <div class="user-selector-container">
       <div class="user-selector-header">
-        <svg viewBox="0 0 39 49" width="39" height="49" class="whatsapp-logo"><path fill="#00a884" d="M19.5 0C8.7 0 0 8.7 0 19.5c0 3.6 1 7.1 2.9 10.1L0 49l19.9-5.3c3 .9 6.2 1.5 9.6 1.5C40.3 45.2 49 36.5 49 25.7 49 14.9 40.3 6.2 29.5 6.2c-10.2 0-18.5 8.3-18.5 18.5 0 2.7.6 5.3 1.6 7.6l-1.1 3.9 4.1-1.1c2.1 1.2 4.5 1.9 7 1.9 7.6 0 13.8-6.2 13.8-13.8S37.1 6.2 29.5 6.2zM19.5 0C8.7 0 0 8.7 0 19.5c0 3.6 1 7.1 2.9 10.1L0 49l19.9-5.3c3 .9 6.2 1.5 9.6 1.5C40.3 45.2 49 36.5 49 25.7 49 14.9 40.3 6.2 29.5 6.2c-10.2 0-18.5 8.3-18.5 18.5 0 2.7.6 5.3 1.6 7.6l-1.1 3.9 4.1-1.1c2.1 1.2 4.5 1.9 7 1.9 7.6 0 13.8-6.2 13.8-13.8S37.1 6.2 29.5 6.2z"/></svg>
+        <svg viewBox="0 0 39 49" width="39" height="49" class="whatsapp-logo" aria-hidden="true"><path fill="#00a884" d="M19.5 0C8.7 0 0 8.7 0 19.5c0 3.6 1 7.1 2.9 10.1L0 49l19.9-5.3c3 .9 6.2 1.5 9.6 1.5C40.3 45.2 49 36.5 49 25.7 49 14.9 40.3 6.2 29.5 6.2c-10.2 0-18.5 8.3-18.5 18.5 0 2.7.6 5.3 1.6 7.6l-1.1 3.9 4.1-1.1c2.1 1.2 4.5 1.9 7 1.9 7.6 0 13.8-6.2 13.8-13.8S37.1 6.2 29.5 6.2z"/></svg>
         <h1>WhatsApp</h1>
       </div>
-      <p class="user-selector-subtitle">¿Quién sos?</p>
+      <p class="user-selector-subtitle">Elegí tu perfil para ingresar al chat</p>
       <div class="user-selector-buttons">
-        <button class="user-btn" data-user="Facu" style="--user-color: #5f9ef0">
-          <span class="user-avatar">F</span>
+        <button class="user-btn" data-user="Facu" style="--user-color: #5f9ef0" aria-label="Entrar como Facu">
+          <span class="user-avatar" aria-hidden="true">F</span>
           <span class="user-name">Facu</span>
+          <span class="user-sub">Chatear</span>
         </button>
-        <button class="user-btn" data-user="Rocío" style="--user-color: #d47bcd">
-          <span class="user-avatar">R</span>
+        <button class="user-btn" data-user="Rocío" style="--user-color: #d47bcd" aria-label="Entrar como Rocío">
+          <span class="user-avatar" aria-hidden="true">R</span>
           <span class="user-name">Rocío</span>
+          <span class="user-sub">Chatear</span>
         </button>
       </div>
     </div>
   </div>
 
   <!-- Main App -->
-  <div id="app" class="app hidden">
+  <div id="app" class="app hidden" role="application" aria-label="Chat de Facu y Rocío">
     <!-- Reconnection Banner -->
-    <div id="reconnect-banner" class="reconnect-banner hidden">Esperando conexión... <span class="reconnect-spinner"></span></div>
+    <div id="reconnect-banner" class="reconnect-banner hidden" role="alert">
+      Reconectando...
+      <span class="reconnect-spinner"></span>
+    </div>
 
     <!-- Chat Header -->
-    <div id="chat-header" class="chat-header">
-      <div class="header-left">
+    <header id="chat-header" class="chat-header">
+      <div class="header-left" role="button" tabindex="0" aria-label="Ver información del chat">
         <div class="header-avatar" id="header-avatar">
           <span id="header-avatar-text"></span>
         </div>
@@ -49,141 +58,141 @@
         </div>
       </div>
       <div class="header-right">
-        <button id="search-btn" class="header-icon-btn" title="Buscar">
-          <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M15.009 13.805h-.636l-.22-.219a5.184 5.184 0 0 0 1.256-3.386 5.207 5.207 0 1 0-5.207 5.207 5.184 5.184 0 0 0 3.385-1.255l.221.22v.635l4.004 3.999 1.194-1.195-3.997-4.006zm-4.808 0a3.605 3.605 0 1 1 0-7.21 3.605 3.605 0 0 1 0 7.21z"/></svg>
+        <button id="search-btn" class="header-icon-btn" aria-label="Buscar mensajes" title="Buscar">
+          <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="currentColor" d="M15.009 13.805h-.636l-.22-.219a5.184 5.184 0 0 0 1.256-3.386 5.207 5.207 0 1 0-5.207 5.207 5.184 5.184 0 0 0 3.385-1.255l.221.22v.635l4.004 3.999 1.194-1.195-3.997-4.006zm-4.808 0a3.605 3.605 0 1 1 0-7.21 3.605 3.605 0 0 1 0 7.21z"/></svg>
         </button>
-        <button id="menu-btn" class="header-icon-btn" title="Menú">
-          <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M12 7a2 2 0 1 0-.001-4.001A2 2 0 0 0 12 7zm0 2a2 2 0 1 0-.001 3.999A2 2 0 0 0 12 9zm0 6a2 2 0 1 0-.001 3.999A2 2 0 0 0 12 15z"/></svg>
+        <button id="menu-btn" class="header-icon-btn" aria-label="Menú" title="Opciones">
+          <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="currentColor" d="M12 7a2 2 0 1 0-.001-4.001A2 2 0 0 0 12 7zm0 2a2 2 0 1 0-.001 3.999A2 2 0 0 0 12 9zm0 6a2 2 0 1 0-.001 3.999A2 2 0 0 0 12 15z"/></svg>
         </button>
       </div>
-    </div>
+    </header>
 
     <!-- Search Bar -->
-    <div id="search-bar" class="search-bar hidden">
-      <button id="search-close" class="search-close-btn">
-        <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
+    <div id="search-bar" class="search-bar hidden" role="search" aria-label="Buscar mensajes">
+      <button id="search-close" class="search-close-btn" aria-label="Cerrar búsqueda">
+        <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
       </button>
-      <input type="text" id="search-input" class="search-input" placeholder="Buscar mensajes...">
-      <div class="search-nav">
-        <span id="search-count" class="search-count"></span>
-        <button id="search-prev" class="search-nav-btn" title="Anterior">
-          <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6 1.41 1.41z"/></svg>
+      <input type="text" id="search-input" class="search-input" placeholder="Buscar mensajes en el chat" aria-label="Buscar">
+      <div class="search-nav" role="group" aria-label="Navegación de resultados">
+        <span id="search-count" class="search-count" aria-live="polite"></span>
+        <button id="search-prev" class="search-nav-btn" aria-label="Resultado anterior">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6 1.41 1.41z"/></svg>
         </button>
-        <button id="search-next" class="search-nav-btn" title="Siguiente">
-          <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+        <button id="search-next" class="search-nav-btn" aria-label="Siguiente resultado">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
         </button>
       </div>
     </div>
 
     <!-- Messages Container -->
-    <div id="messages-container" class="messages-container">
+    <main id="messages-container" class="messages-container" role="log" aria-label="Mensajes" aria-live="polite">
       <div id="messages-loading" class="messages-loading">
         <div class="loading-spinner"></div>
       </div>
       <div id="messages-list" class="messages-list"></div>
-    </div>
+    </main>
 
     <!-- Reply Preview -->
-    <div id="reply-preview" class="reply-preview hidden">
-      <div class="reply-preview-bar"></div>
+    <div id="reply-preview" class="reply-preview hidden" role="status" aria-live="polite">
+      <div class="reply-preview-bar" aria-hidden="true"></div>
       <div class="reply-preview-content">
         <div class="reply-preview-sender" id="reply-preview-sender"></div>
         <div class="reply-preview-text" id="reply-preview-text"></div>
       </div>
-      <button id="reply-close" class="reply-close-btn">
-        <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
+      <button id="reply-close" class="reply-close-btn" aria-label="Cancelar respuesta">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
       </button>
     </div>
 
     <!-- Input Bar -->
-    <div class="input-bar">
-      <button id="emoji-btn" class="input-icon-btn" title="Emoji">
-        <svg viewBox="0 0 24 24" width="26" height="26"><path fill="currentColor" d="M9.153 11.603c.795 0 1.44-.88 1.44-1.962s-.645-1.96-1.44-1.96c-.795 0-1.44.88-1.44 1.96s.645 1.96 1.44 1.96zm-4.414 3.205c.4-.6 2.875-1.525 5.266-1.525s4.866.925 5.266 1.525a.5.5 0 0 0 .866-.5c-.626-1.045-3.37-2.025-6.132-2.025s-5.506.98-6.132 2.025a.5.5 0 0 0 .866.5zm10.634-3.205c.795 0 1.44-.88 1.44-1.962s-.645-1.96-1.44-1.96c-.795 0-1.44.88-1.44 1.96s.645 1.96 1.44 1.96zM12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2z"/></svg>
+    <div class="input-bar" role="toolbar" aria-label="Barra de mensajes">
+      <button id="emoji-btn" class="input-icon-btn" aria-label="Emojis" title="Emojis">
+        <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M9.153 11.603c.795 0 1.44-.88 1.44-1.962s-.645-1.96-1.44-1.96c-.795 0-1.44.88-1.44 1.96s.645 1.96 1.44 1.96zm-4.414 3.205c.4-.6 2.875-1.525 5.266-1.525s4.866.925 5.266 1.525a.5.5 0 0 0 .866-.5c-.626-1.045-3.37-2.025-6.132-2.025s-5.506.98-6.132 2.025a.5.5 0 0 0 .866.5zm10.634-3.205c.795 0 1.44-.88 1.44-1.962s-.645-1.96-1.44-1.96c-.795 0-1.44.88-1.44 1.96s.645 1.96 1.44 1.96zM12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2z"/></svg>
       </button>
       <div class="input-wrapper">
-        <textarea id="message-input" class="message-input" rows="1" placeholder="Escribe un mensaje"></textarea>
-        <button id="clip-btn" class="input-icon-btn clip-btn" title="Adjuntar">
-          <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M1.816 15.556v.002c0 1.502.584 2.912 1.646 3.972s2.472 1.647 3.974 1.647a5.58 5.58 0 0 0 3.972-1.645l9.547-9.548a3.527 3.527 0 0 0 1.037-2.51 3.527 3.527 0 0 0-1.037-2.51 3.542 3.542 0 0 0-2.514-1.038 3.54 3.54 0 0 0-2.513 1.038l-9.547 9.547a1.96 1.96 0 0 0 2.955 2.576l7.173-7.194 1.434 1.44-7.186 7.175a3.54 3.54 0 0 1-2.512 1.038 3.46 3.46 0 0 1-2.514-1.037 3.588 3.588 0 0 1 0-5.066l9.547-9.547a5.058 5.058 0 0 1 3.557-1.474c1.362 0 2.632.53 3.557 1.474a5.025 5.025 0 0 1 1.474 3.557 5.026 5.026 0 0 1-1.474 3.557l-9.547 9.547a5.58 5.58 0 0 1-3.972 1.645 5.565 5.565 0 0 1-3.972-1.645 5.608 5.608 0 0 1-1.645-3.972c0-1.502.584-2.913 1.645-3.973l6.127-6.127 1.434 1.44-6.14 6.115z"/></svg>
+        <textarea id="message-input" class="message-input" rows="1" placeholder="Escribe un mensaje aquí" aria-label="Mensaje"></textarea>
+        <button id="clip-btn" class="input-icon-btn clip-btn" aria-label="Adjuntar archivos" title="Adjuntar">
+          <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="currentColor" d="M1.816 15.556v.002c0 1.502.584 2.912 1.646 3.972s2.472 1.647 3.974 1.647a5.58 5.58 0 0 0 3.972-1.645l9.547-9.548a3.527 3.527 0 0 0 1.037-2.51 3.527 3.527 0 0 0-1.037-2.51 3.542 3.542 0 0 0-2.514-1.038 3.54 3.54 0 0 0-2.513 1.038l-9.547 9.547a1.96 1.96 0 0 0 2.955 2.576l7.173-7.194 1.434 1.44-7.186 7.175a3.54 3.54 0 0 1-2.512 1.038 3.46 3.46 0 0 1-2.514-1.037 3.588 3.588 0 0 1 0-5.066l9.547-9.547a5.058 5.058 0 0 1 3.557-1.474c1.362 0 2.632.53 3.557 1.474a5.025 5.025 0 0 1 1.474 3.557 5.026 5.026 0 0 1-1.474 3.557l-9.547 9.547a5.58 5.58 0 0 1-3.972 1.645 5.565 5.565 0 0 1-3.972-1.645 5.608 5.608 0 0 1-1.645-3.972c0-1.502.584-2.913 1.645-3.973l6.127-6.127 1.434 1.44-6.14 6.115z"/></svg>
         </button>
       </div>
-      <button id="mic-btn" class="input-icon-btn mic-btn" title="Grabar audio">
-        <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3zm7.455 10.5a.73.73 0 0 0-.728.724 6.795 6.795 0 0 1-3.178 5.625.729.729 0 0 0-.296.738l.26 1.032a.728.728 0 0 0 .706.58h3.052a.728.728 0 0 0 .727-.727v-6.383a.728.728 0 0 0-.543-.69v.1zm-11.1 0a.728.728 0 0 0-.545.69v6.382c0 .402.326.728.728.728h3.054a.727.727 0 0 0 .706-.58l.258-1.032a.727.727 0 0 0-.295-.738 6.795 6.795 0 0 1-3.177-5.625.728.728 0 0 0-.729-.725z"/></svg>
+      <button id="mic-btn" class="input-icon-btn mic-btn" aria-label="Grabar audio" title="Grabar audio">
+        <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="currentColor" d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3zm7.455 10.5a.73.73 0 0 0-.728.724 6.795 6.795 0 0 1-3.178 5.625.729.729 0 0 0-.296.738l.26 1.032a.728.728 0 0 0 .706.58h3.052a.728.728 0 0 0 .727-.727v-6.383a.728.728 0 0 0-.543-.69v.1zm-11.1 0a.728.728 0 0 0-.545.69v6.382c0 .402.326.728.728.728h3.054a.727.727 0 0 0 .706-.58l.258-1.032a.727.727 0 0 0-.295-.738 6.795 6.795 0 0 1-3.177-5.625.728.728 0 0 0-.729-.725z"/></svg>
       </button>
-      <button id="send-btn" class="send-btn hidden" title="Enviar">
-        <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M1.101 21.757L23.8 12.028 1.101 2.3l.011 7.912 13.623 1.816-13.623 1.817-.011 7.912z"/></svg>
+      <button id="send-btn" class="send-btn hidden" aria-label="Enviar mensaje" title="Enviar">
+        <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="currentColor" d="M1.101 21.757L23.8 12.028 1.101 2.3l.011 7.912 13.623 1.816-13.623 1.817-.011 7.912z"/></svg>
       </button>
     </div>
 
     <!-- Emoji Picker -->
-    <div id="emoji-picker" class="emoji-picker hidden">
+    <div id="emoji-picker" class="emoji-picker hidden" role="dialog" aria-label="Selector de emojis">
       <div class="emoji-header">
         <span class="emoji-title" id="emoji-title">Emojis</span>
-        <button id="emoji-close" class="emoji-close-btn">
-          <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
+        <button id="emoji-close" class="emoji-close-btn" aria-label="Cerrar emojis">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
         </button>
       </div>
       <div class="emoji-search">
-        <input type="text" id="emoji-search" class="emoji-search-input" placeholder="Buscar emoji...">
+        <input type="text" id="emoji-search" class="emoji-search-input" placeholder="Buscar emoji..." aria-label="Buscar emoji">
       </div>
-      <div id="emoji-grid" class="emoji-grid"></div>
-      <div id="emoji-tabs" class="emoji-tabs"></div>
+      <div id="emoji-grid" class="emoji-grid" role="listbox" aria-label="Emojis disponibles"></div>
+      <div id="emoji-tabs" class="emoji-tabs" role="tablist" aria-label="Categorías"></div>
     </div>
 
     <!-- Attachment Menu -->
-    <div id="attachment-menu" class="attachment-menu hidden">
-      <button class="attach-option" data-type="gallery">
+    <div id="attachment-menu" class="attachment-menu hidden" role="menu" aria-label="Adjuntar">
+      <button class="attach-option" data-type="gallery" role="menuitem" aria-label="Fotos y videos">
         <div class="attach-icon" style="background:#5f9ef0">
-          <svg viewBox="0 0 24 24" width="24" height="24"><path fill="white" d="M21 3H3C2 3 1 4 1 5v14c0 1 1 2 2 2h18c1 0 2-1 2-2V5c0-1-1-2-2-2zm0 15c0 .5-.5 1-1 1H4c-.5 0-1-.5-1-1V6c0-.5.5-1 1-1h16c.5 0 1 .5 1 1v12zM6 12c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2zm9.5 3L12 17l-2.5-3L6 18h12l-2.5-3z"/></svg>
+          <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="white" d="M21 3H3C2 3 1 4 1 5v14c0 1 1 2 2 2h18c1 0 2-1 2-2V5c0-1-1-2-2-2zm0 15c0 .5-.5 1-1 1H4c-.5 0-1-.5-1-1V6c0-.5.5-1 1-1h16c.5 0 1 .5 1 1v12zM6 12c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2zm9.5 3L12 17l-2.5-3L6 18h12l-2.5-3z"/></svg>
         </div>
-        <span>Fotos y videos</span>
+        <span>Fotos &amp; videos</span>
       </button>
-      <button class="attach-option" data-type="document">
+      <button class="attach-option" data-type="document" role="menuitem" aria-label="Documento">
         <div class="attach-icon" style="background:#f08c5f">
-          <svg viewBox="0 0 24 24" width="24" height="24"><path fill="white" d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg>
+          <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="white" d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg>
         </div>
         <span>Documento</span>
       </button>
-      <button class="attach-option" data-type="camera">
+      <button class="attach-option" data-type="camera" role="menuitem" aria-label="Cámara">
         <div class="attach-icon" style="background:#5fc48c">
-          <svg viewBox="0 0 24 24" width="24" height="24"><path fill="white" d="M21 6h-3.5l-2-3h-7l-2 3H3c-1.1 0-2 .9-2 2v11c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 13H3V8h4.05l1.67-2.5h6.56L17.05 8H21v11zM12 10c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 6c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
+          <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="white" d="M21 6h-3.5l-2-3h-7l-2 3H3c-1.1 0-2 .9-2 2v11c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 13H3V8h4.05l1.67-2.5h6.56L17.05 8H21v11zM12 10c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 6c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
         </div>
         <span>Cámara</span>
       </button>
     </div>
 
     <!-- Image Preview Modal -->
-    <div id="image-preview" class="image-preview hidden">
+    <div id="image-preview" class="image-preview hidden" role="dialog" aria-label="Vista previa de imagen">
       <div class="image-preview-header">
         <span id="preview-filename" class="preview-filename"></span>
-        <button id="preview-close" class="preview-close-btn">
-          <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
+        <button id="preview-close" class="preview-close-btn" aria-label="Cancelar">
+          <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
         </button>
       </div>
       <div class="image-preview-body">
-        <img id="preview-img" class="preview-img" alt="">
-        <input type="text" id="preview-caption" class="preview-caption" placeholder="Añade un caption...">
+        <img id="preview-img" class="preview-img" alt="Vista previa">
+        <input type="text" id="preview-caption" class="preview-caption" placeholder="Añadir caption..." aria-label="Añadir caption">
         <button id="preview-send" class="preview-send-btn">Enviar</button>
       </div>
     </div>
 
-    <!-- Lightbox (full screen image viewer) -->
-    <div id="lightbox" class="lightbox hidden">
-      <button id="lightbox-close" class="lightbox-close-btn">
-        <svg viewBox="0 0 24 24" width="24" height="24"><path fill="white" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
+    <!-- Lightbox -->
+    <div id="lightbox" class="lightbox hidden" role="dialog" aria-label="Visor de imagen">
+      <button id="lightbox-close" class="lightbox-close-btn" aria-label="Cerrar">
+        <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="white" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
       </button>
       <div id="lightbox-content" class="lightbox-content">
-        <img id="lightbox-img" class="lightbox-img" alt="">
+        <img id="lightbox-img" class="lightbox-img" alt="Imagen ampliada">
       </div>
     </div>
 
     <!-- Context Menu -->
-    <div id="context-menu" class="context-menu hidden"></div>
+    <div id="context-menu" class="context-menu hidden" role="menu" aria-label="Opciones del mensaje"></div>
 
     <!-- Recording Overlay -->
-    <div id="recording-overlay" class="recording-overlay hidden">
+    <div id="recording-overlay" class="recording-overlay hidden" role="status" aria-label="Grabando audio">
       <div class="recording-ui">
-        <div class="recording-timer" id="recording-timer">0:00</div>
-        <div class="recording-waveform" id="recording-waveform">
+        <div class="recording-timer" id="recording-timer" aria-live="off">0:00</div>
+        <div class="recording-waveform" id="recording-waveform" aria-hidden="true">
           <div class="wave-bar" style="animation-delay:0s"></div>
           <div class="wave-bar" style="animation-delay:0.05s"></div>
           <div class="wave-bar" style="animation-delay:0.1s"></div>
@@ -200,20 +209,20 @@
           <div class="wave-bar" style="animation-delay:0.65s"></div>
           <div class="wave-bar" style="animation-delay:0.7s"></div>
         </div>
-        <div class="recording-hint">Desliza izquierda para cancelar</div>
+        <div class="recording-hint">Deslizá hacia la izquierda para cancelar</div>
       </div>
     </div>
 
     <!-- Scroll to bottom button -->
-    <button id="scroll-bottom-btn" class="scroll-bottom-btn hidden">
-      <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6-1.41-1.41z"/></svg>
+    <button id="scroll-bottom-btn" class="scroll-bottom-btn hidden" aria-label="Ir al último mensaje">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6-1.41-1.41z"/></svg>
     </button>
   </div>
 
   <!-- Hidden file inputs -->
-  <input type="file" id="file-input" accept="image/*,video/*" multiple hidden>
-  <input type="file" id="document-input" accept="*/*" hidden>
-  <input type="file" id="camera-input" accept="image/*" capture="environment" hidden>
+  <input type="file" id="file-input" accept="image/*,video/*" multiple hidden aria-hidden="true">
+  <input type="file" id="document-input" accept="*/*" hidden aria-hidden="true">
+  <input type="file" id="camera-input" accept="image/*" capture="environment" hidden aria-hidden="true">
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="app.js"></script>
