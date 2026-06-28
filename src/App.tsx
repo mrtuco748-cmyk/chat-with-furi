@@ -2,11 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { User, Message } from './types';
 import UserSelector from './components/UserSelector';
 import EmojiPicker from './components/EmojiPicker';
-import StickerPicker from './components/StickerPicker';
 import DrawingCanvas from './components/DrawingCanvas';
 import Lightbox from './components/Lightbox';
 import { fetchMessages, sendMessage, markAsSeen, deleteMessage, clearMessages, fetchChunks, updatePresence, sendTyping, addReaction, removeReaction } from './lib/api';
-import { Smile, Paperclip, Mic, Send, Check, Clock, Trash2, LogOut, Palette, Bell, BellOff, MoreVertical, ArrowUp } from 'lucide-react';
+import { Smile, Paperclip, Mic, Send, Check, Clock, Trash2, LogOut, Palette, MoreVertical, ArrowUp } from 'lucide-react';
 
 
 // --- Helper for formatted timestamps ---
@@ -134,11 +133,22 @@ export default function App() {
   
   // UI states
   const [showEmojiPicker, setShowEmojiPicker] = useState<boolean>(false);
-  const [showStickerPicker, setShowStickerPicker] = useState<boolean>(false);
   const [showDrawingCanvas, setShowDrawingCanvas] = useState<boolean>(false);
-  // voice recording now uses press-and-hold via the mic button
   const [activeLightbox, setActiveLightbox] = useState<{ src: string; sender: string; timestamp: string } | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState<boolean>(false);
+  const [showHeaderMenu, setShowHeaderMenu] = useState(false);
+  const [showProfileSettings, setShowProfileSettings] = useState(false);
+  const [profilePics, setProfilePics] = useState<Record<string, string>>(() => {
+    try { return JSON.parse(localStorage.getItem('profile_pics') || '{}'); }
+    catch { return {}; }
+  });
+  const [profileStatuses, setProfileStatuses] = useState<Record<string, string>>(() => {
+    try { return JSON.parse(localStorage.getItem('profile_statuses') || '{}'); }
+    catch { return {}; }
+  });
+  const [chatBackground, setChatBackground] = useState<string>(() => {
+    return localStorage.getItem('chat_background') || '';
+  });
 
   // New states for WhatsApp features
   const [otherUserOnline, setOtherUserOnline] = useState<boolean>(false);
@@ -575,13 +585,6 @@ export default function App() {
         setShowEmojiPicker(false);
       }
       if (
-        showStickerPicker && 
-        !target.closest('#sticker-picker-container') && 
-        !target.closest('#sticker-trigger-btn')
-      ) {
-        setShowStickerPicker(false);
-      }
-      if (
         showAttachmentMenu && 
         !target.closest('#attachment-menu-container') && 
         !target.closest('#attachment-trigger-btn')
@@ -591,8 +594,18 @@ export default function App() {
     };
 
     document.addEventListener('mousedown', handleOutsideClick);
+      if (
+        showHeaderMenu && 
+        !target.closest('#header-menu-btn') && 
+        !target.closest('#header-menu-dropdown')
+      ) {
+        setShowHeaderMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
     return () => document.removeEventListener('mousedown', handleOutsideClick);
-  }, [showEmojiPicker, showStickerPicker, showAttachmentMenu]);
+  }, [showEmojiPicker, showAttachmentMenu, showHeaderMenu]);
 
   const handleSelectUser = (user: User) => {
     setCurrentUser(user);
@@ -926,114 +939,111 @@ export default function App() {
         id="chat-frame-container"
         className="w-full h-full md:max-w-md md:h-[90vh] bg-white dark:bg-black rounded-none md:rounded-2xl shadow-lg border-0 overflow-hidden flex flex-col relative"
       >
-        {/* Chat Header */}
-        <div 
+        {/* Chat Header - WhatsApp Style */}
+        <div
           id="chat-header"
-          className="bg-white dark:bg-black border-b border-gray-100 dark:border-gray-800 px-4 py-2.5 flex justify-between items-center shrink-0 z-20"
+          className="bg-white dark:bg-black border-b border-gray-100 dark:border-gray-800 px-2 py-1.5 flex items-center shrink-0 z-20"
         >
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <div className={`w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold ${
-                  currentUser === 'Facu' ? 'bg-pink-100 text-pink-600' : 'bg-orange-100 text-orange-600'
-                }`}>
-                  {currentUser === 'Facu' ? '🌸' : '👨‍💻'}
-                </div>
-                <span className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-black transition-all duration-300 ${
-                  otherUserOnline ? 'bg-green-500 animate-pulse' : 'bg-gray-300'
-                }`} />
-              </div>
- 
-              <div className="flex flex-col text-left">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-gray-900 dark:text-gray-100 text-sm leading-tight">
-                    {currentUser === 'Facu' ? 'Rocío' : 'Facu'}
-                  </span>
-                  <span className={`text-[10px] font-medium ${
-                    otherUserOnline ? 'text-green-500' : 'text-gray-400'
-                  }`}>
-                    {otherUserOnline ? 'en línea' : 'desconectado(a)'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1 mt-0.5">
-                  {otherUserTyping && (
-                    <span className="text-[11px] text-pink-500 font-medium animate-pulse">escribiendo...</span>
-                  )}
-                </div>
-              </div>
-            </div>
- 
-          <div className="flex items-center gap-1.5">
-            {/* Dark Mode Toggle */}
-            <button
-              type="button"
-              id="dark-mode-toggle-btn"
-              onClick={() => setDarkMode(!darkMode)}
-              className={`p-2 rounded-full transition-colors duration-150 ${
-                darkMode ? 'text-yellow-400 hover:bg-yellow-50/50' : 'text-gray-400 hover:bg-gray-100/50'
-              }`}
-              title={darkMode ? 'Modo Claro' : 'Modo Oscuro'}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 24 24" className="transition-transform duration-300" style={{ transform: darkMode ? 'rotate(180deg)' : 'none' }}>
-                {darkMode ? (
-                  <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1-8.313-12.454z"/>
-                ) : (
-                  <path d="M12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 12a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM18.894 6.166a.75.75 0 00-1.06-1.06l-1.591 1.59a.75.75 0 101.06 1.061l1.591-1.59zM21.75 12a.75.75 0 01-.75.75h-2.25a.75.75 0 010-1.5H21a.75.75 0 01.75.75zM17.834 18.894a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 10-1.061 1.06l1.59 1.591zM12 18a.75.75 0 01.75.75V21a.75.75 0 01-1.5 0v-2.25A.75.75 0 0112 18zM7.758 17.303a.75.75 0 00-1.061-1.06l-1.591 1.59a.75.75 0 001.06 1.061l1.591-1.59zM6 12a.75.75 0 01-.75.75H3a.75.75 0 010-1.5h2.25A.75.75 0 016 12zM6.697 7.757a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 00-1.061 1.06l1.59 1.591z"/>
-                )}
-              </svg>
-            </button>
+          {/* Back button */}
+          <button
+            type="button"
+            onClick={() => {
+              setCurrentUser(null);
+              sessionStorage.removeItem('amor_chat_current_user');
+            }}
+            className="p-1.5 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors shrink-0"
+            title="Atrás"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+          </button>
 
-            {/* Notifications Toggle */}
-            <button
-              type="button"
-              id="notifications-toggle-btn"
-              onClick={() => {
-                const nextState = !notificationsEnabled;
-                setNotificationsEnabled(nextState);
-                localStorage.setItem('amor_chat_notifications', String(nextState));
-                if (nextState && 'Notification' in window && Notification.permission === 'default') {
-                  Notification.requestPermission();
-                }
-              }}
-              className={`p-2 rounded-full transition-colors duration-150 ${
-                notificationsEnabled ? 'text-blue-500 hover:bg-blue-50/50' : 'text-gray-400 hover:bg-gray-100/50'
-              }`}
-              title={notificationsEnabled ? 'Silenciar Notificaciones' : 'Activar Notificaciones'}
-            >
-              {notificationsEnabled ? (
-                <Bell className="w-[18px] h-[18px]" />
+          {/* Profile photo */}
+          <div className="relative mx-2 shrink-0">
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold overflow-hidden ${
+              currentUser === 'Facu' ? 'bg-pink-100 text-pink-600' : 'bg-orange-100 text-orange-600'
+            }`}>
+              {profilePics[currentUser === 'Facu' ? 'Rocío' : 'Facu'] ? (
+                <img src={profilePics[currentUser === 'Facu' ? 'Rocío' : 'Facu']} alt="" className="w-full h-full object-cover" />
               ) : (
-                <BellOff className="w-[18px] h-[18px]" />
+                <span>{currentUser === 'Facu' ? '🌸' : '👨‍💻'}</span>
               )}
-            </button>
+            </div>
+            <span className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-black transition-all duration-300 ${
+              otherUserOnline ? 'bg-green-500' : 'bg-gray-300'
+            }`} />
+          </div>
 
-            {/* Clear history action */}
+          {/* Name + status */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className="font-semibold text-gray-900 dark:text-gray-100 text-sm truncate">
+                {currentUser === 'Facu' ? 'Rocío' : 'Facu'}
+              </span>
+            </div>
+            <div className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
+              {otherUserTyping ? (
+                <span className="text-green-500 font-medium">escribiendo...</span>
+              ) : otherUserOnline ? (
+                'en línea'
+              ) : profileStatuses[currentUser === 'Facu' ? 'Rocío' : 'Facu'] || 'desconectado(a)'}
+            </div>
+          </div>
+
+          {/* Menu dropdown */}
+          <div className="relative">
             <button
               type="button"
-              id="clear-history-trigger"
-              onClick={() => setShowClearConfirm(true)}
-              className="p-2 text-gray-400 hover:text-red-500 rounded-full hover:bg-red-50 transition-colors duration-150"
-              title="Borrar todo el historial"
+              id="header-menu-btn"
+              onClick={() => setShowHeaderMenu(!showHeaderMenu)}
+              className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
             >
-              <Trash2 className="w-[18px] h-[18px]" />
+              <MoreVertical className="w-[20px] h-[20px]" />
             </button>
- 
-            {/* Logout action */}
-            <button
-              type="button"
-              id="logout-btn"
-              onClick={handleLogout}
-              className="p-2 text-gray-400 hover:text-red-500 rounded-full hover:bg-red-50 transition-colors duration-150"
-              title="Cerrar sesión"
-            >
-              <LogOut className="w-[18px] h-[18px]" />
-            </button>
+            {showHeaderMenu && (
+              <div id="header-menu-dropdown" className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 py-1 min-w-[180px] z-50">
+                <button
+                  type="button"
+                  onClick={() => { setShowProfileSettings(true); setShowHeaderMenu(false); }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  Perfil
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setDarkMode(!darkMode); setShowHeaderMenu(false); }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{darkMode ? <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/> : <circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>}</svg>
+                  {darkMode ? 'Modo Claro' : 'Modo Oscuro'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowClearConfirm(true); setShowHeaderMenu(false); }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <Trash2 className="w-[18px] h-[18px]" />
+                  Borrar chat
+                </button>
+                <hr className="border-gray-100 dark:border-gray-700 my-1" />
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                >
+                  <LogOut className="w-[18px] h-[18px]" />
+                  Salir
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Message Thread Body */}
         <div 
           id="chat-messages-container"
-          className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-2 scrollbar-none select-text relative bg-gray-50 dark:bg-black"
+          className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-2 scrollbar-none select-text relative bg-gray-50 dark:bg-black bg-cover bg-center"
+          style={chatBackground ? { backgroundImage: `url(${chatBackground})` } : undefined}
           onClick={() => setActiveReactionMsg(null)}
         >
           {messages.length === 0 ? (
@@ -1309,17 +1319,11 @@ export default function App() {
               setShowEmojiPicker(false);
               textareaRef.current?.focus();
             }}
-            onClose={() => { setShowEmojiPicker(false); setReactPickerTarget(null); }}
-          />
-        )}
-
-        {showStickerPicker && (
-          <StickerPicker
-            onSelectSticker={(sticker) => {
-              handleSendMessage('sticker', sticker);
-              setShowStickerPicker(false);
+            onSelectSticker={(emoji) => {
+              handleSendMessage('sticker', emoji);
+              setShowEmojiPicker(false);
             }}
-            onClose={() => setShowStickerPicker(false)}
+            onClose={() => { setShowEmojiPicker(false); setReactPickerTarget(null); }}
           />
         )}
 
@@ -1348,15 +1352,14 @@ export default function App() {
                 </button>
               </div>
             )}
-            {/* Main Input Pill Capsule */}
-            <div className="flex bg-gray-100 dark:bg-[#262626] rounded-full px-4 py-1.5 items-center gap-1.5 min-w-0">
-            {/* Smile Emoji Selector Button */}
+            {/* Main Input Pill Capsule - WhatsApp style */}
+            <div className="flex bg-gray-100 dark:bg-[#262626] rounded-full px-3 py-1 items-center gap-1 min-w-0">
+            {/* Smile Emoji Selector Button (first, like WhatsApp) */}
             <button
               type="button"
               id="emoji-trigger-btn"
               onClick={() => {
                 setShowEmojiPicker(!showEmojiPicker);
-                setShowStickerPicker(false);
                 setShowAttachmentMenu(false);
               }}
               className={`p-1.5 rounded-full transition-colors shrink-0 ${
@@ -1395,7 +1398,6 @@ export default function App() {
               onClick={() => {
                 setShowAttachmentMenu(!showAttachmentMenu);
                 setShowEmojiPicker(false);
-                setShowStickerPicker(false);
               }}
               className={`p-1.5 rounded-full transition-colors shrink-0 ${
                 showAttachmentMenu ? 'text-blue-500 bg-blue-50 dark:bg-blue-900/30' : 'text-gray-500 dark:text-gray-400 hover:text-blue-500'
@@ -1404,35 +1406,35 @@ export default function App() {
             >
               <Paperclip className="w-[19px] h-[19px] stroke-[2.2]" />
             </button>
-
-            {/* Quick Gallery button (photos & videos) */}
-            <button
-              type="button"
-              id="quick-gallery-btn"
-              onClick={() => {
-                galleryInputRef.current?.click();
-                setShowAttachmentMenu(false);
-              }}
-              className="p-1.5 text-gray-400 hover:text-blue-500 rounded-full transition-colors shrink-0"
-              title="Galería"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-            </button>
-            {/* Quick Camera button */}
-            <button
-              type="button"
-              id="quick-camera-btn"
-              onClick={() => {
-                captureInputRef.current?.click();
-                setShowAttachmentMenu(false);
-              }}
-              className="p-1.5 text-gray-400 hover:text-blue-500 rounded-full transition-colors shrink-0"
-              title="Cámara 📷"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-            </button>
           </div>
           </div>{/* end wrapper */}
+
+          {/* Quick Gallery button */}
+          <button
+            type="button"
+            id="quick-gallery-btn"
+            onClick={() => {
+              galleryInputRef.current?.click();
+              setShowAttachmentMenu(false);
+            }}
+            className="p-1.5 text-gray-400 hover:text-blue-500 rounded-full transition-colors shrink-0"
+            title="Galería"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          </button>
+          {/* Quick Camera button */}
+          <button
+            type="button"
+            id="quick-camera-btn"
+            onClick={() => {
+              captureInputRef.current?.click();
+              setShowAttachmentMenu(false);
+            }}
+            className="p-1.5 text-gray-400 hover:text-blue-500 rounded-full transition-colors shrink-0"
+            title="Cámara 📷"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          </button>
 
           {/* Action Send or Voice Record Circle Button */}
           {inputText.trim() ? (
@@ -1485,20 +1487,20 @@ export default function App() {
               <span className="text-[10px] text-gray-500 font-bold">Dibujo</span>
             </button>
 
-            {/* Stickers */}
+            {/* Emojis + Stickers (opens emoji picker which now includes stickers) */}
             <button
               type="button"
               onClick={() => {
-                setShowStickerPicker(true);
+                setShowEmojiPicker(true);
                 setShowAttachmentMenu(false);
               }}
               className="flex flex-col items-center gap-1 hover:scale-105 active:scale-95 transition-transform"
-              title="Stickers divertidos"
+              title="Emojis y Stickers"
             >
               <div className="w-11 h-11 bg-pink-500 hover:bg-pink-600 text-white rounded-full flex items-center justify-center shadow-md shadow-pink-200">
                 <Smile className="w-5 h-5 stroke-[2.2]" />
               </div>
-              <span className="text-[10px] text-gray-500 font-bold">Sticker</span>
+              <span className="text-[10px] text-gray-500 font-bold">Emoji</span>
             </button>
 
             {/* Galería (photos & videos, multiple) */}
@@ -1550,6 +1552,117 @@ export default function App() {
           </div>
         )}
       </div>
+
+      {/* Profile Settings Modal */}
+      {showProfileSettings && (
+        <div className="absolute inset-0 z-50 bg-white dark:bg-black flex flex-col">
+          <div className="flex items-center gap-2 px-3 py-2.5 border-b border-gray-100 dark:border-gray-800">
+            <button type="button" onClick={() => setShowProfileSettings(false)} className="p-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full">
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+            </button>
+            <span className="font-semibold text-sm">Ajustes</span>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4 space-y-6">
+            {/* My profile */}
+            <div>
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Mi Perfil</h3>
+              <div className="flex items-center gap-4">
+                <div className="relative w-16 h-16 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-2xl shrink-0">
+                  {profilePics[currentUser!] ? (
+                    <img src={profilePics[currentUser!]} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span>{currentUser === 'Facu' ? '👨‍💻' : '🌸'}</span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.accept = 'image/*';
+                      input.onchange = (e: any) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          if (typeof reader.result === 'string') {
+                            const next = { ...profilePics, [currentUser!]: reader.result };
+                            setProfilePics(next);
+                            localStorage.setItem('profile_pics', JSON.stringify(next));
+                          }
+                        };
+                        reader.readAsDataURL(file);
+                      };
+                      input.click();
+                    }}
+                    className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity rounded-full"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="white" stroke="white" strokeWidth="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                  </button>
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-sm">{currentUser}</p>
+                  <input
+                    type="text"
+                    placeholder="Estado..."
+                    value={profileStatuses[currentUser!] || ''}
+                    onChange={(e) => {
+                      const next = { ...profileStatuses, [currentUser!]: e.target.value };
+                      setProfileStatuses(next);
+                      localStorage.setItem('profile_statuses', JSON.stringify(next));
+                    }}
+                    className="text-xs text-gray-500 bg-transparent border-b border-gray-200 dark:border-gray-700 w-full py-1 focus:outline-none focus:border-blue-400"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Chat background */}
+            <div>
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Fondo del Chat</h3>
+              <div className="flex gap-2 flex-wrap">
+                {['', '#f0f0f0', '#d4e9e2', '#fceee4', '#e8d5c4', '#b5d0c6', '#c9e4de'].map(bg => (
+                  <button
+                    key={bg}
+                    type="button"
+                    onClick={() => {
+                      setChatBackground(bg);
+                      localStorage.setItem('chat_background', bg);
+                    }}
+                    className={`w-10 h-10 rounded-full border-2 transition-all ${
+                      chatBackground === bg ? 'border-blue-500 scale-110' : 'border-gray-200 dark:border-gray-600'
+                    }`}
+                    style={{ backgroundColor: bg || '#f9f9f9' }}
+                  />
+                ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = 'image/*';
+                    input.onchange = (e: any) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        if (typeof reader.result === 'string') {
+                          setChatBackground(reader.result);
+                          localStorage.setItem('chat_background', reader.result);
+                        }
+                      };
+                      reader.readAsDataURL(file);
+                    };
+                    input.click();
+                  }}
+                  className="w-10 h-10 rounded-full border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center text-gray-400 hover:border-blue-500 hover:text-blue-500 transition-all"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* WhatsApp-style Recording Overlay */}
       {isRecording && !recordingLocked && (
