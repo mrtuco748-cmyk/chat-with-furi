@@ -703,6 +703,8 @@ function toggleAttach() { attachSheet.classList.toggle('hidden'); attachOverlay.
 function closeAttach() { attachSheet.classList.add('hidden'); attachOverlay.classList.add('hidden'); }
 
 /* ===== FILES ===== */
+let pendingFile = null;
+
 function handleFileSelect(e) { if(e.target.files?.length) handleFiles(Array.from(e.target.files)); e.target.value=''; }
 function handleDocSelect(e) { const f=e.target.files?.[0]; if(f){e.target.value='';uploadAndSend(f,'document');} }
 
@@ -711,6 +713,7 @@ function handleFiles(files,force) {
   const isImg=force==='image'||f.type.startsWith('image/');
   const isVid=force==='video'||f.type.startsWith('video/');
   if (isImg||isVid) {
+    pendingFile = f;
     const r=new FileReader();
     r.onload=e=>{
       previewImg.src=e.target.result;
@@ -725,20 +728,44 @@ function handleFiles(files,force) {
   } else { uploadAndSend(f,'document'); }
 }
 
-function sendPreview() {
+async function uploadFile(file) {
+  const fd = new FormData();
+  fd.append('file', file);
+  const res = await fetch('/api/upload', { method: 'POST', body: fd });
+  if (!res.ok) throw new Error('Upload failed');
+  return res.json();
+}
+
+async function sendPreview() {
   const type=previewImg.dataset.fileType||'image';
-  sendMessage(type,previewImg.src,{
-    fileName:previewImg.dataset.fileName, fileSize:parseInt(previewImg.dataset.fileSize)||0, mimeType:previewImg.dataset.mimeType,
-  });
-  const cap=previewCaption.value.trim();
-  if (cap) setTimeout(()=>sendMessage('text',cap),100);
+  const file = pendingFile;
+  pendingFile = null;
+  try {
+    if (file) {
+      const data = await uploadFile(file);
+      sendMessage(type,data.url,{fileName:data.fileName,fileSize:data.fileSize,mimeType:data.mimeType});
+    } else {
+      sendMessage(type,previewImg.src,{fileName:previewImg.dataset.fileName,fileSize:parseInt(previewImg.dataset.fileSize)||0,mimeType:previewImg.dataset.mimeType});
+    }
+    const cap=previewCaption.value.trim();
+    if (cap) setTimeout(()=>sendMessage('text',cap),100);
+  } catch(_) {
+    sendMessage(type,previewImg.src,{fileName:previewImg.dataset.fileName,fileSize:parseInt(previewImg.dataset.fileSize)||0,mimeType:previewImg.dataset.mimeType});
+    const cap=previewCaption.value.trim();
+    if (cap) setTimeout(()=>sendMessage('text',cap),100);
+  }
   imagePreview.classList.add('hidden'); previewCaption.value='';
 }
 
-function uploadAndSend(file,type) {
-  const r=new FileReader();
-  r.onload=e=>sendMessage(type,e.target.result,{fileName:file.name,fileSize:file.size,mimeType:file.type});
-  r.readAsDataURL(file);
+async function uploadAndSend(file,type) {
+  try {
+    const data = await uploadFile(file);
+    sendMessage(type,data.url,{fileName:data.fileName,fileSize:data.fileSize,mimeType:data.mimeType});
+  } catch(_) {
+    const r=new FileReader();
+    r.onload=e=>sendMessage(type,e.target.result,{fileName:file.name,fileSize:file.size,mimeType:file.type});
+    r.readAsDataURL(file);
+  }
 }
 
 /* ===== LIGHTBOX ===== */
@@ -798,6 +825,9 @@ function updateScrollBtn() {
 }
 
 /* ===== RECORDING ===== */
+let recordingStream = null;
+let recordingCtx = null;
+
 function startRec(e) {
   if (messageInput.value.trim()) return;
   const touch = e.touches?.[0];
@@ -806,11 +836,48 @@ function startRec(e) {
   if (isRecording) return;
 
   navigator.vibrate?.(50);
+  isRecording = true;
+
+  // Show UI instantly
+  recordingSeconds = 0;
+  recordingTimerEl.textContent = '0:00';
+  recordingOverlay.classList.remove('hidden');
+  recordingWaveform.innerHTML = '';
+  for (let i=0;i<20;i++) {
+    const bar=document.createElement('div');
+    bar.className='rec-bar';
+    recordingWaveform.appendChild(bar);
+  }
+
+  // Register end handlers BEFORE getUserMedia (prevents race condition)
+  let startX = touch?.clientX||e.clientX;
+  let streamReady = false;
+  const onMove = ev => {
+    const x = ev.touches?.[0]?.clientX||ev.clientX;
+    if (startX - x > 100) cancelRec();
+  };
+  const onEnd = () => {
+    document.removeEventListener('touchmove',onMove);
+    document.removeEventListener('touchend',onEnd);
+    document.removeEventListener('mousemove',onMove);
+    document.removeEventListener('mouseup',onEnd);
+    if (!isRecording) return;
+    if (streamReady && recordingMediaRecorder?.state === 'recording')
+      recordingMediaRecorder.stop();
+    else
+      cancelRec();
+  };
+  document.addEventListener('touchmove',onMove,{passive:true});
+  document.addEventListener('touchend',onEnd,{passive:true});
+  document.addEventListener('mousemove',onMove);
+  document.addEventListener('mouseup',onEnd);
 
   (async()=>{
     try {
       const stream = await navigator.mediaDevices.getUserMedia({audio:true});
-      isRecording = true;
+      if (!isRecording) { stream.getTracks().forEach(t=>t.stop()); return; }
+      recordingStream = stream;
+      streamReady = true;
       const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?'audio/webm;codecs=opus':'audio/webm';
 
       recordingMediaRecorder = new MediaRecorder(stream,{mimeType:mime});
@@ -823,36 +890,42 @@ function startRec(e) {
       analyser.fftSize = 64;
       src.connect(analyser);
       recordingAnalyser = analyser;
+      recordingCtx = ctx;
       recordingDataArray = new Uint8Array(analyser.frequencyBinCount);
-
-      // Waveform bars
-      recordingWaveform.innerHTML = '';
-      for (let i=0;i<20;i++) {
-        const bar=document.createElement('div');
-        bar.className='rec-bar';
-        recordingWaveform.appendChild(bar);
-      }
 
       recordingMediaRecorder.ondataavailable = e=>{if(e.data.size>0)recordingChunks.push(e.data);};
 
-      recordingMediaRecorder.onstop = ()=>{
+      recordingMediaRecorder.onstop = async ()=>{
         if (recordingChunks.length>0) {
           const blob = new Blob(recordingChunks,{type:'audio/webm'});
-          const r=new FileReader();
-          r.onload=()=>sendMessage('audio',r.result,{duration:recordingSeconds,mimeType:'audio/webm'});
-          r.readAsDataURL(blob);
+          try {
+            const fd = new FormData();
+            fd.append('file',blob,'audio.webm');
+            const res = await fetch('/api/upload',{method:'POST',body:fd});
+            if (res.ok) {
+              const data = await res.json();
+              sendMessage('audio',data.url,{duration:recordingSeconds,mimeType:'audio/webm',fileName:'audio.webm',fileSize:blob.size});
+            } else {
+              const fr=new FileReader();
+              fr.onload=()=>sendMessage('audio',fr.result,{duration:recordingSeconds,mimeType:'audio/webm'});
+              fr.readAsDataURL(blob);
+            }
+          } catch(_) {
+            const fr=new FileReader();
+            fr.onload=()=>sendMessage('audio',fr.result,{duration:recordingSeconds,mimeType:'audio/webm'});
+            fr.readAsDataURL(blob);
+          }
         }
         stream.getTracks().forEach(t=>t.stop());
-        ctx.close();
+        recordingStream = null;
+        if (ctx && ctx.state !== 'closed') ctx.close();
+        recordingCtx = null;
         recordingOverlay.classList.add('hidden');
         isRecording=false;
         if (recordingAnimFrame) cancelAnimationFrame(recordingAnimFrame);
       };
 
       recordingMediaRecorder.start();
-      recordingSeconds = 0;
-      recordingTimerEl.textContent = '0:00';
-      recordingOverlay.classList.remove('hidden');
 
       recordingTimer = setInterval(()=>{recordingSeconds++;recordingTimerEl.textContent=fmtDur(recordingSeconds);},1000);
 
@@ -869,29 +942,9 @@ function startRec(e) {
       }
       drawWave();
 
-      // Swipe to cancel
-      let startX = touch?.clientX||e.clientX;
-      const onMove = (ev)=>{
-        const x = ev.touches?.[0]?.clientX||ev.clientX;
-        const dx = startX - x;
-        if (dx>100) cancelRec();
-      };
-      const onEnd = ()=>{
-        document.removeEventListener('touchmove',onMove);
-        document.removeEventListener('touchend',onEnd);
-        document.removeEventListener('mousemove',onMove);
-        document.removeEventListener('mouseup',onEnd);
-        if (isRecording&&recordingMediaRecorder?.state==='recording') recordingMediaRecorder.stop();
-      };
-      document.addEventListener('touchmove',onMove,{passive:true});
-      document.addEventListener('touchend',onEnd,{passive:true});
-      document.addEventListener('mousemove',onMove);
-      document.addEventListener('mouseup',onEnd);
-
     } catch(err) {
       console.error(err);
-      recordingOverlay.classList.add('hidden');
-      isRecording=false;
+      cancelRec();
     }
   })();
 }
@@ -901,6 +954,12 @@ function cancelRec() {
     recordingMediaRecorder.ondataavailable = null;
     recordingMediaRecorder.stop();
   }
+  if (recordingStream) {
+    recordingStream.getTracks().forEach(t=>t.stop());
+    recordingStream = null;
+  }
+  if (recordingCtx && recordingCtx.state !== 'closed') recordingCtx.close();
+  recordingCtx = null;
   clearInterval(recordingTimer);
   recordingOverlay.classList.add('hidden');
   isRecording=false;

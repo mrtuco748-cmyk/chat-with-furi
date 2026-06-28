@@ -9,7 +9,7 @@ const fs = require('fs');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: '*' } });
+const io = new Server(server, { cors: { origin: '*' }, maxHttpBufferSize: 50e6 });
 
 // --- SQLite Setup (sql.js) ---
 let db;
