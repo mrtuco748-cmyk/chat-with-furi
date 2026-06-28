@@ -106,7 +106,7 @@ app.get('/api/messages', async (req, res) => {
 // Post a new message
 app.post('/api/messages', async (req, res) => {
   try {
-    const { id, sender, type, content, timestamp, fileName, duration } = req.body;
+    const { id, sender, type, content, timestamp, fileName, duration, replyTo } = req.body;
 
     if (!sender || !type || !content) {
       return res.status(400).json({ error: 'Faltan campos obligatorios' });
@@ -124,6 +124,7 @@ app.post('/api/messages', async (req, res) => {
         timestamp: timestamp || Date.now(),
         fileName,
         duration,
+        replyTo,
         isChunked: false,
       });
       broadcast({ type: 'message_new', message: msg.toObject() });
@@ -138,6 +139,7 @@ app.post('/api/messages', async (req, res) => {
         timestamp: timestamp || Date.now(),
         fileName,
         duration,
+        replyTo,
         isChunked: true,
         totalChunks: numChunks,
       });

@@ -170,6 +170,9 @@ export default function App() {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const touchStartX = useRef<number>(0);
+  const [swipingMsg, setSwipingMsg] = useState<{ id: string; x: number } | null>(null);
+  const swipeStartX = useRef<number>(0);
+  const swipeMsgId = useRef<string | null>(null);
   const ARCHIVED_KEY = 'amor_chat_archived';
   const archivedRef = useRef<Message[]>([]);
 
@@ -357,7 +360,7 @@ export default function App() {
       try {
         const data = JSON.parse(event.data);
 
-        if (data.type === 'connected') {
+                if (data.type === 'connected') {
           setServerStatus('connected');
           return;
         }
@@ -378,6 +381,8 @@ export default function App() {
                 isChunked: data.message.isChunked || false,
                 totalChunks: data.message.totalChunks || undefined,
                 seen: data.message.seen || false,
+                replyTo: data.message.replyTo || undefined,
+                reactions: data.message.reactions || undefined,
               };
               if (newMsg.content === '__chunked__' && newMsg.isChunked && newMsg.totalChunks) {
                 const cached = sessionStorage.getItem(`chunk_cache_${newMsg.id}`);
@@ -994,14 +999,30 @@ export default function App() {
                   className={`flex gap-2 items-end max-w-[85%] animate-in slide-in-from-bottom-2 duration-200 ${
                     isMe ? 'self-end flex-row-reverse' : 'self-start flex-row'
                   }`}
-                  onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; }}
+                  onTouchStart={(e) => {
+                    touchStartX.current = e.touches[0].clientX;
+                    swipeStartX.current = e.touches[0].clientX;
+                    swipeMsgId.current = msg.id;
+                  }}
+                  onTouchMove={(e) => {
+                    const diff = e.touches[0].clientX - swipeStartX.current;
+                    if (diff > 0 && swipeMsgId.current === msg.id) {
+                      setSwipingMsg({ id: msg.id, x: Math.min(diff, 120) });
+                    }
+                  }}
                   onTouchEnd={(e) => {
                     const diff = e.changedTouches[0].clientX - touchStartX.current;
                     if (diff > 50) {
+                      setSwipingMsg(null);
+                      swipeMsgId.current = null;
                       setReplyToMsg(msg);
                       textareaRef.current?.focus();
+                    } else {
+                      setSwipingMsg(null);
+                      swipeMsgId.current = null;
                     }
                   }}
+                  style={swipingMsg?.id === msg.id ? { transform: `translateX(${swipingMsg.x}px)`, transition: 'none' } : { transition: 'transform 0.3s ease' }}
                 >
                   {/* Small avatar for bubbles */}
                   <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] shrink-0 select-none ${
