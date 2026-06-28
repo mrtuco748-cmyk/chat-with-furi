@@ -211,7 +211,7 @@ function connectSocket() {
   socket.on('reaction_updated', (d) => {
     const el = document.querySelector(`[data-msg-id="${d.messageId}"]`);
     if (el) {
-      const old = el.querySelector('.reactions-bar');
+      const old = el.querySelector('.bubble-reactions');
       if (old) old.replaceWith(renderReactions(d.messageId,d.reactions));
       else el.appendChild(renderReactions(d.messageId,d.reactions));
     }
@@ -223,10 +223,10 @@ function connectSocket() {
     if (d.forEveryone) {
       const el = document.querySelector(`[data-msg-id="${d.id}"]`);
       if (el) {
-        const b = el.querySelector('.message-bubble');
+        const b = el.querySelector('.bubble');
         if (b) {
-          const f = b.querySelector('.message-footer');
-          b.innerHTML = '<div class="message-deleted">🚫 Se eliminó este mensaje</div>';
+          const f = b.querySelector('.bubble-meta');
+          b.innerHTML = '<div class="bubble-text" style="font-style:italic;color:var(--txt-muted)">🚫 Se eliminó este mensaje</div>';
           if (f) b.appendChild(f);
         }
       }
@@ -280,12 +280,13 @@ async function loadMessages(reset) {
 
 function renderMessages() {
   if (!messages.length) {
-    messagesList.innerHTML = '<div style="text-align:center;color:var(--text-secondary);padding:60px 20px;font-size:14px;line-height:1.8;">Enviense un mensaje 💕</div>';
+    messagesList.innerHTML = '<div style="text-align:center;color:var(--txt-muted);padding:60px 20px;font-size:14px;line-height:1.8;">Enviense un mensaje 💕</div>';
     return;
   }
   let html = '';
   let lastDate = null;
   let lastSender = null;
+  let lastOwn = null;
 
   for (let i=0; i<messages.length; i++) {
     const msg = messages[i];
@@ -297,58 +298,58 @@ function renderMessages() {
       lastDate = dk; lastSender = null;
     }
 
-    const consec = lastSender===msg.sender && i>0 && (msg.timestamp-messages[i-1].timestamp)<120000;
     const own = msg.sender===currentUser;
+    const consec = lastSender===msg.sender && lastOwn===own && i>0 && (msg.timestamp-messages[i-1].timestamp)<120000;
     const sel = selectedMessages.has(msg.id);
-    const wc = `message-wrapper ${own?'own':'other'}${consec?' grouped':''}${sel?' selected':''}${i===0||dk!==`${new Date(messages[i-1]?.timestamp).getFullYear()}-${new Date(messages[i-1]?.timestamp).getMonth()}-${new Date(messages[i-1]?.timestamp).getDate()}`||messages[i-1]?.sender!==msg.sender?' grouped-first':''}`;
+    const side = own?'out':'in';
 
-    html += `<div class="${wc}" data-msg-id="${msg.id}" data-sender="${msg.sender}" data-timestamp="${msg.timestamp}">`;
+    html += `<div class="msg-row ${side}${consec?' grouped':''}${sel?' selected':''}" data-msg-id="${msg.id}" data-sender="${msg.sender}" data-timestamp="${msg.timestamp}">`;
+
+    html += `<div class="bubble-wrap">`;
 
     // Select overlay
     if (isSelectMode) {
       html += `<div class="message-select-overlay" onclick="toggleSelect('${msg.id}')"><div class="select-checkbox${sel?' checked':''}">${sel?'✓':''}</div></div>`;
     }
 
-    html += `<div class="message-bubble">`;
+    html += `<div class="bubble">`;
 
     // Reply quote
     if (msg.replyTo) {
       const rc = msg.replyTo.content||'';
-      html += `<div class="reply-quote" onclick="scrollToMsg('${msg.replyTo.id}')">
-        <div><div class="reply-quote-sender">${esc(msg.replyTo.sender||'')}</div>
-        <div class="reply-quote-text">${esc(rc.length>80?rc.substring(0,80)+'…':rc)}</div></div>
+      html += `<div class="bubble-reply" onclick="scrollToMsg('${msg.replyTo.id}')">
+        <div class="reply-sender">${esc(msg.replyTo.sender||'')}</div>
+        <div class="reply-text">${esc(rc.length>80?rc.substring(0,80)+'…':rc)}</div>
       </div>`;
     }
 
     // Content
     if (msg.deleted) {
-      html += `<div class="message-deleted">🚫 Se eliminó este mensaje</div>`;
+      html += `<div class="bubble-text" style="font-style:italic;color:var(--txt-muted)">🚫 Se eliminó este mensaje</div>`;
     } else if (msg.type==='text') {
-      html += `<div class="message-text">${esc(msg.content).replace(/\n/g,'<br>')}</div>`;
+      html += `<div class="bubble-text">${esc(msg.content).replace(/\n/g,'<br>')}</div>`;
     } else if (msg.type==='image') {
-      html += `<img src="${msg.content}" class="message-image" onclick="openLightbox('${msg.content.replace(/'/g,"\\'")}')" alt="Foto" loading="lazy">`;
+      html += `<div class="bubble-img-wrap"><img src="${msg.content}" class="bubble-img" onclick="openLightbox('${msg.content.replace(/'/g,"\\'")}')" alt="Foto" loading="lazy"></div>`;
     } else if (msg.type==='video') {
-      html += `<video src="${msg.content}" class="message-video" controls playsinline preload="metadata"></video>`;
+      html += `<div class="bubble-img-wrap"><video src="${msg.content}" class="bubble-img" controls playsinline preload="metadata"></video></div>`;
     } else if (msg.type==='audio') {
       html += renderAudio(msg);
     } else if (msg.type==='sticker') {
-      html += `<img src="${msg.content}" class="message-sticker" alt="Sticker" loading="lazy">`;
+      html += `<img src="${msg.content}" class="bubble-img" style="max-width:160px" alt="Sticker" loading="lazy">`;
     } else if (msg.type==='document') {
-      const ext = (msg.fileName||'').split('.').pop().toLowerCase();
-      const iconCls = {pdf:'pdf',doc:'doc',docx:'doc',xls:'xls',xlsx:'xls',zip:'zip',rar:'zip'}[ext]||'other';
-      html += `<div class="message-document"><div class="doc-icon ${iconCls}">📄</div><div class="doc-info"><div class="doc-name">${esc(msg.fileName||'Documento')}</div><div class="doc-size">${fmtSize(msg.fileSize)}</div></div></div>`;
+      html += renderDoc(msg);
     }
 
-    // Footer
-    html += `<div class="message-footer">`;
-    if (msg.edited) html += `<span class="edited-label">editado</span>`;
-    html += `<span class="message-time">${fmtTime(msg.timestamp)}</span>`;
+    // Meta footer
+    html += `<div class="bubble-meta">`;
+    if (msg.edited) html += `<span class="bubble-time" style="margin-right:4px;font-style:italic">editado</span>`;
+    html += `<span class="bubble-time">${fmtTime(msg.timestamp)}</span>`;
     if (own) html += renderTicks(msg);
     html += `</div></div>`;
 
     // Reactions
     if (msg.reactions&&msg.reactions.length>0) {
-      html += `<div class="reactions-bar">`;
+      html += `<div class="bubble-reactions">`;
       const g={};
       msg.reactions.forEach(r=>{g[r.emoji]=(g[r.emoji]||0)+1;});
       Object.entries(g).forEach(([e,c])=>{
@@ -358,8 +359,9 @@ function renderMessages() {
       html += `</div>`;
     }
 
-    html += `</div>`;
+    html += `</div></div>`;
     lastSender = msg.sender;
+    lastOwn = own;
   }
   messagesList.innerHTML = html;
 }
@@ -381,21 +383,27 @@ function renderTicks(msg) {
   let s = 'sent';
   if (msg.readBy&&msg.readBy.length>0) s='read';
   else if (msg.delivered) s='delivered';
-  if (s==='read') return `<span class="message-tick"><svg viewBox="0 0 16 11" width="16" height="11" class="tick-blue"><path d="M11.5.5l-6 6-3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M7.5 6.5l2-2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M14.5.5l-9 9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>`;
-  if (s==='delivered') return `<span class="message-tick"><svg viewBox="0 0 16 11" width="16" height="11" class="tick-grey"><path d="M11.5.5l-6 6-3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M7.5 6.5l2-2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M14.5.5l-9 9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>`;
-  return `<span class="message-tick"><svg viewBox="0 0 16 11" width="16" height="11" class="tick-grey"><path d="M11.5.5l-6 6L3.5 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>`;
+  if (s==='read') return `<span class="bubble-ticks"><svg viewBox="0 0 16 11" width="16" height="11" class="tick-read"><path d="M11.5.5l-6 6-3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M7.5 6.5l2-2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M14.5.5l-9 9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
+  if (s==='delivered') return `<span class="bubble-ticks"><svg viewBox="0 0 16 11" width="16" height="11" class="tick-received"><path d="M11.5.5l-6 6-3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M7.5 6.5l2-2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M14.5.5l-9 9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
+  return `<span class="bubble-ticks"><svg viewBox="0 0 16 11" width="16" height="11" class="tick-sent"><path d="M11.5.5l-6 6L3.5 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
+}
+
+function renderDoc(msg) {
+  const ext = (msg.fileName||'').split('.').pop().toLowerCase();
+  const icons = {pdf:'📄',doc:'📝',docx:'📝',xls:'📊',xlsx:'📊',zip:'📦',rar:'📦',mp4:'🎬',mp3:'🎵',jpg:'🖼️',jpeg:'🖼️',png:'🖼️',gif:'🖼️'};
+  const icon = icons[ext]||'📎';
+  return `<div class="bubble-doc"><div class="doc-icon">${icon}</div><div class="doc-info"><div class="doc-name">${esc(msg.fileName||'Documento')}</div><div class="doc-size">${fmtSize(msg.fileSize)}</div></div></div>`;
 }
 
 /* ===== AUDIO ===== */
 function renderAudio(msg) {
-  const bars = Array(30).fill(0).map((_,i)=>`<div class="audio-wave-bar" style="height:${3+Math.random()*18}px" data-wave="${i}"></div>`).join('');
-  return `<div class="audio-player">
+  const bars = Array(30).fill(0).map((_,i)=>`<div class="audio-bar" style="height:${3+Math.random()*18}px" data-wave="${i}"></div>`).join('');
+  return `<div class="bubble-audio">
     <button class="audio-play-btn" onclick="toggleAudio(event,'${msg.id}')" aria-label="Reproducir">
       <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>
     </button>
     <div class="audio-waveform" id="wave-${msg.id}">${bars}</div>
     <span class="audio-duration" id="dur-${msg.id}">${fmtDur(msg.duration||0)}</span>
-    <button class="audio-speed-btn" onclick="cycleSpeed(event,'${msg.id}')">1×</button>
   </div>`;
 }
 
@@ -419,7 +427,7 @@ function toggleAudio(e,id) {
   audio.addEventListener('timeupdate',()=>{
     const dur = audio.duration||msg.duration||1;
     const p = audio.currentTime/dur;
-    document.querySelectorAll(`#wave-${id} .audio-wave-bar`).forEach((b,i)=>{b.classList.toggle('playing',i/30<=p);});
+    document.querySelectorAll(`#wave-${id} .audio-bar`).forEach((b,i)=>{b.classList.toggle('playing',i/30<=p);});
     const de = document.getElementById(`dur-${id}`);
     if (de) de.textContent = fmtDur(audio.currentTime);
   });
@@ -428,7 +436,7 @@ function toggleAudio(e,id) {
     btn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>';
     const de = document.getElementById(`dur-${id}`);
     if (de) de.textContent = fmtDur(msg.duration||0);
-    document.querySelectorAll(`#wave-${id} .audio-wave-bar`).forEach(b=>b.classList.remove('playing'));
+    document.querySelectorAll(`#wave-${id} .audio-bar`).forEach(b=>b.classList.remove('playing'));
     delete audioPlayers[id];
   });
 }
@@ -446,7 +454,7 @@ function cycleSpeed(e,id) {
 
 /* ===== REACTIONS ===== */
 function renderReactions(mid,reactions) {
-  const c = document.createElement('div'); c.className = 'reactions-bar';
+  const c = document.createElement('div'); c.className = 'bubble-reactions';
   const g={}; reactions.forEach(r=>{g[r.emoji]=(g[r.emoji]||0)+1;});
   Object.entries(g).forEach(([e,count])=>{
     const a = reactions.some(r=>r.emoji===e&&r.user===currentUser);
@@ -486,8 +494,8 @@ function updateMsgStatus(id,status,user) {
   }
   const el = document.querySelector(`[data-msg-id="${id}"]`);
   if (el&&msg.sender===currentUser) {
-    const f = el.querySelector('.message-footer');
-    if (f) { const t=f.querySelector('.message-tick'); if(t) t.outerHTML=renderTicks(msg); }
+    const f = el.querySelector('.bubble-meta');
+    if (f) { const t=f.querySelector('.bubble-ticks'); if(t) t.outerHTML=renderTicks(msg); }
   }
 }
 
@@ -741,10 +749,10 @@ function doSearch() {
   const q=searchInput.value.trim().toLowerCase(); clearSearch();
   if (!q) { searchCount.textContent=''; return; }
   searchResults = [];
-  document.querySelectorAll('.message-wrapper').forEach(el=>{
+  document.querySelectorAll('.msg-row').forEach(el=>{
     if (el.textContent.toLowerCase().includes(q)) {
       searchResults.push(el);
-      el.querySelectorAll('.message-text').forEach(t=>{
+      el.querySelectorAll('.bubble-text').forEach(t=>{
         const safe=q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
         t.innerHTML = t.textContent.replace(new RegExp(`(${safe})`,'gi'),'<mark style="background:#fff3a8;padding:0 2px;border-radius:2px;color:#111">$1</mark>');
       });
@@ -767,7 +775,7 @@ function navSearch(dir) {
 }
 
 function clearSearch() {
-  document.querySelectorAll('.message-wrapper mark').forEach(m=>{const p=m.closest('.message-text');if(p)p.innerHTML=p.textContent;});
+  document.querySelectorAll('.msg-row mark').forEach(m=>{const p=m.closest('.bubble-text');if(p)p.innerHTML=p.textContent;});
   searchResults=[];
 }
 
@@ -821,7 +829,7 @@ function startRec(e) {
       recordingWaveform.innerHTML = '';
       for (let i=0;i<20;i++) {
         const bar=document.createElement('div');
-        bar.className='recording-wave-bar';
+        bar.className='rec-bar';
         recordingWaveform.appendChild(bar);
       }
 
@@ -852,7 +860,7 @@ function startRec(e) {
       function drawWave() {
         if (!recordingAnalyser) return;
         recordingAnalyser.getByteTimeDomainData(recordingDataArray);
-        const bars = recordingWaveform.querySelectorAll('.recording-wave-bar');
+        const bars = recordingWaveform.querySelectorAll('.rec-bar');
         bars.forEach((bar,i)=>{
           const v = (recordingDataArray[i]||128)/128;
           bar.style.height = Math.max(3, v*20)+'px';
@@ -907,7 +915,7 @@ let touchStartX2 = 0;
 let touchStartY2 = 0;
 
 function onTouchStart(e) {
-  const msgEl = e.target.closest('.message-wrapper');
+  const msgEl = e.target.closest('.msg-row');
   if (!msgEl) return;
   touchTarget = msgEl;
   touchStartTime = Date.now();
@@ -963,7 +971,7 @@ function onTouchEnd(e) {
 }
 
 function onMouseDown(e) {
-  const msgEl = e.target.closest('.message-wrapper');
+  const msgEl = e.target.closest('.msg-row');
   if (!msgEl||e.button!==0) return;
   touchTarget = msgEl;
   touchStartTime = Date.now();
