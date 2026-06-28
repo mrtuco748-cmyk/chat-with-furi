@@ -305,6 +305,8 @@ async function setupVite() {
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
+    app.get('/sw.js', (req, res) => res.sendFile(path.join(distPath, 'sw.js')));
+    app.get('/manifest.json', (req, res) => res.sendFile(path.join(distPath, 'manifest.json')));
     app.get('*', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
