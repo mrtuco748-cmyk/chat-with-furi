@@ -72,17 +72,19 @@ export async function sendTyping(user: string, typing: boolean): Promise<void> {
 }
 
 export async function addReaction(messageId: string, emoji: string, user: string): Promise<void> {
-  await fetch(`/api/messages/${messageId}/react`, {
+  const res = await fetch(`/api/messages/${messageId}/react`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ emoji, user }),
   });
+  if (!res.ok) console.error('addReaction failed:', res.status, await res.text());
 }
 
 export async function removeReaction(messageId: string, emoji: string, user: string): Promise<void> {
-  await fetch(`/api/messages/${messageId}/react`, {
+  const res = await fetch(`/api/messages/${messageId}/react`, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ emoji, user }),
   });
+  if (!res.ok) console.error('removeReaction failed:', res.status, await res.text());
 }

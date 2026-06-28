@@ -257,12 +257,13 @@ app.post('/api/messages/:id/react', async (req, res) => {
       { new: true }
     ).lean();
     if (msg) {
-      broadcast({ type: 'message_update', message: msg });
+      broadcast({ type: 'reaction_update', messageId: msg.id, reactions: msg.reactions || [] });
       res.json(msg);
     } else {
       res.status(404).json({ error: 'Message not found' });
     }
   } catch (err) {
+    console.error('Error adding reaction:', err);
     res.status(500).json({ error: 'Error adding reaction' });
   }
 });
@@ -276,12 +277,13 @@ app.delete('/api/messages/:id/react', async (req, res) => {
       { new: true }
     ).lean();
     if (msg) {
-      broadcast({ type: 'message_update', message: msg });
+      broadcast({ type: 'reaction_update', messageId: msg.id, reactions: msg.reactions || [] });
       res.json(msg);
     } else {
       res.status(404).json({ error: 'Message not found' });
     }
   } catch (err) {
+    console.error('Error removing reaction:', err);
     res.status(500).json({ error: 'Error removing reaction' });
   }
 });

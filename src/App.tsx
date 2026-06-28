@@ -174,6 +174,10 @@ export default function App() {
   const [swipingMsg, setSwipingMsg] = useState<{ id: string; x: number } | null>(null);
   const swipeStartX = useRef<number>(0);
   const swipeMsgId = useRef<string | null>(null);
+  const [activeReactionMsg, setActiveReactionMsg] = useState<string | null>(null);
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+  const [reactPickerTarget, setReactPickerTarget] = useState<string | null>(null);
+  const lastTapRef = useRef<{ id: string; time: number } | null>(null);
   const ARCHIVED_KEY = 'amor_chat_archived';
   const archivedRef = useRef<Message[]>([]);
 
@@ -457,6 +461,11 @@ export default function App() {
                 setTimeout(() => setOtherUserTyping(false), 3000);
               }
             }
+            break;
+          }
+
+          case 'reaction_update': {
+            setMessages(prev => prev.map(m => m.id === data.messageId ? { ...m, reactions: data.reactions } : m));
             break;
           }
 
@@ -992,6 +1001,7 @@ export default function App() {
         <div 
           id="chat-messages-container"
           className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-2 scrollbar-none select-text relative bg-gray-50 dark:bg-black"
+          onClick={() => setActiveReactionMsg(null)}
         >
           {messages.length === 0 ? (
             <div id="no-messages-prompt" className="flex-1 flex flex-col items-center justify-center text-center p-6 gap-3">
@@ -1015,11 +1025,19 @@ export default function App() {
                     touchStartX.current = e.touches[0].clientX;
                     swipeStartX.current = e.touches[0].clientX;
                     swipeMsgId.current = msg.id;
+                    longPressTimer.current = setTimeout(() => {
+                      setActiveReactionMsg(msg.id);
+                      longPressTimer.current = null;
+                    }, 500);
                   }}
                   onTouchMove={(e) => {
                     const diff = e.touches[0].clientX - swipeStartX.current;
                     if (diff > 0 && swipeMsgId.current === msg.id) {
                       setSwipingMsg({ id: msg.id, x: Math.min(diff, 120) });
+                    }
+                    if (longPressTimer.current) {
+                      clearTimeout(longPressTimer.current);
+                      longPressTimer.current = null;
                     }
                   }}
                   onTouchEnd={(e) => {
@@ -1029,9 +1047,21 @@ export default function App() {
                       swipeMsgId.current = null;
                       setReplyToMsg(msg);
                       textareaRef.current?.focus();
-                    } else {
-                      setSwipingMsg(null);
-                      swipeMsgId.current = null;
+                    } else if (Math.abs(diff) < 10) {
+                      // Double-tap to ❤️ (Instagram-style)
+                      const now = Date.now();
+                      if (lastTapRef.current?.id === msg.id && now - lastTapRef.current.time < 300) {
+                        handleToggleReaction(msg.id, '❤️');
+                        lastTapRef.current = null;
+                      } else {
+                        lastTapRef.current = { id: msg.id, time: now };
+                      }
+                    }
+                    setSwipingMsg(null);
+                    swipeMsgId.current = null;
+                    if (longPressTimer.current) {
+                      clearTimeout(longPressTimer.current);
+                      longPressTimer.current = null;
                     }
                   }}
                   style={swipingMsg?.id === msg.id ? { transform: `translateX(${swipingMsg.x}px)`, transition: 'none' } : { transition: 'transform 0.3s ease' }}
@@ -1045,13 +1075,15 @@ export default function App() {
 
                   {/* Message Bubble box */}
                   <div className="group relative">
-                    {/* Reaction picker on hover */}
-                    <div className={`absolute ${isMe ? 'left-0 -translate-x-full pl-1' : 'right-0 translate-x-full pr-1'} top-1/2 -translate-y-1/2 hidden group-hover:flex items-center gap-0.5 bg-white/95 dark:bg-gray-800/95 rounded-full px-1.5 py-1 shadow-lg border border-gray-100 dark:border-gray-700 z-10 transition-opacity duration-150`}>
+                    {/* Reaction picker on hover (desktop) or long-press (mobile) */}
+                    <div className={`absolute ${isMe ? 'left-0 -translate-x-full pl-1' : 'right-0 translate-x-full pr-1'} top-1/2 -translate-y-1/2 z-10 transition-opacity duration-150 ${
+                      activeReactionMsg === msg.id ? 'flex' : 'hidden group-hover:flex'
+                    } items-center gap-0.5 bg-white/95 dark:bg-gray-800/95 rounded-full px-1.5 py-1 shadow-lg border border-gray-100 dark:border-gray-700`}>
                       {['👍','❤️','😂','😮','😢'].map(emoji => (
                         <button
                           key={emoji}
                           type="button"
-                          onClick={() => handleToggleReaction(msg.id, emoji)}
+                          onClick={() => { handleToggleReaction(msg.id, emoji); setActiveReactionMsg(null); }}
                           className={`w-7 h-7 rounded-full flex items-center justify-center text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-transform hover:scale-125 ${
                             msg.reactions?.some(r => r.emoji === emoji && r.user === currentUser)
                               ? 'scale-110'
@@ -1062,6 +1094,15 @@ export default function App() {
                           {emoji}
                         </button>
                       ))}
+                      {/* "+" button to open emoji picker */}
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setReactPickerTarget(msg.id); setShowEmojiPicker(true); setActiveReactionMsg(null); }}
+                        className="w-7 h-7 rounded-full flex items-center justify-center text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400"
+                        title="Más emojis"
+                      >
+                        +
+                      </button>
                       {/* Reply button */}
                       <span className="w-px h-4 bg-gray-200 dark:bg-gray-600 mx-0.5" />
                       <button
@@ -1204,8 +1245,17 @@ export default function App() {
         {/* Dynamic Float Popovers */}
         {showEmojiPicker && (
           <EmojiPicker
-            onSelectEmoji={(emoji) => setInputText(prev => prev + emoji)}
-            onClose={() => setShowEmojiPicker(false)}
+            onSelectEmoji={(emoji) => {
+              if (reactPickerTarget) {
+                handleToggleReaction(reactPickerTarget, emoji);
+                setReactPickerTarget(null);
+              } else {
+                setInputText(prev => prev + emoji);
+              }
+              setShowEmojiPicker(false);
+              textareaRef.current?.focus();
+            }}
+            onClose={() => { setShowEmojiPicker(false); setReactPickerTarget(null); }}
           />
         )}
 
