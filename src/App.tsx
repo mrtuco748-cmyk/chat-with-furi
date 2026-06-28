@@ -418,7 +418,11 @@ export default function App() {
           }
 
           case 'message_delete': {
-            setMessages(prev => prev.filter(m => m.id !== data.messageId));
+            setMessages(prev => {
+              const isArchived = archivedRef.current.some(a => a.id === data.messageId);
+              if (isArchived) return prev;
+              return prev.filter(m => m.id !== data.messageId);
+            });
             break;
           }
 
