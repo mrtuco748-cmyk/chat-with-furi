@@ -31,12 +31,7 @@ const messageSchema = new mongoose.Schema({
   seen: { type: Boolean, default: false },
   isChunked: { type: Boolean, default: false },
   totalChunks: Number,
-  replyTo: {
-    id: String,
-    sender: String,
-    content: String,
-    type: String,
-  },
+  replyTo: { type: mongoose.Schema.Types.Mixed },
   reactions: [{
     emoji: String,
     user: { type: String, enum: ['Facu', 'Rocío'] },
