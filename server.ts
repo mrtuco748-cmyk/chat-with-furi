@@ -235,7 +235,7 @@ app.put('/api/presence/:user', async (req, res) => {
 
 // --- Vite Middleware and Static File Serving ---
 async function setupVite() {
-  const isDev = (!process.env.RAILWAY && process.env.NODE_ENV !== 'production') || !process.env.MONGODB_URI;
+  const isDev = !process.env.RAILWAY && (process.env.NODE_ENV !== 'production' || !process.env.MONGODB_URI);
 
   if (isDev) {
     const vite = await createViteServer({
