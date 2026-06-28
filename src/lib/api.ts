@@ -26,6 +26,7 @@ export async function sendMessage(msg: {
   timestamp: number;
   fileName?: string;
   duration?: number;
+  replyTo?: { id: string; sender: string; content: string; type: string };
 }): Promise<ApiMessage> {
   const res = await fetch('/api/messages', {
     method: 'POST',
@@ -59,5 +60,29 @@ export async function updatePresence(user: string, online: boolean): Promise<voi
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ online }),
+  });
+}
+
+export async function sendTyping(user: string, typing: boolean): Promise<void> {
+  await fetch('/api/typing', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user, typing }),
+  });
+}
+
+export async function addReaction(messageId: string, emoji: string, user: string): Promise<void> {
+  await fetch(`/api/messages/${messageId}/react`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ emoji, user }),
+  });
+}
+
+export async function removeReaction(messageId: string, emoji: string, user: string): Promise<void> {
+  await fetch(`/api/messages/${messageId}/react`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ emoji, user }),
   });
 }

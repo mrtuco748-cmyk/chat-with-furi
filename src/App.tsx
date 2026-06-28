@@ -6,7 +6,7 @@ import StickerPicker from './components/StickerPicker';
 import DrawingCanvas from './components/DrawingCanvas';
 import VoiceRecorder from './components/VoiceRecorder';
 import Lightbox from './components/Lightbox';
-import { fetchMessages, sendMessage, markAsSeen, deleteMessage, clearMessages, fetchChunks, updatePresence } from './lib/api';
+import { fetchMessages, sendMessage, markAsSeen, deleteMessage, clearMessages, fetchChunks, updatePresence, sendTyping, addReaction, removeReaction } from './lib/api';
 import { Smile, Paperclip, Camera, Mic, Send, Check, CheckCheck, Trash2, LogOut, Image as ImageIcon, Video, Palette, Bell, BellOff, MoreVertical } from 'lucide-react';
 
 
@@ -145,6 +145,15 @@ export default function App() {
 
   // New states for WhatsApp features
   const [otherUserOnline, setOtherUserOnline] = useState<boolean>(false);
+  const [otherUserTyping, setOtherUserTyping] = useState<boolean>(false);
+  const [replyToMsg, setReplyToMsg] = useState<Message | null>(null);
+  const [darkMode, setDarkMode] = useState<boolean>(() => {
+    const saved = localStorage.getItem('amor_chat_dark_mode');
+    if (saved === null) {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    return saved === 'true';
+  });
   const [showAttachmentMenu, setShowAttachmentMenu] = useState<boolean>(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(() => {
     const saved = localStorage.getItem('amor_chat_notifications');
@@ -162,6 +171,7 @@ export default function App() {
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const ARCHIVED_KEY = 'amor_chat_archived';
   const archivedRef = useRef<Message[]>([]);
 
@@ -434,6 +444,21 @@ export default function App() {
             break;
           }
 
+          case 'typing': {
+            if (data.user !== currentUser) {
+              setOtherUserTyping(data.typing);
+              if (data.typing) {
+                setTimeout(() => setOtherUserTyping(false), 3000);
+              }
+            }
+            break;
+          }
+
+          case 'message_update': {
+            setMessages(prev => prev.map(m => m.id === data.message.id ? { ...m, ...data.message } : m));
+            break;
+          }
+
           case 'presence': {
             if (data.user !== currentUser) {
               setOtherUserOnline(data.online);
@@ -489,6 +514,16 @@ export default function App() {
       sendOnline(false);
     };
   }, [currentUser]);
+
+  // Dark mode effect
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('amor_chat_dark_mode', String(darkMode));
+  }, [darkMode]);
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -566,11 +601,13 @@ export default function App() {
       content,
       timestamp: Date.now(),
       ...extra,
+      replyTo: replyToMsg ? { id: replyToMsg.id, sender: replyToMsg.sender, content: replyToMsg.content, type: replyToMsg.type } : undefined,
     };
 
     if (type === 'text') {
       setInputText('');
     }
+    setReplyToMsg(null);
 
     // Optimistic Update: Render immediately on sender's device for 0ms lag perception
     setMessages((prev) => {
@@ -589,6 +626,7 @@ export default function App() {
         timestamp: newMsg.timestamp,
         fileName: newMsg.fileName,
         duration: newMsg.duration,
+        replyTo: newMsg.replyTo,
       });
     } catch (err) {
       console.error('Error transmitting message to server:', err);
@@ -682,6 +720,20 @@ export default function App() {
     }
   };
 
+  const handleToggleReaction = async (messageId: string, emoji: string) => {
+    if (!currentUser) return;
+    const msg = messages.find(m => m.id === messageId);
+    if (!msg) return;
+    const existing = msg.reactions?.find(r => r.emoji === emoji && r.user === currentUser);
+    if (existing) {
+      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, reactions: (m.reactions || []).filter(r => !(r.emoji === emoji && r.user === currentUser)) } : m));
+      await removeReaction(messageId, emoji, currentUser);
+    } else {
+      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, reactions: [...(m.reactions || []), { emoji, user: currentUser }] } : m));
+      await addReaction(messageId, emoji, currentUser);
+    }
+  };
+
   if (!currentUser) {
     return <UserSelector onSelectUser={handleSelectUser} />;
   }
@@ -689,7 +741,7 @@ export default function App() {
   return (
     <div 
       id="app-chat-viewport"
-      className="h-screen w-full bg-linear-to-tr from-pink-100/40 via-orange-50/40 to-purple-100/40 flex items-center justify-center p-0 md:p-4 select-none"
+      className="h-screen w-full bg-linear-to-tr from-pink-100/40 via-orange-50/40 to-purple-100/40 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-0 md:p-4 select-none"
     >
       {/* Invisible HTML File Inputs */}
       <input
@@ -728,12 +780,12 @@ export default function App() {
       {/* Main chat preview container */}
       <div 
         id="chat-frame-container"
-        className="w-full h-full md:max-w-md md:h-[90vh] bg-white rounded-none md:rounded-3xl shadow-2xl border border-pink-100/60 overflow-hidden flex flex-col relative"
+        className="w-full h-full md:max-w-md md:h-[90vh] bg-white dark:bg-gray-900 rounded-none md:rounded-3xl shadow-2xl border border-pink-100/60 dark:border-gray-700 overflow-hidden flex flex-col relative"
       >
         {/* Chat Header */}
         <div 
           id="chat-header"
-          className="bg-white border-b border-pink-100 px-4 py-3 flex justify-between items-center shrink-0 z-20 shadow-xs"
+          className="bg-white dark:bg-gray-800 border-b border-pink-100 dark:border-gray-700 px-4 py-3 flex justify-between items-center shrink-0 z-20 shadow-xs"
         >
           <div className="flex items-center gap-2.5">
             {/* User status avatar indicator showing the OTHER person */}
@@ -749,11 +801,13 @@ export default function App() {
             </div>
  
             <div className="flex flex-col text-left">
-              <span className="font-bold text-gray-800 text-sm md:text-base leading-tight">
+              <span className="font-bold text-gray-800 dark:text-gray-100 text-sm md:text-base leading-tight">
                 {currentUser === 'Facu' ? 'Rocío' : 'Facu'}
               </span>
               <div className="flex items-center gap-1 mt-0.5 text-[10px]">
-                {otherUserOnline ? (
+                {otherUserTyping ? (
+                  <span className="text-pink-500 font-semibold animate-pulse">escribiendo...</span>
+                ) : otherUserOnline ? (
                   <span className="text-green-500 font-semibold animate-pulse">en línea</span>
                 ) : (
                   <span className="text-gray-400">desconectado(a)</span>
@@ -769,6 +823,25 @@ export default function App() {
           </div>
  
           <div className="flex items-center gap-1.5">
+            {/* Dark Mode Toggle */}
+            <button
+              type="button"
+              id="dark-mode-toggle-btn"
+              onClick={() => setDarkMode(!darkMode)}
+              className={`p-2 rounded-full transition-colors duration-150 ${
+                darkMode ? 'text-yellow-400 hover:bg-yellow-50/50' : 'text-gray-400 hover:bg-gray-100/50'
+              }`}
+              title={darkMode ? 'Modo Claro' : 'Modo Oscuro'}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 24 24" className="transition-transform duration-300" style={{ transform: darkMode ? 'rotate(180deg)' : 'none' }}>
+                {darkMode ? (
+                  <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1-8.313-12.454z"/>
+                ) : (
+                  <path d="M12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 12a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM18.894 6.166a.75.75 0 00-1.06-1.06l-1.591 1.59a.75.75 0 101.06 1.061l1.591-1.59zM21.75 12a.75.75 0 01-.75.75h-2.25a.75.75 0 010-1.5H21a.75.75 0 01.75.75zM17.834 18.894a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 10-1.061 1.06l1.59 1.591zM12 18a.75.75 0 01.75.75V21a.75.75 0 01-1.5 0v-2.25A.75.75 0 0112 18zM7.758 17.303a.75.75 0 00-1.061-1.06l-1.591 1.59a.75.75 0 001.06 1.061l1.591-1.59zM6 12a.75.75 0 01-.75.75H3a.75.75 0 010-1.5h2.25A.75.75 0 016 12zM6.697 7.757a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 00-1.061 1.06l1.59 1.591z"/>
+                )}
+              </svg>
+            </button>
+
             {/* Notifications Toggle */}
             <button
               type="button"
@@ -820,18 +893,17 @@ export default function App() {
         {/* Message Thread Body */}
         <div 
           id="chat-messages-container"
-          className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3 scrollbar-thin scrollbar-thumb-pink-200 scrollbar-track-transparent select-text relative"
+          className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3 scrollbar-thin scrollbar-thumb-pink-200 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent select-text relative dark:bg-gray-900"
           style={{
-            backgroundImage: 'radial-gradient(rgba(244, 63, 94, 0.05) 1.5px, transparent 1.5px)',
+            backgroundImage: 'radial-gradient(rgba(244, 63, 94, 0.08) 1.5px, transparent 1.5px)',
             backgroundSize: '20px 20px',
-            backgroundColor: '#fffafb',
           }}
         >
           {messages.length === 0 ? (
             <div id="no-messages-prompt" className="flex-1 flex flex-col items-center justify-center text-center p-6 gap-3">
               <span className="text-4xl animate-pulse">💌</span>
-              <h4 className="text-sm font-bold text-gray-700">¡Aún no hay mensajes!</h4>
-              <p className="text-xs text-gray-400 max-w-xs font-medium leading-relaxed">
+              <h4 className="text-sm font-bold text-gray-700 dark:text-gray-300">¡Aún no hay mensajes!</h4>
+              <p className="text-xs text-gray-400 dark:text-gray-500 max-w-xs font-medium leading-relaxed">
                 Escribe tu primer mensaje romántico, manda un sticker o haz un dibujo divertido para alegrar el día.
               </p>
             </div>
@@ -854,84 +926,157 @@ export default function App() {
                   </div>
 
                   {/* Message Bubble box */}
-                  <div 
-                    className={`rounded-2xl px-3.5 py-2 text-sm shadow-xs border relative flex flex-col gap-1 min-w-16 ${
-                      isMe
-                        ? msg.sender === 'Facu'
-                          ? 'bg-linear-to-b from-orange-400 to-orange-500 text-white border-orange-400'
-                          : 'bg-linear-to-b from-pink-400 to-pink-500 text-white border-pink-400'
-                        : msg.sender === 'Facu'
-                          ? 'bg-orange-50/95 text-gray-800 border-orange-100/80'
-                          : 'bg-purple-50/95 text-gray-800 border-purple-100/80'
-                    }`}
-                  >
-                    {/* Render by type */}
-                    {msg.type === 'text' && (
-                      <p className="break-words whitespace-pre-wrap select-text leading-relaxed text-left">
-                        {msg.content}
-                      </p>
-                    )}
-
-                    {msg.type === 'sticker' && (
-                      <div className="py-1 text-center select-none">
-                        <span className="text-6xl filter drop-shadow-sm inline-block transform hover:scale-105 transition-transform duration-200">
-                          {msg.content}
-                        </span>
-                      </div>
-                    )}
-
-                    {msg.type === 'drawing' && (
-                      <div className="relative group rounded-xl overflow-hidden border border-black/5 bg-white shadow-inner max-w-full cursor-zoom-in">
-                        <img
-                          src={msg.content}
-                          alt="Dibujo / Doodle"
-                          onClick={() => setActiveLightbox({ src: msg.content, sender: msg.sender, timestamp: formatMessageTime(msg.timestamp) })}
-                          className="max-w-44 object-contain max-h-44 group-hover:opacity-90 transition-opacity"
-                        />
-                      </div>
-                    )}
-
-                    {msg.type === 'image' && (
-                      <div className="relative group rounded-xl overflow-hidden border border-black/5 bg-white shadow-inner max-w-full cursor-zoom-in">
-                        <img
-                          src={msg.content}
-                          alt="Foto"
-                          onClick={() => setActiveLightbox({ src: msg.content, sender: msg.sender, timestamp: formatMessageTime(msg.timestamp) })}
-                          className="max-w-44 object-contain max-h-44 group-hover:opacity-90 transition-opacity"
-                        />
-                      </div>
-                    )}
-
-                    {msg.type === 'video' && (
-                      <div className="rounded-xl overflow-hidden border border-black/5 bg-black/90 shadow-inner max-w-full">
-                        <video
-                          src={msg.content}
-                          controls
-                          playsInline
-                          className="max-w-44 max-h-44 object-contain"
-                        />
-                      </div>
-                    )}
-
-                    {msg.type === 'audio' && (
-                      <AudioBubblePlayer src={msg.content} duration={msg.duration || 5} />
-                    )}
-
-                    {/* Timestamp overlay with WhatsApp ticks */}
-                    <div className="flex items-center gap-1 self-end mt-0.5 select-none">
-                      <span 
-                        className={`text-[9px] font-medium font-mono tracking-tight opacity-80 ${
-                          isMe ? 'text-white/90' : 'text-gray-400'
-                        }`}
+                  <div className="group relative">
+                    {/* Reaction picker on hover */}
+                    <div className={`absolute ${isMe ? 'left-0 -translate-x-full pl-1' : 'right-0 translate-x-full pr-1'} top-1/2 -translate-y-1/2 hidden group-hover:flex items-center gap-0.5 bg-white/95 dark:bg-gray-800/95 rounded-full px-1.5 py-1 shadow-lg border border-gray-100 dark:border-gray-700 z-10 transition-opacity duration-150`}>
+                      {['👍','❤️','😂','😮','😢'].map(emoji => (
+                        <button
+                          key={emoji}
+                          type="button"
+                          onClick={() => handleToggleReaction(msg.id, emoji)}
+                          className={`w-7 h-7 rounded-full flex items-center justify-center text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-transform hover:scale-125 ${
+                            msg.reactions?.some(r => r.emoji === emoji && r.user === currentUser)
+                              ? 'scale-110'
+                              : ''
+                          }`}
+                          title={emoji}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                      {/* Reply button */}
+                      <span className="w-px h-4 bg-gray-200 dark:bg-gray-600 mx-0.5" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReplyToMsg(msg);
+                          textareaRef.current?.focus();
+                        }}
+                        className="w-7 h-7 rounded-full flex items-center justify-center text-xs hover:bg-gray-100 dark:hover:bg-gray-700 transition-transform hover:scale-125"
+                        title="Responder"
                       >
-                        {formatMessageTime(msg.timestamp)}
-                      </span>
-                      {isMe && (
-                        msg.seen ? (
-                          <CheckCheck className="w-3.5 h-3.5 text-sky-200 stroke-[2.5] shrink-0" title="Leído" />
-                        ) : (
-                          <CheckCheck className="w-3.5 h-3.5 text-white/60 stroke-[2.5] shrink-0" title="Entregado" />
-                        )
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+                      </button>
+                    </div>
+
+                    <div 
+                      className={`rounded-2xl px-3.5 py-2 text-sm shadow-xs border relative flex flex-col gap-1 min-w-16 ${
+                        isMe
+                          ? msg.sender === 'Facu'
+                            ? 'bg-linear-to-b from-orange-400 to-orange-500 text-white border-orange-400'
+                            : 'bg-linear-to-b from-pink-400 to-pink-500 text-white border-pink-400'
+                          : msg.sender === 'Facu'
+                            ? 'bg-orange-50/95 dark:bg-orange-900/40 text-gray-800 dark:text-gray-100 border-orange-100/80 dark:border-orange-800/50'
+                            : 'bg-purple-50/95 dark:bg-purple-900/40 text-gray-800 dark:text-gray-100 border-purple-100/80 dark:border-purple-800/50'
+                      }`}
+                    >
+                      {/* ReplyTo quote */}
+                      {msg.replyTo && (
+                        <div className={`flex flex-col gap-0.5 pb-1 mb-1 border-l-2 pl-2 text-[10px] ${
+                          isMe ? 'border-white/50 text-white/80' : 'border-gray-300 text-gray-500'
+                        }`}>
+                          <span className="font-bold">{msg.replyTo.sender}</span>
+                          <span className="truncate max-w-40">{msg.replyTo.content}</span>
+                        </div>
+                      )}
+
+                      {/* Render by type */}
+                      {msg.type === 'text' && (
+                        <p className="break-words whitespace-pre-wrap select-text leading-relaxed text-left">
+                          {msg.content}
+                        </p>
+                      )}
+
+                      {msg.type === 'sticker' && (
+                        <div className="py-1 text-center select-none">
+                          <span className="text-6xl filter drop-shadow-sm inline-block transform hover:scale-105 transition-transform duration-200">
+                            {msg.content}
+                          </span>
+                        </div>
+                      )}
+
+                      {msg.type === 'drawing' && (
+                        <div className="relative rounded-xl overflow-hidden border border-black/5 bg-white shadow-inner max-w-full cursor-zoom-in">
+                          <img
+                            src={msg.content}
+                            alt="Dibujo / Doodle"
+                            onClick={() => setActiveLightbox({ src: msg.content, sender: msg.sender, timestamp: formatMessageTime(msg.timestamp) })}
+                            className="max-w-44 object-contain max-h-44 hover:opacity-90 transition-opacity"
+                          />
+                        </div>
+                      )}
+
+                      {msg.type === 'image' && (
+                        <div className="relative rounded-xl overflow-hidden border border-black/5 bg-white shadow-inner max-w-full cursor-zoom-in">
+                          <img
+                            src={msg.content}
+                            alt="Foto"
+                            onClick={() => setActiveLightbox({ src: msg.content, sender: msg.sender, timestamp: formatMessageTime(msg.timestamp) })}
+                            className="max-w-44 object-contain max-h-44 hover:opacity-90 transition-opacity"
+                          />
+                        </div>
+                      )}
+
+                      {msg.type === 'video' && (
+                        <div className="rounded-xl overflow-hidden border border-black/5 bg-black/90 shadow-inner max-w-full">
+                          <video
+                            src={msg.content}
+                            controls
+                            playsInline
+                            className="max-w-44 max-h-44 object-contain"
+                          />
+                        </div>
+                      )}
+
+                      {msg.type === 'audio' && (
+                        <AudioBubblePlayer src={msg.content} duration={msg.duration || 5} />
+                      )}
+
+                      {/* Timestamp overlay with WhatsApp ticks */}
+                      <div className="flex items-center gap-1 self-end mt-0.5 select-none">
+                        <span 
+                          className={`text-[9px] font-medium font-mono tracking-tight opacity-80 ${
+                            isMe ? 'text-white/90' : 'text-gray-400'
+                          }`}
+                        >
+                          {formatMessageTime(msg.timestamp)}
+                        </span>
+                        {isMe && (
+                          msg.seen ? (
+                            <CheckCheck className="w-3.5 h-3.5 text-sky-200 stroke-[2.5] shrink-0" title="Leído" />
+                          ) : (
+                            <CheckCheck className="w-3.5 h-3.5 text-white/60 stroke-[2.5] shrink-0" title="Entregado" />
+                          )
+                        )}
+                      </div>
+
+                      {/* Reactions display */}
+                      {msg.reactions && msg.reactions.length > 0 && (
+                        <div className={`flex flex-wrap gap-0.5 mt-0.5 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                          {['👍','❤️','😂','😮','😢'].map(emoji => {
+                            const count = msg.reactions!.filter(r => r.emoji === emoji).length;
+                            if (count === 0) return null;
+                            return (
+                              <button
+                                key={emoji}
+                                type="button"
+                                onClick={() => handleToggleReaction(msg.id, emoji)}
+                                className={`text-xs px-1.5 py-0.5 rounded-full border transition-all ${
+                                  msg.reactions!.some(r => r.emoji === emoji && r.user === currentUser)
+                                    ? isMe
+                                      ? 'bg-white/20 border-white/30 text-white'
+                                      : 'bg-pink-100/80 border-pink-200 text-gray-700'
+                                    : isMe
+                                      ? 'bg-white/10 border-white/20 text-white/70'
+                                      : 'bg-gray-100/80 border-gray-200 text-gray-500'
+                                }`}
+                                title="Quitar reacción"
+                              >
+                                {emoji} {count > 1 ? count : ''}
+                              </button>
+                            );
+                          })}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -963,10 +1108,30 @@ export default function App() {
         {/* Bottom Toolbar & Text Input Panel (WhatsApp Style) */}
         <div 
           id="chat-toolbar-input-panel"
-          className="bg-pink-50/20 px-3 py-2.5 shrink-0 flex items-end gap-2 relative z-20 border-t border-pink-50"
+          className="bg-pink-50/20 dark:bg-gray-800 px-3 py-2.5 shrink-0 flex items-end gap-2 relative z-20 border-t border-pink-50 dark:border-gray-700"
         >
-          {/* Main Input Pill Capsule */}
-          <div className="flex-1 bg-white rounded-2xl px-2.5 py-1 flex items-center gap-1.5 min-w-0 shadow-xs border border-pink-100/50">
+          <div className="flex-1 flex flex-col gap-1">
+            {/* Reply preview bar */}
+            {replyToMsg && (
+              <div className="flex items-center gap-2 bg-white dark:bg-gray-800 rounded-xl px-3 py-1.5 shadow-xs border border-pink-100 dark:border-gray-700 text-xs">
+                <div className="w-1 h-8 rounded-full bg-pink-400 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <span className="font-bold text-pink-500 dark:text-pink-400 text-[11px]">
+                    {replyToMsg.sender === currentUser ? 'Tú' : replyToMsg.sender}
+                  </span>
+                  <p className="truncate text-gray-500 dark:text-gray-400 text-[11px]">{replyToMsg.content}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setReplyToMsg(null)}
+                  className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-gray-400 hover:text-gray-600 shrink-0"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M18.3 5.71a.996.996 0 00-1.41 0L12 10.59 7.11 5.7A.996.996 0 105.7 7.11L10.59 12 5.7 16.89a.996.996 0 101.41 1.41L12 13.41l4.89 4.89a.996.996 0 101.41-1.41L13.41 12l4.89-4.89c.38-.38.38-1.02 0-1.4z"/></svg>
+                </button>
+              </div>
+            )}
+            {/* Main Input Pill Capsule */}
+            <div className="flex bg-white dark:bg-gray-800 rounded-2xl px-2.5 py-1 items-center gap-1.5 min-w-0 shadow-xs border border-pink-100 dark:border-gray-700">
             {/* Smile Emoji Selector Button */}
             <button
               type="button"
@@ -991,9 +1156,18 @@ export default function App() {
               id="message-textarea"
               placeholder="Mensaje..."
               value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
+              onChange={(e) => {
+                setInputText(e.target.value);
+                if (currentUser) {
+                  sendTyping(currentUser, true);
+                  if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+                  typingTimeoutRef.current = setTimeout(() => {
+                    sendTyping(currentUser, false);
+                  }, 2000);
+                }
+              }}
               onKeyDown={handleKeyDown}
-              className="flex-1 text-sm bg-transparent border-none outline-none resize-none focus:outline-none focus:ring-0 max-h-24 text-gray-700 py-1 font-medium scrollbar-none"
+              className="flex-1 text-sm bg-transparent border-none outline-none resize-none focus:outline-none focus:ring-0 max-h-24 text-gray-700 dark:text-gray-200 py-1 font-medium scrollbar-none"
             />
 
             {/* Paperclip attachment Menu trigger */}
@@ -1027,6 +1201,7 @@ export default function App() {
               <Camera className="w-[20px] h-[20px] stroke-[2.2]" />
             </button>
           </div>
+          </div>{/* end wrapper */}
 
           {/* Action Send or Voice Record Circle Button */}
           {inputText.trim() ? (
@@ -1178,14 +1353,14 @@ export default function App() {
           id="clear-confirm-modal"
           className="fixed inset-0 z-50 bg-black/55 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200"
         >
-          <div className="bg-white rounded-3xl p-6 shadow-2xl border border-pink-100 max-w-sm w-full text-center flex flex-col gap-4 animate-in zoom-in-95 duration-200">
-            <div className="w-14 h-14 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto text-2xl">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-2xl border border-pink-100 dark:border-gray-700 max-w-sm w-full text-center flex flex-col gap-4 animate-in zoom-in-95 duration-200">
+            <div className="w-14 h-14 bg-red-100 dark:bg-red-900/50 text-red-500 rounded-full flex items-center justify-center mx-auto text-2xl">
               🥺
             </div>
             
             <div className="flex flex-col gap-1.5">
-              <h3 className="text-base font-bold text-gray-800">¿De verdad quieres borrarlo?</h3>
-              <p className="text-xs text-gray-500 leading-relaxed px-2">
+              <h3 className="text-base font-bold text-gray-800 dark:text-gray-100">¿De verdad quieres borrarlo?</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed px-2">
                 Se eliminarán permanentemente todas nuestras fotitos, audios, dibujos y bonitos mensajes de este historial local. Esta acción no se puede deshacer. 
               </p>
             </div>
@@ -1195,7 +1370,7 @@ export default function App() {
                 type="button"
                 id="cancel-clear-btn"
                 onClick={() => setShowClearConfirm(false)}
-                className="flex-1 py-2.5 rounded-2xl border border-gray-200 hover:bg-gray-50 text-xs font-semibold text-gray-600 transition-colors"
+                className="flex-1 py-2.5 rounded-2xl border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-xs font-semibold text-gray-600 dark:text-gray-300 transition-colors"
               >
                 Cancelar
               </button>

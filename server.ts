@@ -31,6 +31,16 @@ const messageSchema = new mongoose.Schema({
   seen: { type: Boolean, default: false },
   isChunked: { type: Boolean, default: false },
   totalChunks: Number,
+  replyTo: {
+    id: String,
+    sender: String,
+    content: String,
+    type: String,
+  },
+  reactions: [{
+    emoji: String,
+    user: { type: String, enum: ['Facu', 'Rocío'] },
+  }],
 }, { timestamps: false });
 
 const Message = mongoose.model('Message', messageSchema);
@@ -230,6 +240,52 @@ app.put('/api/presence/:user', async (req, res) => {
   } catch (err) {
     console.error('Error updating presence:', err);
     res.status(500).json({ error: 'Error al actualizar presencia' });
+  }
+});
+
+// --- Typing Indicator ---
+app.post('/api/typing', (req, res) => {
+  const { user, typing } = req.body;
+  broadcast({ type: 'typing', user, typing });
+  res.json({ success: true });
+});
+
+// --- Reactions ---
+app.post('/api/messages/:id/react', async (req, res) => {
+  try {
+    const { emoji, user } = req.body;
+    const msg = await Message.findOneAndUpdate(
+      { id: req.params.id },
+      { $push: { reactions: { emoji, user } } },
+      { new: true }
+    ).lean();
+    if (msg) {
+      broadcast({ type: 'message_update', message: msg });
+      res.json(msg);
+    } else {
+      res.status(404).json({ error: 'Message not found' });
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Error adding reaction' });
+  }
+});
+
+app.delete('/api/messages/:id/react', async (req, res) => {
+  try {
+    const { emoji, user } = req.body;
+    const msg = await Message.findOneAndUpdate(
+      { id: req.params.id },
+      { $pull: { reactions: { emoji, user } } },
+      { new: true }
+    ).lean();
+    if (msg) {
+      broadcast({ type: 'message_update', message: msg });
+      res.json(msg);
+    } else {
+      res.status(404).json({ error: 'Message not found' });
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Error removing reaction' });
   }
 });
 

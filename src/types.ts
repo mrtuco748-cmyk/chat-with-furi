@@ -1,5 +1,17 @@
 export type User = 'Facu' | 'Rocío';
 
+export interface ReplyTo {
+  id: string;
+  sender: User;
+  content: string;
+  type: string;
+}
+
+export interface Reaction {
+  emoji: string;
+  user: User;
+}
+
 export interface Message {
   id: string;
   sender: User;
@@ -11,6 +23,8 @@ export interface Message {
   isChunked?: boolean;
   totalChunks?: number;
   seen?: boolean;
+  replyTo?: ReplyTo;
+  reactions?: Reaction[];
 }
 
 export interface Sticker {
