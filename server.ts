@@ -6,7 +6,7 @@ import { createServer as createViteServer } from 'vite';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/amor-chat';
+const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGO_URL || 'mongodb://localhost:27017/amor-chat';
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
@@ -235,7 +235,7 @@ app.put('/api/presence/:user', async (req, res) => {
 
 // --- Vite Middleware and Static File Serving ---
 async function setupVite() {
-  const isDev = !process.env.MONGODB_URI;
+  const isDev = !process.env.MONGODB_URI && !process.env.MONGO_URL;
 
   if (isDev) {
     const vite = await createViteServer({
