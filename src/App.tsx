@@ -6,7 +6,7 @@ import StickerPicker from './components/StickerPicker';
 import DrawingCanvas from './components/DrawingCanvas';
 import Lightbox from './components/Lightbox';
 import { fetchMessages, sendMessage, markAsSeen, deleteMessage, clearMessages, fetchChunks, updatePresence, sendTyping, addReaction, removeReaction } from './lib/api';
-import { Smile, Paperclip, Camera, Mic, Send, Check, Trash2, LogOut, Image as ImageIcon, Video, Palette, Bell, BellOff, MoreVertical, ArrowUp } from 'lucide-react';
+import { Smile, Paperclip, Camera, Mic, Send, Check, Trash2, LogOut, Video, Palette, Bell, BellOff, MoreVertical, ArrowUp } from 'lucide-react';
 
 
 // --- Helper for formatted timestamps ---
@@ -162,6 +162,7 @@ export default function App() {
 
   // Hidden file triggers
   const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const videoInputRef = useRef<HTMLInputElement | null>(null);
   const audioInputRef = useRef<HTMLInputElement | null>(null);
   const genericInputRef = useRef<HTMLInputElement | null>(null);
@@ -300,7 +301,9 @@ export default function App() {
           duration: d.duration || undefined,
           isChunked: d.isChunked || false,
           totalChunks: d.totalChunks || undefined,
-          seen: d.seen || false
+          seen: d.seen || false,
+          replyTo: d.replyTo || undefined,
+          reactions: d.reactions || undefined,
         }));
 
         // Handle chunked messages
@@ -843,6 +846,15 @@ export default function App() {
         className="hidden"
       />
       <input
+        ref={cameraInputRef}
+        type="file"
+        id="camera-capture-input"
+        accept="image/*"
+        capture="environment"
+        onChange={(e) => handleFileInputChange(e, 'image')}
+        className="hidden"
+      />
+      <input
         ref={videoInputRef}
         type="file"
         id="video-picker-input"
@@ -1294,11 +1306,11 @@ export default function App() {
               type="button"
               id="quick-camera-btn"
               onClick={() => {
-                imageInputRef.current?.click();
+                cameraInputRef.current?.click();
                 setShowAttachmentMenu(false);
               }}
               className="p-1.5 text-gray-400 hover:text-blue-500 rounded-full transition-colors shrink-0"
-              title="Tomar / Enviar Foto 📷"
+              title="Tomar foto 📷"
             >
               <Camera className="w-[20px] h-[20px] stroke-[2.2]" />
             </button>
@@ -1372,18 +1384,18 @@ export default function App() {
               <span className="text-[10px] text-gray-500 font-bold">Sticker</span>
             </button>
 
-            {/* Foto */}
+            {/* Camera */}
             <button
               type="button"
               onClick={() => {
-                imageInputRef.current?.click();
+                cameraInputRef.current?.click();
                 setShowAttachmentMenu(false);
               }}
               className="flex flex-col items-center gap-1 hover:scale-105 active:scale-95 transition-transform"
-              title="Enviar Foto"
+              title="Tomar Foto"
             >
               <div className="w-11 h-11 bg-teal-500 hover:bg-teal-600 text-white rounded-full flex items-center justify-center shadow-md shadow-teal-200">
-                <ImageIcon className="w-5 h-5 stroke-[2.2]" />
+                <Camera className="w-5 h-5" />
               </div>
               <span className="text-[10px] text-gray-500 font-bold">Foto</span>
             </button>
