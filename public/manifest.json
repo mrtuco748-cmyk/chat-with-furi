@@ -1,0 +1,16 @@
+{
+  "name": "Chat Facu y Rocío",
+  "short_name": "Chat",
+  "description": "Chat privado de Facu y Rocío",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#00a884",
+  "background_color": "#111b21",
+  "categories": ["social", "communication"],
+  "icons": [
+    { "src": "/icons/icon-192.svg", "type": "image/svg+xml", "sizes": "192x192" },
+    { "src": "/icons/icon-512.svg", "type": "image/svg+xml", "sizes": "512x512" }
+  ],
+  "screenshots": []
+}

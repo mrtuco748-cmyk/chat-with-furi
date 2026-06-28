@@ -1,13 +1,18 @@
-/* === CONFIG === */
+/* =========================================================
+   WhatsApp Android Clone — Chat de Facu y Rocío
+   Vanilla JS, Socket.io, SQLite backend
+   ========================================================= */
+
+/* ===== CONFIG ===== */
 const EMOJI_CATEGORIES = [
-  { key: 'recent', icon: '🕐', name: 'Recientes' },
-  { key: 'smileys', icon: '😊', name: 'Smileys' },
-  { key: 'animals', icon: '🐱', name: 'Animales' },
-  { key: 'food', icon: '🍎', name: 'Comida' },
-  { key: 'travel', icon: '🏖️', name: 'Viajes' },
-  { key: 'objects', icon: '💡', name: 'Objetos' },
-  { key: 'symbols', icon: '💬', name: 'Símbolos' },
-  { key: 'flags', icon: '🏳️', name: 'Banderas' },
+  { key:'recent', icon:'🕐', name:'Recientes' },
+  { key:'smileys', icon:'😀', name:'Smileys' },
+  { key:'animals', icon:'🐾', name:'Animales' },
+  { key:'food', icon:'🍔', name:'Comida' },
+  { key:'travel', icon:'✈️', name:'Viajes' },
+  { key:'objects', icon:'💡', name:'Objetos' },
+  { key:'symbols', icon:'🔣', name:'Símbolos' },
+  { key:'flags', icon:'🏁', name:'Banderas' },
 ];
 const EMOJI_MAP = {
   smileys: ['😀','😃','😄','😁','😅','😂','🤣','😊','😇','🙂','😉','😌','😍','🥰','😘','😗','😙','😚','😋','😛','😝','😜','🤪','🤨','🧐','🤓','😎','🥸','🤩','🥳','😏','😒','😞','😔','😟','😕','🙁','😣','😖','😫','😩','🥺','😢','😭','😤','😠','😡','🤬','🤯','😳','🥵','🥶','😱','😨','😰','😥','😓','🤗','🤔','🤭','🤫','🤥','😶','😐','😑','😬','🙄','😯','😦','😧','😮','😲','🥱','😴','🤤','😪','😵','🤐','🥴','🤢','🤮','🤧','😷','🤒','🤕','🤠','😈','👿','👹','👺','💀','☠️','👻','👽','👾','🤖','🎃','😺','😸','😹','😻','😼','😽','🙀','😿','😾'],
@@ -18,9 +23,9 @@ const EMOJI_MAP = {
   symbols: ['💘','💝','💖','💗','💓','💞','💕','💟','❣️','💔','❤️','🧡','💛','💚','💙','💜','🤎','🖤','🤍','💋','💯','💢','💥','💫','💦','💨','🕳️','💣','💬','👁️‍🗨️','🗨️','🗯️','💭','💤','♠️','♥️','♦️','♣️','🃏','🀄','🎴','🔇','🔈','🔉','🔊','📢','📣','📯','🔔','🔕','🎵','🎶','💹','🏧','🚮','🚰','♿','🚹','🚺','🚻','🚼','🚾','⚠️','🚸','⛔','🚫','🚳','🚭','🚯','🚱','🚷','📵','🔞','☢️','☣️','⬆️','↗️','➡️','↘️','⬇️','↙️','⬅️','↖️','↕️','↔️','↩️','↪️','⤴️','⤵️','🔃','🔄','🔙','🔚','🔛','🔜','🔝','🛐','⚛️','🕉️','✡️','☸️','☯️','✝️','☦️','☪️','☮️','🕎','🔯','♈','♉','♊','♋','♌','♍','♎','♏','♐','♑','♒','♓','⛎','🔀','🔁','🔂','▶️','⏩','⏭️','⏯️','◀️','⏪','⏮️','🔼','⏫','🔽','⏬','⏸️','⏹️','⏺️','⏏️','🎦','🔅','🔆','📶','📳','📴'],
   flags: ['🏳️','🏴','🏁','🚩','🎌','🏴‍☠️','🇦🇷','🇧🇷','🇨🇱','🇨🇴','🇨🇷','🇨🇺','🇩🇴','🇪🇨','🇸🇻','🇬🇹','🇭🇳','🇲🇽','🇳🇮','🇵🇦','🇵🇾','🇵🇪','🇵🇷','🇺🇸','🇺🇾','🇻🇪','🇪🇸','🇫🇷','🇮🇹','🇩🇪','🇬🇧','🇯🇵','🇰🇷','🇨🇳','🇮🇳','🇷🇺','🇦🇺','🇨🇦','🇧🇪','🇳🇱','🇵🇹','🇸🇪','🇳🇴','🇩🇰','🇫🇮','🇬🇷','🇹🇷','🇮🇱','🇸🇦','🇦🇪','🇿🇦','🇳🇬','🇰🇪','🇲🇦','🇪🇬'],
 };
-const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+const QUICK_REACTIONS = ['👍','❤️','😂','😮','😢','🙏'];
 
-/* === STATE === */
+/* ===== STATE ===== */
 let currentUser = null;
 let socket = null;
 let messages = [];
@@ -33,6 +38,9 @@ let recordingMediaRecorder = null;
 let recordingChunks = [];
 let recordingTimer = null;
 let recordingSeconds = 0;
+let recordingAnalyser = null;
+let recordingDataArray = null;
+let recordingAnimFrame = null;
 let searchResults = [];
 let searchIndex = -1;
 let isAtBottom = true;
@@ -41,10 +49,22 @@ let recentEmojis = [];
 let typingTimeout = null;
 let isRecording = false;
 let lastNotifyTime = 0;
+let selectedMessages = new Set();
+let isSelectMode = false;
+let longPressTimer = null;
+let longPressTriggered = false;
+let swipeStartX = 0;
+let swipeStartY = 0;
+let fontSize = 'normal';
+let isDark = true;
+const FONT_SIZES = { small:12, normal:14, large:16, xlarge:18 };
+const FONT_SIZES_META = { small:10, normal:11, large:12, xlarge:13 };
 
-try { recentEmojis = JSON.parse(localStorage.getItem('wa_recent_emojis') || '[]'); } catch(e) {}
+try { recentEmojis = JSON.parse(localStorage.getItem('wa_recent')||'[]'); } catch(e){}
+try { fontSize = localStorage.getItem('wa_font')||'normal'; } catch(e){}
+try { isDark = localStorage.getItem('wa_dark')!=='false'; } catch(e){}
 
-/* === DOM REFS === */
+/* ===== DOM REFS ===== */
 const $ = id => document.getElementById(id);
 const app = $('app');
 const userSelector = $('user-selector');
@@ -55,309 +75,288 @@ const sendBtn = $('send-btn');
 const micBtn = $('mic-btn');
 const emojiBtn = $('emoji-btn');
 const emojiPicker = $('emoji-picker');
+const emojiOverlay = $('emoji-overlay');
 const emojiGrid = $('emoji-grid');
 const emojiTabs = $('emoji-tabs');
-const emojiSearch = $('emoji-search');
-const emojiClose = $('emoji-close');
+const emojiSearch = $('emoji-search-input');
 const clipBtn = $('clip-btn');
-const attachmentMenu = $('attachment-menu');
+const attachSheet = $('attach-sheet');
+const attachOverlay = $('attach-overlay');
 const fileInput = $('file-input');
 const documentInput = $('document-input');
 const cameraInput = $('camera-input');
 const imagePreview = $('image-preview');
 const previewImg = $('preview-img');
 const previewCaption = $('preview-caption');
-const previewSend = $('preview-send');
-const previewClose = $('preview-close');
+const previewSend = $('preview-send-btn');
+const previewClose = $('preview-close-btn');
 const previewFilename = $('preview-filename');
 const lightbox = $('lightbox');
 const lightboxImg = $('lightbox-img');
-const lightboxClose = $('lightbox-close');
-const contextMenu = $('context-menu');
+const lightboxClose = $('lightbox-close-btn');
+const lightboxContent = $('lightbox-content');
+const actionMenu = $('action-menu');
+const actionMenuOverlay = $('action-menu-overlay');
+const inlineReactions = $('inline-reactions');
 const replyPreview = $('reply-preview');
 const replyPreviewSender = $('reply-preview-sender');
 const replyPreviewText = $('reply-preview-text');
-const replyClose = $('reply-close');
+const replyClose = $('reply-close-btn');
 const searchBar = $('search-bar');
 const searchInput = $('search-input');
 const searchCount = $('search-count');
-const searchPrev = $('search-prev');
-const searchNext = $('search-next');
+const searchPrev = $('search-prev-btn');
+const searchNext = $('search-next-btn');
 const searchBtn = $('search-btn');
-const searchClose = $('search-close');
+const searchClose = $('search-close-btn');
 const scrollBottomBtn = $('scroll-bottom-btn');
+const scrollBadge = $('scroll-badge');
 const recordingOverlay = $('recording-overlay');
 const recordingTimerEl = $('recording-timer');
+const recordingWaveform = $('recording-waveform');
+const recordingCancel = $('recording-cancel-area');
+const recordingMicBtn = $('recording-mic-btn');
 const headerAvatarText = $('header-avatar-text');
 const headerName = $('header-name');
-const headerStatus = $('header-status');
-const reconnectBanner = $('reconnect-banner');
-const menuBtn = $('menu-btn');
+const headerSubtitle = $('header-subtitle');
+const reconnectOverlay = $('reconnect-overlay');
+const menuBtn = $('header-menu-btn');
+const headerDropdown = $('header-dropdown');
+const actionBar = $('action-bar');
+const actionBarCount = $('action-bar-count');
+const actionBarBack = $('action-bar-back');
+const settingsPanel = $('settings-panel');
+const settingsOverlay = $('settings-overlay');
+const settingsBack = $('settings-back');
+const themeToggle = $('theme-toggle');
+const settingsName = $('settings-name');
 
-/* === INIT === */
+/* ===== INIT ===== */
 document.addEventListener('DOMContentLoaded', () => {
+  applyTheme();
+  applyFontSize();
   const saved = localStorage.getItem('wa_user');
-  if (saved && (saved === 'Facu' || saved === 'Rocío')) {
-    selectUser(saved);
-  }
-  setupEventListeners();
+  if (saved && (saved==='Facu'||saved==='Rocío')) selectUser(saved);
+  bindEvents();
 });
 
+/* ===== THEME ===== */
+function applyTheme() {
+  document.documentElement.classList.toggle('light', !isDark);
+  if (themeToggle) themeToggle.classList.toggle('on', isDark);
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = isDark ? '#00a884' : '#008069';
+}
+
+function applyFontSize() {
+  const size = FONT_SIZES[fontSize]||14;
+  const meta = FONT_SIZES_META[fontSize]||11;
+  document.documentElement.style.setProperty('--msg-font-size', size+'px');
+  document.documentElement.style.setProperty('--msg-meta-size', meta+'px');
+}
+
+/* ===== SELECT USER ===== */
 function selectUser(username) {
   currentUser = username;
   localStorage.setItem('wa_user', username);
   userSelector.classList.add('hidden');
   app.classList.remove('hidden');
-  document.title = `Chat de Facu y Rocío — ${currentUser}`;
+  document.title = `Chat — ${currentUser}`;
 
-  const other = username === 'Facu' ? 'Rocío' : 'Facu';
-  const color = other === 'Facu' ? '#5f9ef0' : '#d47bcd';
+  const other = username==='Facu'?'Rocío':'Facu';
   headerAvatarText.textContent = other[0];
-  headerAvatarText.parentElement.style.background = color;
+  headerAvatarText.parentElement.style.background = other==='Facu'?'#5f9ef0':'#d47bcd';
   headerName.textContent = other;
+  if (settingsName) settingsName.textContent = username;
   connectSocket();
 }
 
-/* === SOCKET.IO === */
+/* ===== SOCKET ===== */
 function connectSocket() {
-  socket = io({ reconnectionAttempts: Infinity, reconnectionDelay: 1000 });
+  socket = io({ reconnectionAttempts:Infinity, reconnectionDelay:1000 });
 
   socket.on('connect', () => {
-    reconnectBanner.classList.add('hidden');
+    reconnectOverlay.classList.remove('show');
     socket.emit('register', currentUser);
     loadMessages(true);
   });
 
-  socket.on('disconnect', () => {
-    reconnectBanner.classList.remove('hidden');
-    setStatus('desconectado');
-  });
-
-  socket.on('reconnect_error', () => {
-    reconnectBanner.classList.remove('hidden');
-  });
+  socket.on('disconnect', () => { reconnectOverlay.classList.add('show'); setStatus('desconectado'); });
+  socket.on('reconnect_error', () => { reconnectOverlay.classList.add('show'); });
 
   socket.on('presence', (data) => {
-    if (data.user !== currentUser) {
-      if (data.online) setStatus('en línea', 'online');
-      else setStatus(formatLastSeen(data.lastSeen));
+    if (data.user!==currentUser) {
+      setStatus(data.online?'en línea':'desconectado', data.online?'online':'');
     }
   });
 
-  socket.on('message_sent', (msg) => updateMessageStatus(msg.id, 'sent'));
-  socket.on('message_delivered', (data) => updateMessageStatus(data.id, 'delivered'));
-  socket.on('message_read', (data) => updateMessageStatus(data.id, 'read', data.user));
+  socket.on('message_sent', (m) => updateMsgStatus(m.id,'sent'));
+  socket.on('message_delivered', (d) => updateMsgStatus(d.id,'delivered'));
+  socket.on('message_read', (d) => updateMsgStatus(d.id,'read',d.user));
 
   socket.on('new_message', (msg) => {
     addMessage(msg);
     markAsRead(msg);
-    if (msg.sender !== currentUser && document.hidden) {
-      const now = Date.now();
-      if (now - lastNotifyTime > 3000) {
-        lastNotifyTime = now;
-        if ('Notification' in window && Notification.permission === 'granted') {
-          new Notification(`Mensaje de ${msg.sender}`, {
-            body: msg.type === 'text' ? msg.content : `Te envió un ${msg.type}`,
-            tag: 'wa-chat',
-          });
-        }
-        document.title = `● Nuevo mensaje — ${currentUser}`;
+    if (msg.sender!==currentUser && document.hidden && Date.now()-lastNotifyTime>3000) {
+      lastNotifyTime = Date.now();
+      if ('Notification' in window && Notification.permission==='granted') {
+        new Notification(msg.sender, { body: msg.type==='text'?msg.content:'Te envió un '+msg.type, tag:'wa-chat' });
       }
+      document.title = `● ${currentUser}`;
     }
-    if (isAtBottom) {
-      scrollToBottom();
-    } else {
-      unreadBelow++;
-      updateScrollBtn();
-    }
+    if (isAtBottom) scrollToBottom();
+    else { unreadBelow++; updateScrollBtn(); }
   });
 
-  socket.on('reaction_updated', (data) => {
-    const msgEl = document.querySelector(`[data-msg-id="${data.messageId}"]`);
-    if (msgEl) {
-      const bar = msgEl.querySelector('.reactions-bar');
-      if (bar) bar.replaceWith(renderReactionsEl(data.messageId, data.reactions));
-      else msgEl.appendChild(renderReactionsEl(data.messageId, data.reactions));
+  socket.on('reaction_updated', (d) => {
+    const el = document.querySelector(`[data-msg-id="${d.messageId}"]`);
+    if (el) {
+      const old = el.querySelector('.reactions-bar');
+      if (old) old.replaceWith(renderReactions(d.messageId,d.reactions));
+      else el.appendChild(renderReactions(d.messageId,d.reactions));
     }
-    const msg = messages.find(m => m.id === data.messageId);
-    if (msg) msg.reactions = data.reactions;
+    const msg = messages.find(m=>m.id===d.messageId);
+    if (msg) msg.reactions = d.reactions;
   });
 
-  socket.on('message_deleted', (data) => {
-    if (data.forEveryone) {
-      const msgEl = document.querySelector(`[data-msg-id="${data.id}"]`);
-      if (msgEl) {
-        const bubble = msgEl.querySelector('.message-bubble');
-        if (bubble) {
-          const footer = bubble.querySelector('.message-footer');
-          bubble.innerHTML = '<div class="message-deleted">🚫 Este mensaje fue eliminado</div>';
-          if (footer) bubble.appendChild(footer);
+  socket.on('message_deleted', (d) => {
+    if (d.forEveryone) {
+      const el = document.querySelector(`[data-msg-id="${d.id}"]`);
+      if (el) {
+        const b = el.querySelector('.message-bubble');
+        if (b) {
+          const f = b.querySelector('.message-footer');
+          b.innerHTML = '<div class="message-deleted">🚫 Se eliminó este mensaje</div>';
+          if (f) b.appendChild(f);
         }
       }
-    } else {
-      const msgEl = document.querySelector(`[data-msg-id="${data.id}"]`);
-      if (msgEl) msgEl.remove();
-      messages = messages.filter(m => m.id !== data.id);
+    } else { const el=document.querySelector(`[data-msg-id="${d.id}"]`); if(el) el.remove(); messages=messages.filter(m=>m.id!==d.id); }
+  });
+
+  socket.on('clear', () => { messages=[]; messagesList.innerHTML=''; currentOffset=0; hasMoreMessages=true; });
+
+  let typingClear;
+  socket.on('typing', (d) => {
+    if (d.user!==currentUser) {
+      if (d.typing) { setStatus('escribiendo','typing'); clearTimeout(typingClear); }
+      else { typingClear=setTimeout(()=>setStatus('en línea','online'),1000); }
     }
   });
 
-  socket.on('clear', () => {
-    messages = []; messagesList.innerHTML = '';
-    currentOffset = 0; hasMoreMessages = true;
-  });
-
-  let typingTimeoutId = null;
-  socket.on('typing', (data) => {
-    if (data.user !== currentUser) {
-      if (data.typing) {
-        setStatus('escribiendo', 'typing');
-        clearTimeout(typingTimeoutId);
-        typingTimeoutId = setTimeout(() => setStatus('en línea', 'online'), 3000);
-      } else {
-        clearTimeout(typingTimeoutId);
-        setStatus('en línea', 'online');
-      }
-    }
-  });
-
-  socket.on('unread_count', (data) => {
-    if (data.count > 0) document.title = `(${data.count}) ● ${currentUser}`;
-  });
+  socket.on('unread_count', (d) => { if(d.count>0) document.title=`(${d.count}) ● ${currentUser}`; });
 }
 
-/* === STATUS === */
-function setStatus(text, className = '') {
-  headerStatus.textContent = text;
-  headerStatus.className = 'header-status' + (className ? ' ' + className : '');
+/* ===== STATUS ===== */
+function setStatus(text, cls='') {
+  headerSubtitle.textContent = text;
+  headerSubtitle.className = 'header-subtitle'+(cls?' '+cls:'');
 }
 
-function formatLastSeen(ts) {
-  if (!ts) return 'desconectado';
-  const d = new Date(ts);
-  const today = new Date();
-  const sameDay = d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
-  const time = d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-  if (sameDay) return `últ. vez hoy a las ${time}`;
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-  if (d.getDate() === yesterday.getDate() && d.getMonth() === yesterday.getMonth() && d.getFullYear() === yesterday.getFullYear())
-    return `últ. vez ayer a las ${time}`;
-  return `últ. vez ${d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} a las ${time}`;
-}
-
-/* === MESSAGES LOADING === */
-async function loadMessages(reset = false) {
-  if (reset) { currentOffset = 0; hasMoreMessages = true; messages = []; }
-  if (!hasMoreMessages || isLoadingMore) return;
+/* ===== MESSAGES ===== */
+async function loadMessages(reset) {
+  if (reset) { currentOffset=0; hasMoreMessages=true; messages=[]; }
+  if (!hasMoreMessages||isLoadingMore) return;
   isLoadingMore = true;
 
   try {
     const res = await fetch(`/api/messages?offset=${currentOffset}&limit=50`);
     const data = await res.json();
-    if (data.length < 50) hasMoreMessages = false;
+    if (data.length<50) hasMoreMessages = false;
 
     if (reset) {
       messages = data;
       renderMessages();
     } else {
-      const prevHeight = messagesContainer.scrollHeight;
+      const prev = messagesContainer.scrollHeight;
       messages = [...data, ...messages];
       renderMessages();
-      messagesContainer.scrollTop = messagesContainer.scrollHeight - prevHeight;
+      messagesContainer.scrollTop = messagesContainer.scrollHeight - prev;
     }
     currentOffset += data.length;
-  } catch (err) {
-    console.error('Error loading messages:', err);
-  } finally {
-    isLoadingMore = false;
-    $('messages-loading').classList.add('hidden');
-  }
+  } catch(e) { console.error(e); }
+  finally { isLoadingMore=false; $('messages-loading').classList.add('hidden'); }
   scrollToBottom();
 }
 
-/* === RENDER MESSAGES === */
 function renderMessages() {
   if (!messages.length) {
-    messagesList.innerHTML = '<div style="text-align:center;color:#8696a0;padding:60px 20px;font-size:14px;line-height:1.6;">No hay mensajes aún<br><span style="font-size:40px;display:block;margin-bottom:8px;">💬</span>Empezá a chatear</div>';
+    messagesList.innerHTML = '<div style="text-align:center;color:var(--text-secondary);padding:60px 20px;font-size:14px;line-height:1.8;">Enviense un mensaje 💕</div>';
     return;
   }
-
   let html = '';
   let lastDate = null;
   let lastSender = null;
 
-  for (let i = 0; i < messages.length; i++) {
+  for (let i=0; i<messages.length; i++) {
     const msg = messages[i];
-    const msgDate = new Date(msg.timestamp);
-    const dateKey = formatDateKey(msgDate);
+    const d = new Date(msg.timestamp);
+    const dk = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 
-    if (dateKey !== lastDate) {
-      html += `<div class="date-separator"><span>${formatDateHeader(msgDate)}</span></div>`;
-      lastDate = dateKey;
-      lastSender = null;
+    if (dk!==lastDate) {
+      html += `<div class="date-separator"><span>${fmtDate(d)}</span></div>`;
+      lastDate = dk; lastSender = null;
     }
 
-    const isConsecutive = lastSender === msg.sender && i > 0 &&
-      (msg.timestamp - messages[i-1].timestamp) < 300000;
+    const consec = lastSender===msg.sender && i>0 && (msg.timestamp-messages[i-1].timestamp)<120000;
+    const own = msg.sender===currentUser;
+    const sel = selectedMessages.has(msg.id);
+    const wc = `message-wrapper ${own?'own':'other'}${consec?' grouped':''}${sel?' selected':''}${i===0||dk!==`${new Date(messages[i-1]?.timestamp).getFullYear()}-${new Date(messages[i-1]?.timestamp).getMonth()}-${new Date(messages[i-1]?.timestamp).getDate()}`||messages[i-1]?.sender!==msg.sender?' grouped-first':''}`;
 
-    const isOwn = msg.sender === currentUser;
-    const wrapperClass = `message-wrapper ${isOwn ? 'own' : 'other'}${isConsecutive ? ' consecutive' : ''}`;
+    html += `<div class="${wc}" data-msg-id="${msg.id}" data-sender="${msg.sender}" data-timestamp="${msg.timestamp}">`;
 
-    html += `<div class="${wrapperClass}" data-msg-id="${msg.id}" data-sender="${msg.sender}" data-timestamp="${msg.timestamp}">`;
+    // Select overlay
+    if (isSelectMode) {
+      html += `<div class="message-select-overlay" onclick="toggleSelect('${msg.id}')"><div class="select-checkbox${sel?' checked':''}">${sel?'✓':''}</div></div>`;
+    }
+
     html += `<div class="message-bubble">`;
 
+    // Reply quote
     if (msg.replyTo) {
-      const replyContent = msg.replyTo.content || '';
-      html += `<div class="reply-quote" onclick="scrollToMessage('${msg.replyTo.id}')">
-        <div><div class="reply-quote-sender">${escapeHtml(msg.replyTo.sender || '')}</div>
-        <div class="reply-quote-text">${escapeHtml(replyContent.length > 80 ? replyContent.substring(0, 80) + '…' : replyContent)}</div></div>
+      const rc = msg.replyTo.content||'';
+      html += `<div class="reply-quote" onclick="scrollToMsg('${msg.replyTo.id}')">
+        <div><div class="reply-quote-sender">${esc(msg.replyTo.sender||'')}</div>
+        <div class="reply-quote-text">${esc(rc.length>80?rc.substring(0,80)+'…':rc)}</div></div>
       </div>`;
     }
 
+    // Content
     if (msg.deleted) {
-      html += `<div class="message-deleted">🚫 Este mensaje fue eliminado</div>`;
-    } else if (msg.type === 'text') {
-      html += `<div class="message-text">${renderText(msg.content)}</div>`;
-    } else if (msg.type === 'image') {
-      html += `<img src="${msg.content}" class="message-image" onclick="openLightbox('${msg.content.replace(/'/g, "\\'")}')" alt="Foto" loading="lazy">`;
-    } else if (msg.type === 'video') {
+      html += `<div class="message-deleted">🚫 Se eliminó este mensaje</div>`;
+    } else if (msg.type==='text') {
+      html += `<div class="message-text">${esc(msg.content).replace(/\n/g,'<br>')}</div>`;
+    } else if (msg.type==='image') {
+      html += `<img src="${msg.content}" class="message-image" onclick="openLightbox('${msg.content.replace(/'/g,"\\'")}')" alt="Foto" loading="lazy">`;
+    } else if (msg.type==='video') {
       html += `<video src="${msg.content}" class="message-video" controls playsinline preload="metadata"></video>`;
-    } else if (msg.type === 'audio') {
-      html += renderAudioPlayer(msg);
-    } else if (msg.type === 'sticker') {
+    } else if (msg.type==='audio') {
+      html += renderAudio(msg);
+    } else if (msg.type==='sticker') {
       html += `<img src="${msg.content}" class="message-sticker" alt="Sticker" loading="lazy">`;
-    } else if (msg.type === 'document') {
-      html += `<div class="message-document" onclick="downloadDoc('${msg.content}', '${escapeHtml(msg.fileName || 'documento')}')">
-        <div class="doc-icon" style="background:#5f9ef0">📄</div>
-        <div class="doc-info">
-          <div class="doc-name">${escapeHtml(msg.fileName || 'Documento')}</div>
-          <div class="doc-size">${formatFileSize(msg.fileSize)}</div>
-        </div>
-      </div>`;
+    } else if (msg.type==='document') {
+      const ext = (msg.fileName||'').split('.').pop().toLowerCase();
+      const iconCls = {pdf:'pdf',doc:'doc',docx:'doc',xls:'xls',xlsx:'xls',zip:'zip',rar:'zip'}[ext]||'other';
+      html += `<div class="message-document"><div class="doc-icon ${iconCls}">📄</div><div class="doc-info"><div class="doc-name">${esc(msg.fileName||'Documento')}</div><div class="doc-size">${fmtSize(msg.fileSize)}</div></div></div>`;
     }
 
+    // Footer
     html += `<div class="message-footer">`;
-    html += `<span class="message-time">${formatTime(msg.timestamp)}</span>`;
-    if (isOwn) html += renderTicks(msg);
-    html += `</div>`;
-    html += `</div>`;
+    if (msg.edited) html += `<span class="edited-label">editado</span>`;
+    html += `<span class="message-time">${fmtTime(msg.timestamp)}</span>`;
+    if (own) html += renderTicks(msg);
+    html += `</div></div>`;
 
-    if (msg.reactions && msg.reactions.length > 0) {
+    // Reactions
+    if (msg.reactions&&msg.reactions.length>0) {
       html += `<div class="reactions-bar">`;
-      const grouped = {};
-      msg.reactions.forEach(r => { grouped[r.emoji] = (grouped[r.emoji] || 0) + 1; });
-      Object.entries(grouped).forEach(([emoji, count]) => {
-        const active = msg.reactions.some(r => r.emoji === emoji && r.user === currentUser);
-        html += `<div class="reaction-pill${active ? ' active' : ''}" onclick="toggleReaction('${msg.id}','${emoji}')">${emoji}${count > 1 ? ` <span class="reaction-count">${count}</span>` : ''}</div>`;
+      const g={};
+      msg.reactions.forEach(r=>{g[r.emoji]=(g[r.emoji]||0)+1;});
+      Object.entries(g).forEach(([e,c])=>{
+        const a = msg.reactions.some(r=>r.emoji===e&&r.user===currentUser);
+        html += `<div class="reaction-pill${a?' active':''}" onclick="toggleReaction('${msg.id}','${e}')">${e}${c>1?` <span class="reaction-count">${c}</span>`:''}</div>`;
       });
       html += `</div>`;
     }
-
-    html += `<div class="message-actions">
-      <button class="message-action-btn" onclick="event.stopPropagation();showContextMenu(event, '${msg.id}')" aria-label="Más opciones">
-        <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12 7a2 2 0 1 0-.001-4.001A2 2 0 0 0 12 7zm0 2a2 2 0 1 0-.001 3.999A2 2 0 0 0 12 9zm0 6a2 2 0 1 0-.001 3.999A2 2 0 0 0 12 15z"/></svg>
-      </button>
-    </div>`;
 
     html += `</div>`;
     lastSender = msg.sender;
@@ -365,804 +364,735 @@ function renderMessages() {
   messagesList.innerHTML = html;
 }
 
-function renderText(text) {
-  return escapeHtml(text).replace(/\n/g, '<br>');
+/* ===== HELPERS ===== */
+function esc(t) { const d=document.createElement('div'); d.textContent=t; return d.innerHTML; }
+function fmtTime(ts) { return new Date(ts).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}); }
+function fmtDate(d) {
+  const t=new Date();
+  if (d.getDate()===t.getDate()&&d.getMonth()===t.getMonth()&&d.getFullYear()===t.getFullYear()) return 'Hoy';
+  const y=new Date(t); y.setDate(y.getDate()-1);
+  if (d.getDate()===y.getDate()&&d.getMonth()===y.getMonth()&&d.getFullYear()===y.getFullYear()) return 'Ayer';
+  return d.toLocaleDateString('es-ES',{day:'numeric',month:'long'}).replace(/de /g,'');
 }
+function fmtSize(b) { if(!b) return ''; if(b<1024) return b+' B'; if(b<1048576) return (b/1024).toFixed(1)+' KB'; return (b/1048576).toFixed(1)+' MB'; }
+function fmtDur(s) { const m=Math.floor(s/60); return m+':'+(s%60).toString().padStart(2,'0'); }
 
-function escapeHtml(text) {
-  const d = document.createElement('div');
-  d.textContent = text;
-  return d.innerHTML;
-}
-
-/* === FORMAT HELPERS === */
-function formatTime(ts) {
-  return new Date(ts).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-}
-
-function formatDateKey(d) {
-  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-}
-
-function formatDateHeader(d) {
-  const today = new Date();
-  if (d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear())
-    return 'Hoy';
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-  if (d.getDate() === yesterday.getDate() && d.getMonth() === yesterday.getMonth() && d.getFullYear() === yesterday.getFullYear())
-    return 'Ayer';
-  return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }).replace(/de /g, '');
-}
-
-function formatFileSize(bytes) {
-  if (!bytes) return '';
-  if (bytes < 1024) return bytes + ' B';
-  if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
-  return (bytes/(1024*1024)).toFixed(1) + ' MB';
-}
-
-function formatDuration(secs) {
-  const m = Math.floor(secs / 60);
-  const s = Math.floor(secs % 60);
-  return `${m}:${s.toString().padStart(2, '0')}`;
-}
-
-/* === TICKS === */
 function renderTicks(msg) {
-  let status = 'sent';
-  if (msg.readBy && msg.readBy.length > 0) status = 'read';
-  else if (msg.delivered) status = 'delivered';
-
-  if (status === 'read') {
-    return `<span class="message-tick"><svg viewBox="0 0 16 11" width="16" height="11" class="tick-blue"><path d="M11.5.5l-6 6-3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M7.5 6.5l2-2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M14.5.5l-9 9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>`;
-  } else if (status === 'delivered') {
-    return `<span class="message-tick"><svg viewBox="0 0 16 11" width="16" height="11" class="tick-grey"><path d="M11.5.5l-6 6-3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M7.5 6.5l2-2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M14.5.5l-9 9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>`;
-  }
+  let s = 'sent';
+  if (msg.readBy&&msg.readBy.length>0) s='read';
+  else if (msg.delivered) s='delivered';
+  if (s==='read') return `<span class="message-tick"><svg viewBox="0 0 16 11" width="16" height="11" class="tick-blue"><path d="M11.5.5l-6 6-3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M7.5 6.5l2-2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M14.5.5l-9 9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>`;
+  if (s==='delivered') return `<span class="message-tick"><svg viewBox="0 0 16 11" width="16" height="11" class="tick-grey"><path d="M11.5.5l-6 6-3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M7.5 6.5l2-2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M14.5.5l-9 9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>`;
   return `<span class="message-tick"><svg viewBox="0 0 16 11" width="16" height="11" class="tick-grey"><path d="M11.5.5l-6 6L3.5 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>`;
 }
 
-/* === AUDIO PLAYER === */
-function renderAudioPlayer(msg) {
-  const bars = Array(30).fill(0).map((_, i) =>
-    `<div class="audio-wave-bar" style="height:${3 + Math.random() * 18}px" data-wave="${i}"></div>`
-  ).join('');
-
+/* ===== AUDIO ===== */
+function renderAudio(msg) {
+  const bars = Array(30).fill(0).map((_,i)=>`<div class="audio-wave-bar" style="height:${3+Math.random()*18}px" data-wave="${i}"></div>`).join('');
   return `<div class="audio-player">
-    <button class="audio-play-btn" onclick="toggleAudio(event, '${msg.id}')" aria-label="Reproducir audio">
+    <button class="audio-play-btn" onclick="toggleAudio(event,'${msg.id}')" aria-label="Reproducir">
       <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>
     </button>
     <div class="audio-waveform" id="wave-${msg.id}">${bars}</div>
-    <span class="audio-duration" id="dur-${msg.id}">${formatDuration(msg.duration || 0)}</span>
-    <button class="audio-speed-btn" onclick="cycleSpeed(event, '${msg.id}')">1×</button>
+    <span class="audio-duration" id="dur-${msg.id}">${fmtDur(msg.duration||0)}</span>
+    <button class="audio-speed-btn" onclick="cycleSpeed(event,'${msg.id}')">1×</button>
   </div>`;
 }
 
-function toggleAudio(e, msgId) {
+function toggleAudio(e,id) {
   e.stopPropagation();
   const btn = e.currentTarget;
-  const msg = messages.find(m => m.id === msgId);
+  const msg = messages.find(m=>m.id===id);
   if (!msg) return;
 
-  if (audioPlayers[msgId]) {
-    if (!audioPlayers[msgId].paused) {
-      audioPlayers[msgId].pause();
-      btn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>';
-    } else {
-      audioPlayers[msgId].play();
-      btn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
-    }
+  if (audioPlayers[id]) {
+    if (!audioPlayers[id].paused) { audioPlayers[id].pause(); btn.innerHTML='<svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>'; }
+    else { audioPlayers[id].play(); btn.innerHTML='<svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>'; }
     return;
   }
 
   const audio = new Audio(msg.content);
-  audioPlayers[msgId] = audio;
-  audio.play().catch(() => {});
+  audioPlayers[id] = audio;
+  audio.play().catch(()=>{});
   btn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
 
-  audio.addEventListener('timeupdate', () => {
-    const dur = audio.duration || msg.duration || 1;
-    const progress = audio.currentTime / dur;
-    document.querySelectorAll(`#wave-${msgId} .audio-wave-bar`).forEach((bar, i) => {
-      bar.classList.toggle('playing', i / 30 <= progress);
-    });
-    const durEl = document.getElementById(`dur-${msgId}`);
-    if (durEl) durEl.textContent = formatDuration(audio.currentTime);
+  audio.addEventListener('timeupdate',()=>{
+    const dur = audio.duration||msg.duration||1;
+    const p = audio.currentTime/dur;
+    document.querySelectorAll(`#wave-${id} .audio-wave-bar`).forEach((b,i)=>{b.classList.toggle('playing',i/30<=p);});
+    const de = document.getElementById(`dur-${id}`);
+    if (de) de.textContent = fmtDur(audio.currentTime);
   });
 
-  audio.addEventListener('ended', () => {
+  audio.addEventListener('ended',()=>{
     btn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>';
-    const durEl = document.getElementById(`dur-${msgId}`);
-    if (durEl) durEl.textContent = formatDuration(msg.duration || 0);
-    document.querySelectorAll(`#wave-${msgId} .audio-wave-bar`).forEach(b => b.classList.remove('playing'));
-    delete audioPlayers[msgId];
+    const de = document.getElementById(`dur-${id}`);
+    if (de) de.textContent = fmtDur(msg.duration||0);
+    document.querySelectorAll(`#wave-${id} .audio-wave-bar`).forEach(b=>b.classList.remove('playing'));
+    delete audioPlayers[id];
   });
 }
 
-function cycleSpeed(e, msgId) {
+function cycleSpeed(e,id) {
   e.stopPropagation();
-  const audio = audioPlayers[msgId];
-  if (!audio) return;
-  const speeds = [1, 1.5, 2];
-  const current = parseFloat(e.currentTarget.textContent);
-  const next = speeds[(speeds.indexOf(current) + 1) % speeds.length];
-  audio.playbackRate = next;
-  e.currentTarget.textContent = next + '×';
+  const a = audioPlayers[id];
+  if (!a) return;
+  const speeds = [1,1.5,2];
+  const c = parseFloat(e.currentTarget.textContent);
+  const n = speeds[(speeds.indexOf(c)+1)%speeds.length];
+  a.playbackRate = n;
+  e.currentTarget.textContent = n+'×';
 }
 
-/* === REACTIONS RENDERER === */
-function renderReactionsEl(messageId, reactions) {
-  const container = document.createElement('div');
-  container.className = 'reactions-bar';
-  const grouped = {};
-  reactions.forEach(r => { grouped[r.emoji] = (grouped[r.emoji] || 0) + 1; });
-  Object.entries(grouped).forEach(([emoji, count]) => {
-    const active = reactions.some(r => r.emoji === emoji && r.user === currentUser);
-    const pill = document.createElement('div');
-    pill.className = `reaction-pill${active ? ' active' : ''}`;
-    pill.onclick = () => toggleReaction(messageId, emoji);
-    pill.innerHTML = `${emoji}${count > 1 ? ` <span class="reaction-count">${count}</span>` : ''}`;
-    container.appendChild(pill);
+/* ===== REACTIONS ===== */
+function renderReactions(mid,reactions) {
+  const c = document.createElement('div'); c.className = 'reactions-bar';
+  const g={}; reactions.forEach(r=>{g[r.emoji]=(g[r.emoji]||0)+1;});
+  Object.entries(g).forEach(([e,count])=>{
+    const a = reactions.some(r=>r.emoji===e&&r.user===currentUser);
+    const p = document.createElement('div');
+    p.className = `reaction-pill${a?' active':''}`;
+    p.onclick = ()=>toggleReaction(mid,e);
+    p.innerHTML = `${e}${count>1?` <span class="reaction-count">${count}</span>`:''}`;
+    c.appendChild(p);
   });
-  return container;
+  return c;
 }
 
-/* === ADD MESSAGE === */
+function toggleReaction(mid,emoji) {
+  const msg = messages.find(m=>m.id===mid);
+  if (!msg) return;
+  const ex = msg.reactions?.find(r=>r.emoji===emoji&&r.user===currentUser);
+  socket.emit(ex?'remove_reaction':'add_reaction',{messageId:mid,emoji,user:currentUser});
+}
+
+/* ===== ADD / UPDATE MESSAGE ===== */
 function addMessage(msg) {
-  if (messages.some(m => m.id === msg.id)) return;
+  if (messages.some(m=>m.id===msg.id)) return;
   messages.push(msg);
-  messages.sort((a, b) => a.timestamp - b.timestamp);
+  messages.sort((a,b)=>a.timestamp-b.timestamp);
   renderMessages();
   if (isAtBottom) scrollToBottom();
 }
 
-function updateMessageStatus(id, status, user) {
-  const msg = messages.find(m => m.id === id);
+function updateMsgStatus(id,status,user) {
+  const msg = messages.find(m=>m.id===id);
   if (!msg) return;
-
-  if (status === 'sent') msg.status = 'sent';
-  else if (status === 'delivered') msg.delivered = true;
-  else if (status === 'read') {
-    if (!msg.readBy) msg.readBy = [];
-    if (user && !msg.readBy.some(r => r.user === user)) {
-      msg.readBy.push({ user, at: Date.now() });
-    }
+  if (status==='sent') msg.status='sent';
+  else if (status==='delivered') msg.delivered=true;
+  else if (status==='read') {
+    if (!msg.readBy) msg.readBy=[];
+    if (user&&!msg.readBy.some(r=>r.user===user)) msg.readBy.push({user,at:Date.now()});
   }
-
-  const msgEl = document.querySelector(`[data-msg-id="${id}"]`);
-  if (msgEl && msg.sender === currentUser) {
-    const footer = msgEl.querySelector('.message-footer');
-    if (footer) {
-      const tickSpan = footer.querySelector('.message-tick');
-      if (tickSpan) tickSpan.outerHTML = renderTicks(msg);
-    }
+  const el = document.querySelector(`[data-msg-id="${id}"]`);
+  if (el&&msg.sender===currentUser) {
+    const f = el.querySelector('.message-footer');
+    if (f) { const t=f.querySelector('.message-tick'); if(t) t.outerHTML=renderTicks(msg); }
   }
 }
 
 function markAsRead(msg) {
-  if (msg.sender !== currentUser) {
-    socket.emit('mark_read', { messageId: msg.id, user: currentUser });
-    document.title = `Chat de Facu y Rocío — ${currentUser}`;
+  if (msg.sender!==currentUser) {
+    socket.emit('mark_read',{messageId:msg.id,user:currentUser});
+    document.title = `Chat — ${currentUser}`;
   }
 }
 
-/* === SEND MESSAGE === */
-async function sendMessage(type, content, extra = {}) {
-  if (!currentUser || (!content && type === 'text')) return;
-
-  const msgId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-  const msg = {
-    id: msgId, sender: currentUser, type, content,
-    timestamp: Date.now(), replyTo: replyTo || null,
-    reactions: [], readBy: [], ...extra,
-  };
-
+/* ===== SEND ===== */
+function sendMessage(type,content,extra={}) {
+  if (!currentUser||(!content&&type==='text')) return;
+  const id = `msg_${Date.now()}_${Math.random().toString(36).substr(2,9)}`;
+  const msg = { id, sender:currentUser, type, content, timestamp:Date.now(), replyTo:replyTo||null, reactions:[], readBy:[], ...extra };
   messages.push(msg);
   renderMessages();
   scrollToBottom();
   resetInput();
 
-  socket.emit('send_message', {
-    id: msgId, sender: currentUser, type, content,
-    timestamp: msg.timestamp,
-    replyTo: replyTo ? { id: replyTo.id, sender: replyTo.sender, content: replyTo.content, type: replyTo.type } : null,
-    fileName: extra.fileName, fileSize: extra.fileSize,
-    mimeType: extra.mimeType, duration: extra.duration,
+  socket.emit('send_message',{
+    id, sender:currentUser, type, content, timestamp:msg.timestamp,
+    replyTo:replyTo?{id:replyTo.id,sender:replyTo.sender,content:replyTo.content,type:replyTo.type}:null,
+    fileName:extra.fileName, fileSize:extra.fileSize, mimeType:extra.mimeType, duration:extra.duration,
   });
 
-  replyTo = null;
-  replyPreview.classList.add('hidden');
+  replyTo=null; replyPreview.classList.add('hidden');
 }
 
 function resetInput() {
-  messageInput.value = '';
-  messageInput.style.height = 'auto';
-  sendBtn.classList.add('hidden');
-  micBtn.classList.remove('hidden');
+  messageInput.value=''; messageInput.style.height='auto'; sendBtn.classList.add('hidden'); micBtn.classList.remove('hidden');
 }
 
-/* === EVENT LISTENERS === */
-function setupEventListeners() {
-  document.querySelectorAll('.user-btn').forEach(btn => {
-    btn.addEventListener('click', () => selectUser(btn.dataset.user));
-  });
+/* ===== EVENTS ===== */
+function bindEvents() {
+  document.querySelectorAll('.user-btn').forEach(b=>b.addEventListener('click',()=>selectUser(b.dataset.user)));
 
-  messageInput.addEventListener('input', () => {
-    messageInput.style.height = 'auto';
-    messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
-
-    if (messageInput.value.trim()) {
-      sendBtn.classList.remove('hidden');
-      micBtn.classList.add('hidden');
-    } else {
-      sendBtn.classList.add('hidden');
-      micBtn.classList.remove('hidden');
-    }
-
-    if (socket && socket.connected) {
+  messageInput.addEventListener('input',()=>{
+    messageInput.style.height='auto'; messageInput.style.height=Math.min(messageInput.scrollHeight,120)+'px';
+    if (messageInput.value.trim()) { sendBtn.classList.remove('hidden'); micBtn.classList.add('hidden'); }
+    else { sendBtn.classList.add('hidden'); micBtn.classList.remove('hidden'); }
+    if (socket&&socket.connected) {
       clearTimeout(typingTimeout);
-      socket.emit('typing', { user: currentUser, typing: true });
-      typingTimeout = setTimeout(() => {
-        socket.emit('typing', { user: currentUser, typing: false });
-      }, 2000);
+      socket.emit('typing',{user:currentUser,typing:true});
+      typingTimeout=setTimeout(()=>socket.emit('typing',{user:currentUser,typing:false}),2000);
     }
   });
 
-  messageInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      const text = messageInput.value.trim();
-      if (text) sendMessage('text', text);
-    }
-  });
+  messageInput.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();const t=messageInput.value.trim();if(t)sendMessage('text',t);} });
+  sendBtn.addEventListener('click',()=>{const t=messageInput.value.trim();if(t)sendMessage('text',t);});
 
-  sendBtn.addEventListener('click', () => {
-    const text = messageInput.value.trim();
-    if (text) sendMessage('text', text);
-  });
+  emojiBtn.addEventListener('click',()=>{ closeAttach(); toggleEmoji(); });
+  emojiOverlay.addEventListener('click',closeEmoji);
+  emojiSearch.addEventListener('input',()=>buildEmoji());
 
-  emojiBtn.addEventListener('click', () => {
-    attachmentMenu.classList.add('hidden');
-    emojiPicker.classList.toggle('hidden');
-    if (!emojiPicker.classList.contains('hidden')) buildEmojiPicker();
-  });
+  clipBtn.addEventListener('click',()=>{ closeEmoji(); toggleAttach(); });
+  attachOverlay.addEventListener('click',closeAttach);
 
-  emojiClose.addEventListener('click', () => emojiPicker.classList.add('hidden'));
-
-  clipBtn.addEventListener('click', () => {
-    emojiPicker.classList.add('hidden');
-    attachmentMenu.classList.toggle('hidden');
-  });
-
-  document.querySelectorAll('.attach-option').forEach(opt => {
-    opt.addEventListener('click', () => {
-      attachmentMenu.classList.add('hidden');
-      const type = opt.dataset.type;
-      if (type === 'gallery') fileInput.click();
-      else if (type === 'document') documentInput.click();
-      else if (type === 'camera') cameraInput.click();
+  document.querySelectorAll('.attach-option').forEach(o=>{
+    o.addEventListener('click',()=>{
+      closeAttach();
+      const t=o.dataset.type;
+      if (t==='gallery') fileInput.click();
+      else if (t==='document') documentInput.click();
+      else if (t==='camera') cameraInput.click();
     });
   });
 
-  fileInput.addEventListener('change', handleFileSelect);
-  documentInput.addEventListener('change', handleDocumentSelect);
-  cameraInput.addEventListener('change', (e) => {
-    if (e.target.files?.[0]) handleFiles([e.target.files[0]], 'image');
+  fileInput.addEventListener('change',handleFileSelect);
+  documentInput.addEventListener('change',handleDocSelect);
+  cameraInput.addEventListener('change',e=>{if(e.target.files?.[0])handleFiles([e.target.files[0]],'image');});
+
+  previewClose.addEventListener('click',()=>imagePreview.classList.add('hidden'));
+  previewSend.addEventListener('click',sendPreview);
+  previewCaption.addEventListener('keydown',e=>{if(e.key==='Enter')sendPreview();});
+
+  lightboxClose.addEventListener('click',()=>lightbox.classList.add('hidden'));
+  lightbox.addEventListener('click',e=>{if(e.target===lightbox)lightbox.classList.add('hidden');});
+
+  replyClose.addEventListener('click',()=>{replyTo=null;replyPreview.classList.add('hidden');});
+
+  // Search
+  searchBtn.addEventListener('click',()=>{ searchBar.classList.toggle('hidden'); if(!searchBar.classList.contains('hidden'))searchInput.focus(); });
+  searchClose.addEventListener('click',()=>{ searchBar.classList.add('hidden'); searchInput.value=''; clearSearch(); });
+  searchInput.addEventListener('input',doSearch);
+  searchPrev.addEventListener('click',()=>navSearch(-1));
+  searchNext.addEventListener('click',()=>navSearch(1));
+
+  // Scroll
+  messagesContainer.addEventListener('scroll',handleScroll);
+  scrollBottomBtn.addEventListener('click',()=>{scrollToBottom();unreadBelow=0;updateScrollBtn();});
+
+  // Mic / Recording
+  micBtn.addEventListener('mousedown',startRec);
+  micBtn.addEventListener('touchstart',startRec,{passive:true});
+  recordingCancel.addEventListener('click',cancelRec);
+
+  // Header menu
+  menuBtn.addEventListener('click',e=>{e.stopPropagation();headerDropdown.classList.toggle('hidden');});
+  document.addEventListener('click',e=>{if(!headerDropdown.contains(e.target)&&e.target!==menuBtn)headerDropdown.classList.add('hidden');});
+  document.querySelectorAll('.header-dropdown-item').forEach(item=>{
+    item.addEventListener('click',()=>{
+      headerDropdown.classList.add('hidden');
+      const a=item.dataset.action;
+      if (a==='search')searchBtn.click();
+      else if (a==='settings')openSettings();
+      else if (a==='mute')alert('Notificaciones silenciadas (simulado)');
+      else if (a==='wallpaper')alert('Fondo de pantalla (próximamente)');
+      else if (a==='profile')alert(`Chat con ${headerName.textContent}`);
+    });
   });
 
-  previewClose.addEventListener('click', () => imagePreview.classList.add('hidden'));
-  previewSend.addEventListener('click', sendPreview);
-
-  lightboxClose.addEventListener('click', () => lightbox.classList.add('hidden'));
-  lightbox.addEventListener('click', (e) => {
-    if (e.target === lightbox) lightbox.classList.add('hidden');
+  // Settings
+  settingsBack.addEventListener('click',closeSettings);
+  settingsOverlay.addEventListener('click',closeSettings);
+  themeToggle.addEventListener('click',()=>{isDark=!isDark;localStorage.setItem('wa_dark',isDark);applyTheme();});
+  document.querySelectorAll('.font-size-opt').forEach(b=>{
+    b.addEventListener('click',()=>{
+      document.querySelectorAll('.font-size-opt').forEach(o=>o.classList.remove('active'));
+      b.classList.add('active');
+      fontSize=b.dataset.size;
+      localStorage.setItem('wa_font',fontSize);
+      applyFontSize();
+      renderMessages();
+    });
   });
+  $('settings-logout')?.addEventListener('click',()=>{localStorage.removeItem('wa_user');location.reload();});
+  $('open-wallpaper')?.addEventListener('click',()=>alert('Galería de wallpapers (próximamente)'));
 
-  replyClose.addEventListener('click', () => {
-    replyTo = null;
-    replyPreview.classList.add('hidden');
-  });
+  // Action bar
+  actionBarBack.addEventListener('click',clearSelect);
 
-  searchBtn.addEventListener('click', () => {
-    searchBar.classList.toggle('hidden');
-    if (!searchBar.classList.contains('hidden')) searchInput.focus();
-  });
+  // Long press + touch events on messages container
+  messagesList.addEventListener('touchstart',onTouchStart,{passive:true});
+  messagesList.addEventListener('touchmove',onTouchMove,{passive:true});
+  messagesList.addEventListener('touchend',onTouchEnd,{passive:true});
+  messagesList.addEventListener('mousedown',onMouseDown);
+  messagesList.addEventListener('mousemove',onMouseMove);
+  messagesList.addEventListener('mouseup',onMouseUp);
+  messagesList.addEventListener('mouseleave',onMouseUp);
 
-  searchClose.addEventListener('click', () => {
-    searchBar.classList.add('hidden');
-    searchInput.value = '';
-    clearSearchHighlights();
-  });
-
-  searchInput.addEventListener('input', performSearch);
-  searchPrev.addEventListener('click', () => navigateSearch(-1));
-  searchNext.addEventListener('click', () => navigateSearch(1));
-
-  messagesContainer.addEventListener('scroll', handleScroll);
-  scrollBottomBtn.addEventListener('click', () => { scrollToBottom(); unreadBelow = 0; updateScrollBtn(); });
-
-  document.addEventListener('click', (e) => {
-    if (!contextMenu.contains(e.target)) contextMenu.classList.add('hidden');
-  });
-  document.addEventListener('contextmenu', (e) => e.preventDefault());
-
-  micBtn.addEventListener('mousedown', startRecording);
-  micBtn.addEventListener('touchstart', startRecording, { passive: true });
-
-  menuBtn.addEventListener('click', () => {
-    if (confirm('¿Borrar todo el historial de mensajes?')) {
-      fetch('/api/clear', { method: 'POST' });
-    }
-  });
-}
-
-/* === FILE HANDLING === */
-function handleFileSelect(e) {
-  const files = e.target.files;
-  if (!files?.length) return;
-  handleFiles(Array.from(files));
-  e.target.value = '';
-}
-
-function handleDocumentSelect(e) {
-  const file = e.target.files?.[0];
-  if (!file) return;
-  e.target.value = '';
-  uploadAndSend(file, 'document');
-}
-
-function handleFiles(files, forceType) {
-  const file = files[0];
-  if (!file) return;
-
-  const isImage = forceType === 'image' || file.type.startsWith('image/');
-  const isVideo = forceType === 'video' || file.type.startsWith('video/');
-
-  if (isImage || isVideo) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      previewImg.src = e.target.result;
-      previewFilename.textContent = file.name;
-      previewImg.dataset.fileType = isVideo ? 'video' : 'image';
-      previewImg.dataset.fileName = file.name;
-      previewImg.dataset.fileSize = file.size;
-      previewImg.dataset.mimeType = file.type;
-      imagePreview.classList.remove('hidden');
-    };
-    reader.readAsDataURL(file);
-  } else {
-    uploadAndSend(file, 'document');
+  // Screen resize
+  window.addEventListener('resize',()=>{ if(isAtBottom)scrollToBottom(); });
+  if ('visualViewport' in window) {
+    window.visualViewport.addEventListener('resize',()=>{
+      if (isAtBottom) setTimeout(scrollToBottom,100);
+    });
   }
 }
 
-function sendPreview() {
-  const type = previewImg.dataset.fileType || 'image';
-  const content = previewImg.src;
-
-  sendMessage(type, content, {
-    fileName: previewImg.dataset.fileName,
-    fileSize: parseInt(previewImg.dataset.fileSize) || 0,
-    mimeType: previewImg.dataset.mimeType,
-  });
-
-  const caption = previewCaption.value.trim();
-  if (caption) setTimeout(() => sendMessage('text', caption), 100);
-
-  imagePreview.classList.add('hidden');
-  previewCaption.value = '';
+/* ===== EMOJI ===== */
+function toggleEmoji() {
+  emojiPicker.classList.toggle('hidden');
+  emojiOverlay.classList.toggle('hidden');
+  if (!emojiPicker.classList.contains('hidden')) buildEmoji();
+  else { messageInput.focus(); }
 }
 
-function uploadAndSend(file, type) {
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const content = e.target.result;
-    sendMessage(type, content, {
-      fileName: file.name, fileSize: file.size, mimeType: file.type,
-    });
-  };
-  reader.readAsDataURL(file);
-}
+function closeEmoji() { emojiPicker.classList.add('hidden'); emojiOverlay.classList.add('hidden'); }
 
-function downloadDoc(url, name) {
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = name;
-  a.click();
-}
-
-/* === EMOJI PICKER === */
-function buildEmojiPicker(category = null) {
-  const current = category || 'recent';
+function buildEmoji(cat) {
+  const cur = cat||'recent';
   emojiGrid.innerHTML = '';
-
   let emojis = [];
   if (emojiSearch.value.trim()) {
     const q = emojiSearch.value.toLowerCase();
-    emojis = Object.values(EMOJI_MAP).flat().filter(e => e.includes(q)).slice(0, 60);
-  } else if (current === 'recent') {
-    emojis = recentEmojis.length ? recentEmojis : ['😊','❤️','😂','😍','🥰','💕','👍','😘','🔥','✨','🥺','💖','🤣','🙏','👋','🎉','💪','😢','😎','🤔','😩','💀','👻','🎂'];
+    emojis = Object.values(EMOJI_MAP).flat().filter(e=>e.includes(q)).slice(0,60);
+  } else if (cur==='recent') {
+    emojis = recentEmojis.length?recentEmojis:['😊','❤️','😂','😍','🥰','💕','👍','😘','🔥','✨','🥺','💖','🤣','🙏'];
   } else {
-    emojis = EMOJI_MAP[current] || [];
+    emojis = EMOJI_MAP[cur]||[];
   }
-
-  emojis.forEach(emoji => {
-    const btn = document.createElement('button');
-    btn.textContent = emoji;
-    btn.onclick = () => selectEmoji(emoji);
-    btn.setAttribute('role', 'option');
+  emojis.forEach(e=>{
+    const btn=document.createElement('button');
+    btn.textContent=e;
+    btn.onclick=()=>selectEmoji(e);
     emojiGrid.appendChild(btn);
   });
-
   emojiTabs.innerHTML = '';
-  EMOJI_CATEGORIES.forEach(cat => {
-    const tab = document.createElement('button');
-    tab.className = `emoji-tab${cat.key === current ? ' active' : ''}`;
-    tab.textContent = cat.icon;
-    tab.title = cat.name;
-    tab.onclick = () => buildEmojiPicker(cat.key);
-    tab.setAttribute('role', 'tab');
-    emojiTabs.appendChild(tab);
+  EMOJI_CATEGORIES.forEach(c=>{
+    const t=document.createElement('button');
+    t.className=`emoji-tab${c.key===cur?' active':''}`;
+    t.textContent=c.icon; t.title=c.name;
+    t.onclick=()=>buildEmoji(c.key);
+    emojiTabs.appendChild(t);
   });
 }
-
-emojiSearch.addEventListener('input', () => buildEmojiPicker());
 
 function selectEmoji(emoji) {
-  recentEmojis = [emoji, ...recentEmojis.filter(e => e !== emoji)].slice(0, 24);
-  localStorage.setItem('wa_recent_emojis', JSON.stringify(recentEmojis));
-
-  const msgId = contextMenu.dataset.msgId;
-  if (msgId && !contextMenu.classList.contains('hidden')) {
-    toggleReaction(msgId, emoji);
-    contextMenu.classList.add('hidden');
-  } else {
-    const start = messageInput.selectionStart;
-    const end = messageInput.selectionEnd;
-    const text = messageInput.value;
-    messageInput.value = text.substring(0, start) + emoji + text.substring(end);
-    messageInput.selectionStart = messageInput.selectionEnd = start + emoji.length;
-    messageInput.dispatchEvent(new Event('input'));
+  recentEmojis = [emoji,...recentEmojis.filter(e=>e!==emoji)].slice(0,24);
+  localStorage.setItem('wa_recent',JSON.stringify(recentEmojis));
+  if (!inlineReactions.classList.contains('hidden')&&inlineReactions.dataset.msgId) {
+    toggleReaction(inlineReactions.dataset.msgId,emoji);
+    hideInlineReactions();
+    return;
   }
-  emojiPicker.classList.add('hidden');
+  const start=messageInput.selectionStart,end=messageInput.selectionEnd;
+  messageInput.value = messageInput.value.substring(0,start)+emoji+messageInput.value.substring(end);
+  messageInput.selectionStart=messageInput.selectionEnd=start+emoji.length;
+  messageInput.dispatchEvent(new Event('input'));
 }
 
-/* === REACTIONS === */
-function toggleReaction(msgId, emoji) {
-  const msg = messages.find(m => m.id === msgId);
-  if (!msg) return;
+/* ===== ATTACHMENT ===== */
+function toggleAttach() { attachSheet.classList.toggle('hidden'); attachOverlay.classList.toggle('hidden'); }
+function closeAttach() { attachSheet.classList.add('hidden'); attachOverlay.classList.add('hidden'); }
 
-  const existing = msg.reactions?.find(r => r.emoji === emoji && r.user === currentUser);
-  if (existing) {
-    socket.emit('remove_reaction', { messageId: msgId, emoji, user: currentUser });
-  } else {
-    socket.emit('add_reaction', { messageId: msgId, emoji, user: currentUser });
-  }
+/* ===== FILES ===== */
+function handleFileSelect(e) { if(e.target.files?.length) handleFiles(Array.from(e.target.files)); e.target.value=''; }
+function handleDocSelect(e) { const f=e.target.files?.[0]; if(f){e.target.value='';uploadAndSend(f,'document');} }
+
+function handleFiles(files,force) {
+  const f=files[0]; if(!f) return;
+  const isImg=force==='image'||f.type.startsWith('image/');
+  const isVid=force==='video'||f.type.startsWith('video/');
+  if (isImg||isVid) {
+    const r=new FileReader();
+    r.onload=e=>{
+      previewImg.src=e.target.result;
+      previewFilename.textContent=f.name;
+      previewImg.dataset.fileType=isVid?'video':'image';
+      previewImg.dataset.fileName=f.name;
+      previewImg.dataset.fileSize=f.size;
+      previewImg.dataset.mimeType=f.type;
+      imagePreview.classList.remove('hidden');
+    };
+    r.readAsDataURL(f);
+  } else { uploadAndSend(f,'document'); }
 }
 
-function showQuickReactions(e, msgId) {
-  e.preventDefault();
-  e.stopPropagation();
-
-  contextMenu.innerHTML = '';
-  contextMenu.style.left = '-9999px';
-  contextMenu.style.top = '-9999px';
-  contextMenu.classList.remove('hidden');
-  contextMenu.dataset.msgId = msgId;
-
-  const title = document.createElement('div');
-  title.className = 'context-menu-item';
-  title.style.cssText = 'font-size:12px;color:#8696a0;justify-content:center;padding:8px 16px;cursor:default;text-transform:uppercase;letter-spacing:0.5px;';
-  title.textContent = 'Reaccionar';
-  contextMenu.appendChild(title);
-
-  const reactionsDiv = document.createElement('div');
-  reactionsDiv.style.cssText = 'display:flex;gap:4px;padding:6px 14px 12px;justify-content:center;';
-  QUICK_REACTIONS.forEach(emoji => {
-    const btn = document.createElement('button');
-    btn.textContent = emoji;
-    btn.style.cssText = 'font-size:28px;cursor:pointer;background:none;border:none;padding:4px;border-radius:50%;transition:all 0.15s;line-height:1;';
-    btn.onmouseenter = () => { btn.style.transform = 'scale(1.2)'; };
-    btn.onmouseleave = () => { btn.style.transform = ''; };
-    btn.onclick = (ev) => { ev.stopPropagation(); toggleReaction(msgId, emoji); contextMenu.classList.add('hidden'); };
-    reactionsDiv.appendChild(btn);
+function sendPreview() {
+  const type=previewImg.dataset.fileType||'image';
+  sendMessage(type,previewImg.src,{
+    fileName:previewImg.dataset.fileName, fileSize:parseInt(previewImg.dataset.fileSize)||0, mimeType:previewImg.dataset.mimeType,
   });
-  contextMenu.appendChild(reactionsDiv);
-
-  const divider = document.createElement('div');
-  divider.className = 'context-menu-divider';
-  contextMenu.appendChild(divider);
-
-  const pickerBtn = document.createElement('button');
-  pickerBtn.className = 'context-menu-item';
-  pickerBtn.innerHTML = `<span style="font-size:18px">➕</span> Más emojis...`;
-  pickerBtn.onclick = () => { contextMenu.classList.add('hidden'); emojiPicker.classList.remove('hidden'); buildEmojiPicker(); };
-  contextMenu.appendChild(pickerBtn);
-
-  const x = Math.min(e.clientX || e.touches?.[0]?.clientX || 0, window.innerWidth - 220);
-  const y = Math.min(e.clientY || e.touches?.[0]?.clientY || 0, window.innerHeight - 200);
-  contextMenu.style.left = Math.max(10, x) + 'px';
-  contextMenu.style.top = Math.max(10, y) + 'px';
+  const cap=previewCaption.value.trim();
+  if (cap) setTimeout(()=>sendMessage('text',cap),100);
+  imagePreview.classList.add('hidden'); previewCaption.value='';
 }
 
-/* === CONTEXT MENU === */
-function showContextMenu(e, msgId) {
-  e.preventDefault();
-  e.stopPropagation();
+function uploadAndSend(file,type) {
+  const r=new FileReader();
+  r.onload=e=>sendMessage(type,e.target.result,{fileName:file.name,fileSize:file.size,mimeType:file.type});
+  r.readAsDataURL(file);
+}
 
-  const msg = messages.find(m => m.id === msgId);
-  if (!msg) return;
+/* ===== LIGHTBOX ===== */
+function openLightbox(src) { lightboxImg.src=src; lightbox.classList.remove('hidden'); }
 
-  contextMenu.innerHTML = '';
-  contextMenu.style.left = '-9999px';
-  contextMenu.style.top = '-9999px';
-  contextMenu.classList.remove('hidden');
-
-  const isOwn = msg.sender === currentUser;
-  const timeSinceSent = Date.now() - msg.timestamp;
-  const canDeleteForAll = isOwn && timeSinceSent < 3600000;
-
-  const replyItem = document.createElement('button');
-  replyItem.className = 'context-menu-item';
-  replyItem.innerHTML = '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z"/></svg>Responder';
-  replyItem.onclick = () => { setReplyTo(msg); contextMenu.classList.add('hidden'); };
-  contextMenu.appendChild(replyItem);
-
-  const reactItem = document.createElement('button');
-  reactItem.className = 'context-menu-item';
-  reactItem.innerHTML = '<span style="font-size:18px;width:20px;text-align:center">😊</span> Reaccionar';
-  reactItem.onclick = (ev) => { showQuickReactions(ev, msgId); };
-  contextMenu.appendChild(reactItem);
-
-  const copyItem = document.createElement('button');
-  copyItem.className = 'context-menu-item';
-  copyItem.innerHTML = '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>Copiar';
-  copyItem.onclick = () => { navigator.clipboard?.writeText(msg.content).catch(() => {}); contextMenu.classList.add('hidden'); };
-  contextMenu.appendChild(copyItem);
-
-  const divider = document.createElement('div');
-  divider.className = 'context-menu-divider';
-  contextMenu.appendChild(divider);
-
-  if (isOwn) {
-    const delMe = document.createElement('button');
-    delMe.className = 'context-menu-item danger';
-    delMe.innerHTML = '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>Eliminar para mí';
-    delMe.onclick = () => { socket.emit('delete_message', { messageId: msgId, forEveryone: false }); contextMenu.classList.add('hidden'); };
-    contextMenu.appendChild(delMe);
-
-    if (canDeleteForAll) {
-      const delAll = document.createElement('button');
-      delAll.className = 'context-menu-item danger';
-      delAll.innerHTML = '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>Eliminar para todos';
-      delAll.onclick = () => { socket.emit('delete_message', { messageId: msgId, forEveryone: true }); contextMenu.classList.add('hidden'); };
-      contextMenu.appendChild(delAll);
+/* ===== SEARCH ===== */
+function doSearch() {
+  const q=searchInput.value.trim().toLowerCase(); clearSearch();
+  if (!q) { searchCount.textContent=''; return; }
+  searchResults = [];
+  document.querySelectorAll('.message-wrapper').forEach(el=>{
+    if (el.textContent.toLowerCase().includes(q)) {
+      searchResults.push(el);
+      el.querySelectorAll('.message-text').forEach(t=>{
+        const safe=q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+        t.innerHTML = t.textContent.replace(new RegExp(`(${safe})`,'gi'),'<mark style="background:#fff3a8;padding:0 2px;border-radius:2px;color:#111">$1</mark>');
+      });
     }
-  } else {
-    const delMe = document.createElement('button');
-    delMe.className = 'context-menu-item danger';
-    delMe.innerHTML = '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>Eliminar para mí';
-    delMe.onclick = () => { socket.emit('delete_message', { messageId: msgId, forEveryone: false }); contextMenu.classList.add('hidden'); };
-    contextMenu.appendChild(delMe);
-  }
-
-  const rect = e.target.closest('.message-wrapper')?.getBoundingClientRect();
-  let cx = e.clientX || (rect ? rect.right : 0);
-  let cy = e.clientY || (rect ? rect.top : 0);
-
-  if (e.touches) {
-    cx = e.touches[0].clientX;
-    cy = e.touches[0].clientY;
-  }
-
-  const menuW = 220;
-  const menuH = isOwn && canDeleteForAll ? 280 : 220;
-  let left = Math.min(cx, window.innerWidth - menuW - 10);
-  let top = Math.min(cy, window.innerHeight - menuH - 10);
-  contextMenu.style.left = Math.max(10, left) + 'px';
-  contextMenu.style.top = Math.max(10, top) + 'px';
+  });
+  searchIndex=-1;
+  searchCount.textContent = searchResults.length?`0 / ${searchResults.length}`:'Sin resultados';
+  navSearch(1);
 }
 
-/* === REPLY === */
+function navSearch(dir) {
+  if (!searchResults.length) return;
+  if (searchResults[searchIndex]) searchResults[searchIndex].style.background='';
+  searchIndex = (searchIndex+dir+searchResults.length)%searchResults.length;
+  const el=searchResults[searchIndex];
+  el.scrollIntoView({behavior:'smooth',block:'center'});
+  el.style.transition='background 0.5s'; el.style.background='#d9fdd3';
+  setTimeout(()=>{el.style.background='';},2000);
+  searchCount.textContent=`${searchIndex+1} / ${searchResults.length}`;
+}
+
+function clearSearch() {
+  document.querySelectorAll('.message-wrapper mark').forEach(m=>{const p=m.closest('.message-text');if(p)p.innerHTML=p.textContent;});
+  searchResults=[];
+}
+
+/* ===== SCROLL ===== */
+function handleScroll() {
+  const {scrollTop,scrollHeight,clientHeight}=messagesContainer;
+  isAtBottom = scrollHeight-scrollTop-clientHeight<50;
+  updateScrollBtn();
+  if (scrollTop<100&&!isLoadingMore&&hasMoreMessages) loadMessages(false);
+  if (isAtBottom) { unreadBelow=0; updateScrollBtn(); }
+}
+
+function scrollToBottom() { messagesContainer.scrollTo({top:messagesContainer.scrollHeight,behavior:'smooth'}); }
+
+function updateScrollBtn() {
+  if (isAtBottom) { scrollBottomBtn.classList.add('hidden'); return; }
+  scrollBottomBtn.classList.remove('hidden');
+  if (unreadBelow>0) { scrollBadge.textContent=unreadBelow; scrollBadge.classList.remove('hidden'); }
+  else { scrollBadge.classList.add('hidden'); }
+}
+
+/* ===== RECORDING ===== */
+function startRec(e) {
+  if (messageInput.value.trim()) return;
+  const touch = e.touches?.[0];
+  if (!touch&&e.type==='touchstart') return;
+  e.preventDefault();
+  if (isRecording) return;
+
+  navigator.vibrate?.(50);
+
+  (async()=>{
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+      isRecording = true;
+      const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?'audio/webm;codecs=opus':'audio/webm';
+
+      recordingMediaRecorder = new MediaRecorder(stream,{mimeType:mime});
+      recordingChunks = [];
+
+      // Analyser for waveform
+      const ctx = new (window.AudioContext||window.webkitAudioContext)();
+      const src = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 64;
+      src.connect(analyser);
+      recordingAnalyser = analyser;
+      recordingDataArray = new Uint8Array(analyser.frequencyBinCount);
+
+      // Waveform bars
+      recordingWaveform.innerHTML = '';
+      for (let i=0;i<20;i++) {
+        const bar=document.createElement('div');
+        bar.className='recording-wave-bar';
+        recordingWaveform.appendChild(bar);
+      }
+
+      recordingMediaRecorder.ondataavailable = e=>{if(e.data.size>0)recordingChunks.push(e.data);};
+
+      recordingMediaRecorder.onstop = ()=>{
+        if (recordingChunks.length>0) {
+          const blob = new Blob(recordingChunks,{type:'audio/webm'});
+          const r=new FileReader();
+          r.onload=()=>sendMessage('audio',r.result,{duration:recordingSeconds,mimeType:'audio/webm'});
+          r.readAsDataURL(blob);
+        }
+        stream.getTracks().forEach(t=>t.stop());
+        ctx.close();
+        recordingOverlay.classList.add('hidden');
+        isRecording=false;
+        if (recordingAnimFrame) cancelAnimationFrame(recordingAnimFrame);
+      };
+
+      recordingMediaRecorder.start();
+      recordingSeconds = 0;
+      recordingTimerEl.textContent = '0:00';
+      recordingOverlay.classList.remove('hidden');
+
+      recordingTimer = setInterval(()=>{recordingSeconds++;recordingTimerEl.textContent=fmtDur(recordingSeconds);},1000);
+
+      // Waveform animation
+      function drawWave() {
+        if (!recordingAnalyser) return;
+        recordingAnalyser.getByteTimeDomainData(recordingDataArray);
+        const bars = recordingWaveform.querySelectorAll('.recording-wave-bar');
+        bars.forEach((bar,i)=>{
+          const v = (recordingDataArray[i]||128)/128;
+          bar.style.height = Math.max(3, v*20)+'px';
+        });
+        recordingAnimFrame = requestAnimationFrame(drawWave);
+      }
+      drawWave();
+
+      // Swipe to cancel
+      let startX = touch?.clientX||e.clientX;
+      const onMove = (ev)=>{
+        const x = ev.touches?.[0]?.clientX||ev.clientX;
+        const dx = startX - x;
+        if (dx>100) cancelRec();
+      };
+      const onEnd = ()=>{
+        document.removeEventListener('touchmove',onMove);
+        document.removeEventListener('touchend',onEnd);
+        document.removeEventListener('mousemove',onMove);
+        document.removeEventListener('mouseup',onEnd);
+        if (isRecording&&recordingMediaRecorder?.state==='recording') recordingMediaRecorder.stop();
+      };
+      document.addEventListener('touchmove',onMove,{passive:true});
+      document.addEventListener('touchend',onEnd,{passive:true});
+      document.addEventListener('mousemove',onMove);
+      document.addEventListener('mouseup',onEnd);
+
+    } catch(err) {
+      console.error(err);
+      recordingOverlay.classList.add('hidden');
+      isRecording=false;
+    }
+  })();
+}
+
+function cancelRec() {
+  if (recordingMediaRecorder?.state==='recording') {
+    recordingMediaRecorder.ondataavailable = null;
+    recordingMediaRecorder.stop();
+  }
+  clearInterval(recordingTimer);
+  recordingOverlay.classList.add('hidden');
+  isRecording=false;
+  if (recordingAnimFrame) cancelAnimationFrame(recordingAnimFrame);
+}
+
+/* ===== LONG PRESS / TOUCH HANDLING ===== */
+let touchTarget = null;
+let touchStartTime = 0;
+let touchMoved = false;
+let touchStartX2 = 0;
+let touchStartY2 = 0;
+
+function onTouchStart(e) {
+  const msgEl = e.target.closest('.message-wrapper');
+  if (!msgEl) return;
+  touchTarget = msgEl;
+  touchStartTime = Date.now();
+  touchMoved = false;
+  touchStartX2 = e.touches[0].clientX;
+  touchStartY2 = e.touches[0].clientY;
+  longPressTriggered = false;
+
+  // Swipe to reply
+  swipeStartX = touchStartX2;
+
+  longPressTimer = setTimeout(()=>{
+    if (!touchMoved&&touchTarget&&!isSelectMode) {
+      longPressTriggered = true;
+      navigator.vibrate?.(30);
+      showInlineReactions(touchTarget);
+    }
+  },500);
+}
+
+function onTouchMove(e) {
+  if (!touchTarget) return;
+  const touch = e.touches[0];
+  const dx = Math.abs(touch.clientX - touchStartX2);
+  const dy = Math.abs(touch.clientY - touchStartY2);
+  if (dx>10||dy>10) touchMoved = true;
+
+  if (longPressTimer&&touchMoved) { clearTimeout(longPressTimer); longPressTimer=null; }
+
+  // Swipe to reply
+  if (!longPressTriggered&&!isSelectMode) {
+    const sx = touch.clientX - swipeStartX;
+    if (sx>60&&!touchMoved) {
+      const msgId = touchTarget.dataset.msgId;
+      if (msgId) {
+        const msg = messages.find(m=>m.id===msgId);
+        if (msg) { setReplyTo(msg); touchMoved=true; }
+      }
+    }
+  }
+}
+
+function onTouchEnd(e) {
+  if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer=null; }
+  if (!touchMoved&&!longPressTriggered&&touchTarget&&Date.now()-touchStartTime<300) {
+    // Tap — if select mode, toggle select
+    if (isSelectMode) {
+      const id = touchTarget.dataset.msgId;
+      if (id) toggleSelect(id);
+    }
+  }
+  touchTarget = null;
+}
+
+function onMouseDown(e) {
+  const msgEl = e.target.closest('.message-wrapper');
+  if (!msgEl||e.button!==0) return;
+  touchTarget = msgEl;
+  touchStartTime = Date.now();
+  touchMoved = false;
+  longPressTriggered = false;
+
+  longPressTimer = setTimeout(()=>{
+    if (!touchMoved&&touchTarget&&!isSelectMode) {
+      longPressTriggered = true;
+      navigator.vibrate?.(30);
+      showInlineReactions(touchTarget);
+    }
+  },500);
+}
+
+function onMouseMove(e) {
+  if (touchTarget) {
+    const dx = Math.abs(e.clientX - touchStartX2||0);
+    if (dx>10) touchMoved=true;
+    if (longPressTimer&&touchMoved) { clearTimeout(longPressTimer); longPressTimer=null; }
+  }
+}
+
+function onMouseUp(e) {
+  if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer=null; }
+  if (!touchMoved&&!longPressTriggered&&touchTarget&&Date.now()-touchStartTime<300) {
+    if (isSelectMode) {
+      const id = touchTarget.dataset.msgId;
+      if (id) toggleSelect(id);
+    }
+  }
+  touchTarget = null;
+}
+
+/* ===== INLINE REACTIONS ===== */
+function showInlineReactions(msgEl) {
+  const id = msgEl.dataset.msgId;
+  if (!id) return;
+  const rect = msgEl.getBoundingClientRect();
+  inlineReactions.innerHTML = '';
+  inlineReactions.dataset.msgId = id;
+  QUICK_REACTIONS.forEach(e=>{
+    const btn=document.createElement('button');
+    btn.textContent=e;
+    btn.onclick=(ev)=>{ev.stopPropagation();toggleReaction(id,e);hideInlineReactions();};
+    inlineReactions.appendChild(btn);
+  });
+  const more=document.createElement('button');
+  more.className='more-reactions'; more.textContent='+';
+  more.onclick=()=>{hideInlineReactions();closeEmoji();emojiPicker.classList.remove('hidden');emojiOverlay.classList.remove('hidden');buildEmoji();};
+  inlineReactions.appendChild(more);
+
+  inlineReactions.classList.remove('hidden');
+  const isOwn = msgEl.classList.contains('own');
+  const menuW = 260;
+  let left = isOwn ? rect.right - menuW - 8 : rect.left + 8;
+  if (left<8) left=8;
+  if (left+menuW>window.innerWidth-8) left=window.innerWidth-menuW-8;
+  inlineReactions.style.left = left+'px';
+  inlineReactions.style.top = (rect.top-50)+'px';
+
+  // Auto-hide
+  setTimeout(()=>{
+    document.addEventListener('click',hideInlineReactions,{once:true});
+  },0);
+}
+
+function hideInlineReactions() {
+  inlineReactions.classList.add('hidden');
+  inlineReactions.dataset.msgId = '';
+}
+
+/* ===== SELECT MODE ===== */
+function toggleSelect(id) {
+  if (selectedMessages.has(id)) selectedMessages.delete(id);
+  else selectedMessages.add(id);
+  actionBarCount.textContent = selectedMessages.size+' seleccionados';
+  renderMessages();
+  if (selectedMessages.size===0) clearSelect();
+}
+
+function clearSelect() {
+  selectedMessages.clear();
+  isSelectMode = false;
+  actionBar.classList.add('hidden');
+  renderMessages();
+}
+
+function enterSelectMode(msgId) {
+  isSelectMode = true;
+  selectedMessages.add(msgId);
+  actionBar.classList.remove('hidden');
+  actionBarCount.textContent = '1 seleccionado';
+  renderMessages();
+}
+
+/* ===== REPLY ===== */
 function setReplyTo(msg) {
-  replyTo = { id: msg.id, sender: msg.sender, content: msg.content, type: msg.type };
-  replyPreviewSender.textContent = msg.sender === currentUser ? 'Tú' : msg.sender;
-  const typeLabel = {
-    text: msg.content,
-    image: '📷 Foto', video: '🎬 Video', audio: '🎵 Audio',
-    sticker: '🎨 Sticker', 'sticker-emoji': '🎨 Sticker',
-    document: '📄 Documento',
-  };
-  replyPreviewText.textContent = typeLabel[msg.type] || '📄 Documento';
+  replyTo = { id:msg.id, sender:msg.sender, content:msg.content, type:msg.type };
+  replyPreviewSender.textContent = msg.sender===currentUser?'Tú':msg.sender;
+  const labels = {text:msg.content, image:'📷 Foto', video:'🎬 Video', audio:'🎵 Audio', sticker:'🎨 Sticker', document:'📄 Documento'};
+  replyPreviewText.textContent = labels[msg.type]||msg.content;
   replyPreview.classList.remove('hidden');
   messageInput.focus();
 }
 
-function scrollToMessage(id) {
-  const el = document.querySelector(`[data-msg-id="${id}"]`);
-  if (el) {
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    el.style.transition = 'background 0.5s';
-    el.style.background = '#d9fdd3';
-    setTimeout(() => { el.style.background = ''; }, 1500);
-  }
+function scrollToMsg(id) {
+  const el=document.querySelector(`[data-msg-id="${id}"]`);
+  if(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.style.transition='background 0.5s';el.style.background='#d9fdd3';setTimeout(()=>{el.style.background='';},1500);}
 }
 
-/* === LIGHTBOX === */
-function openLightbox(src) {
-  lightboxImg.src = src;
-  lightbox.classList.remove('hidden');
+/* ===== SETTINGS ===== */
+function openSettings() {
+  settingsPanel.classList.add('open');
+  settingsOverlay.classList.remove('hidden');
+  document.querySelectorAll('.font-size-opt').forEach(b=>b.classList.toggle('active',b.dataset.size===fontSize));
 }
 
-/* === SEARCH === */
-function performSearch() {
-  const query = searchInput.value.trim().toLowerCase();
-  clearSearchHighlights();
-
-  if (!query) {
-    searchCount.textContent = '';
-    return;
-  }
-
-  searchResults = [];
-  document.querySelectorAll('.message-wrapper').forEach(el => {
-    const text = el.textContent.toLowerCase();
-    if (text.includes(query)) {
-      searchResults.push(el);
-      el.querySelectorAll('.message-text').forEach(t => {
-        const safe = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        t.innerHTML = t.textContent.replace(new RegExp(`(${safe})`, 'gi'),
-          '<mark style="background:#fff3a8;padding:0 2px;border-radius:2px">$1</mark>');
-      });
-    }
-  });
-
-  searchIndex = -1;
-  searchCount.textContent = searchResults.length ? `0 / ${searchResults.length}` : 'Sin resultados';
-  navigateSearch(1);
+function closeSettings() {
+  settingsPanel.classList.remove('open');
+  settingsOverlay.classList.add('hidden');
 }
 
-function navigateSearch(dir) {
-  if (!searchResults.length) return;
+/* ===== NOTIFICATIONS ===== */
+if ('Notification' in window&&Notification.permission==='default') Notification.requestPermission();
 
-  if (searchResults[searchIndex]) searchResults[searchIndex].style.background = '';
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)document.title=`Chat — ${currentUser}`;});
 
-  searchIndex = (searchIndex + dir + searchResults.length) % searchResults.length;
-  const el = searchResults[searchIndex];
-  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  el.style.transition = 'background 0.5s';
-  el.style.background = '#d9fdd3';
-  setTimeout(() => { el.style.background = ''; }, 2000);
-
-  searchCount.textContent = `${searchIndex + 1} / ${searchResults.length}`;
+/* ===== SERVICE WORKER ===== */
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(()=>{});
 }
-
-function clearSearchHighlights() {
-  document.querySelectorAll('.message-wrapper mark').forEach(m => {
-    const parent = m.closest('.message-text');
-    if (parent) parent.innerHTML = parent.textContent;
-  });
-  searchResults = [];
-}
-
-/* === SCROLL === */
-function handleScroll() {
-  const { scrollTop, scrollHeight, clientHeight } = messagesContainer;
-  isAtBottom = scrollHeight - scrollTop - clientHeight < 50;
-  updateScrollBtn();
-
-  if (scrollTop < 100 && !isLoadingMore && hasMoreMessages) {
-    loadMessages(false);
-  }
-
-  if (isAtBottom) {
-    unreadBelow = 0;
-    updateScrollBtn();
-  }
-}
-
-function scrollToBottom() {
-  messagesContainer.scrollTo({ top: messagesContainer.scrollHeight, behavior: 'smooth' });
-}
-
-function updateScrollBtn() {
-  if (isAtBottom) {
-    scrollBottomBtn.classList.add('hidden');
-  } else {
-    scrollBottomBtn.classList.remove('hidden');
-    if (unreadBelow > 0) {
-      scrollBottomBtn.innerHTML = `
-        <svg viewBox="0 0 24 24" width="16" height="16" style="position:relative"><path fill="currentColor" d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6-1.41-1.41z"/></svg>
-        <span style="position:absolute;top:-4px;right:-2px;background:#00a884;color:white;border-radius:50%;width:20px;height:20px;font-size:10px;font-weight:600;display:flex;align-items:center;justify-content:center">${unreadBelow}</span>`;
-    } else {
-      scrollBottomBtn.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6-1.41-1.41z"/></svg>';
-    }
-  }
-}
-
-/* === RECORDING === */
-async function startRecording(e) {
-  e.preventDefault();
-  if (messageInput.value.trim() || isRecording) return;
-  if (e.touches && e.touches.length > 1) return;
-
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    isRecording = true;
-    recordingMediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
-    recordingChunks = [];
-
-    recordingMediaRecorder.ondataavailable = (e) => {
-      if (e.data.size > 0) recordingChunks.push(e.data);
-    };
-
-    recordingMediaRecorder.onstop = () => {
-      if (recordingChunks.length > 0) {
-        const blob = new Blob(recordingChunks, { type: 'audio/webm' });
-        const reader = new FileReader();
-        reader.onload = () => {
-          sendMessage('audio', reader.result, { duration: recordingSeconds, mimeType: 'audio/webm' });
-        };
-        reader.readAsDataURL(blob);
-      }
-      stream.getTracks().forEach(t => t.stop());
-      recordingOverlay.classList.add('hidden');
-      isRecording = false;
-    };
-
-    recordingMediaRecorder.start();
-    recordingSeconds = 0;
-    recordingTimerEl.textContent = '0:00';
-    recordingOverlay.classList.remove('hidden');
-
-    recordingTimer = setInterval(() => {
-      recordingSeconds++;
-      recordingTimerEl.textContent = formatDuration(recordingSeconds);
-    }, 1000);
-
-    const stopRec = (ev) => {
-      ev.preventDefault();
-      if (recordingMediaRecorder?.state === 'recording') {
-        recordingMediaRecorder.stop();
-      }
-      clearInterval(recordingTimer);
-      document.removeEventListener('mouseup', stopRec);
-      document.removeEventListener('touchend', stopRec);
-    };
-
-    const cancelOnMove = (ev) => {
-      if (ev.touches) {
-        const touch = ev.touches[0];
-        if (touch.clientX < window.innerWidth / 3) {
-          if (recordingMediaRecorder?.state === 'recording') {
-            recordingMediaRecorder.ondataavailable = null;
-            recordingMediaRecorder.stop();
-            stream.getTracks().forEach(t => t.stop());
-            clearInterval(recordingTimer);
-            recordingOverlay.classList.add('hidden');
-            isRecording = false;
-          }
-          document.removeEventListener('touchmove', cancelOnMove);
-        }
-      }
-    };
-
-    document.addEventListener('mouseup', stopRec);
-    document.addEventListener('touchend', stopRec);
-    document.addEventListener('touchmove', cancelOnMove, { passive: true });
-
-  } catch (err) {
-    console.error('Recording error:', err);
-    recordingOverlay.classList.add('hidden');
-    isRecording = false;
-  }
-}
-
-/* === NOTIFICATIONS === */
-if ('Notification' in window && Notification.permission === 'default') {
-  Notification.requestPermission();
-}
-
-document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) document.title = `Chat de Facu y Rocío — ${currentUser}`;
-});
