@@ -1829,17 +1829,17 @@ textarea:focus-visible {
 }
 
 /* ===== STARRED ===== */
-.message.starred .msg-bubble { border-left: 3px solid var(--gold); }
+.msg-row.starred .bubble { border-left: 3px solid var(--gold); }
 
 /* ===== HIGHLIGHT ===== */
-.message.highlight { animation: highlightPulse 1.5s ease; }
+.msg-row.highlight { animation: highlightPulse 1.5s ease; }
 @keyframes highlightPulse {
   0%, 100% { background: transparent; }
   50% { background: rgba(201, 168, 76, 0.15); }
 }
 
 /* ===== SELECTED ===== */
-.message.selected { opacity: 0.7; }
+.msg-row.selected { opacity: 0.7; }
 
 /* ===== BADGE ===== */
 .badge-count { pointer-events: none; }
@@ -1858,12 +1858,12 @@ textarea:focus-visible {
   border-bottom: 1px solid rgba(255,255,255,0.1);
 }
 .reply-bar { width: 3px; border-radius: 2px; flex-shrink: 0; }
-.bubble-out .reply-bar { background: var(--gold); }
-.bubble-in .reply-bar { background: var(--brand); }
+.msg-row.out .reply-bar { background: var(--gold); }
+.msg-row.in .reply-bar { background: var(--brand); }
 .reply-info { overflow: hidden; }
 .reply-name { font-size: 12px; font-weight: 600; display: block; }
-.bubble-out .reply-name { color: var(--gold); }
-.bubble-in .reply-name { color: var(--brand); }
+.msg-row.out .reply-name { color: var(--gold); }
+.msg-row.in .reply-name { color: var(--brand); }
 .reply-snippet { font-size: 12px; color: var(--txt-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
 
 /* ===== AUDIO SPEED ===== */
@@ -1885,5 +1885,5 @@ textarea:focus-visible {
 .ami-icon { width: 24px; text-align: center; display: inline-block; }
 
 /* ===== MESSAGE ERROR ===== */
-.message.msg-error .msg-bubble { border: 1px solid #ef5350; }
+.msg-row.msg-error .bubble { border: 1px solid #ef5350; }
 
