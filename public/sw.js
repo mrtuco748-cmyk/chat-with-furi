@@ -1,7 +1,6 @@
-const CACHE = 'chat-v1';
+const CACHE = 'chat-v2';
 const ASSETS = [
-  '/', '/index.html', '/style.css', '/app.js',
-  '/icons/icon-192.svg', '/icons/icon-512.svg',
+  '/', '/index.html', '/style.css', '/app.js?v=2',
   '/manifest.json'
 ];
 
@@ -12,7 +11,11 @@ self.addEventListener('install', e => {
 });
 
 self.addEventListener('activate', e => {
-  e.waitUntil(clients.claim());
+  e.waitUntil(
+    caches.keys().then(keys => Promise.all(
+      keys.filter(k => k !== CACHE).map(k => caches.delete(k))
+    )).then(() => clients.claim())
+  );
 });
 
 self.addEventListener('fetch', e => {

@@ -1,158 +1,137 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const initSqlJs = require('sql.js');
+const mongoose = require('mongoose');
 const path = require('path');
 const multer = require('multer');
-const { v4: uuidv4 } = require('uuid');
-const fs = require('fs');
+
+const MONGO_URI = process.env.MONGODB_URI || process.env.MONGO_URL || 'mongodb://localhost:27017/chat';
+const PORT = process.env.PORT || 3000;
+
+const messageSchema = new mongoose.Schema({
+  sender: { type: String, required: true },
+  type: { type: String, default: 'text' },
+  content: { type: String, default: '' },
+  timestamp: { type: Number, default: () => Date.now() },
+  fileName: String, fileSize: Number, mimeType: String, duration: Number,
+  fileData: Buffer,
+  replyTo: mongoose.Schema.Types.Mixed,
+  deleted: { type: Boolean, default: false },
+  deletedFor: [String],
+  starred: { type: Boolean, default: false },
+  edited: { type: Boolean, default: false }
+}, { collection: 'messages' });
+messageSchema.index({ timestamp: -1 });
+
+const reactionSchema = new mongoose.Schema({
+  messageId: { type: String, required: true },
+  emoji: { type: String, required: true },
+  user: { type: String, required: true }
+}, { collection: 'reactions' });
+reactionSchema.index({ messageId: 1, user: 1, emoji: 1 }, { unique: true });
+
+const readReceiptSchema = new mongoose.Schema({
+  messageId: { type: String, required: true },
+  user: { type: String, required: true },
+  readAt: { type: Number, default: () => Date.now() }
+}, { collection: 'read_receipts' });
+readReceiptSchema.index({ messageId: 1, user: 1 }, { unique: true });
+
+const Message = mongoose.model('Message', messageSchema);
+const Reaction = mongoose.model('Reaction', reactionSchema);
+const ReadReceipt = mongoose.model('ReadReceipt', readReceiptSchema);
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' }, maxHttpBufferSize: 50e6 });
 
-let db;
-const DB_PATH = path.join(__dirname, 'data.db');
-
-function saveDb() {
-  const data = db.export();
-  fs.writeFileSync(DB_PATH, Buffer.from(data));
-}
-
-async function initDb() {
-  const SQL = await initSqlJs();
-  if (fs.existsSync(DB_PATH)) {
-    db = new SQL.Database(fs.readFileSync(DB_PATH));
-  } else {
-    db = new SQL.Database();
-  }
-  db.run('PRAGMA foreign_keys = ON');
-  db.run(`CREATE TABLE IF NOT EXISTS messages (
-    id TEXT PRIMARY KEY, sender TEXT NOT NULL, type TEXT NOT NULL DEFAULT 'text',
-    content TEXT NOT NULL, timestamp INTEGER NOT NULL, fileName TEXT, fileSize INTEGER,
-    mimeType TEXT, duration REAL, replyTo TEXT, deleted INTEGER DEFAULT 0,
-    deletedFor TEXT, starred INTEGER DEFAULT 0, edited INTEGER DEFAULT 0
-  )`);
-  db.run(`CREATE TABLE IF NOT EXISTS reactions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, messageId TEXT NOT NULL,
-    emoji TEXT NOT NULL, user TEXT NOT NULL, UNIQUE(messageId, emoji, user)
-  )`);
-  db.run(`CREATE TABLE IF NOT EXISTS read_receipts (
-    messageId TEXT NOT NULL, user TEXT NOT NULL, readAt INTEGER NOT NULL, PRIMARY KEY (messageId, user)
-  )`);
-  db.run('CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp DESC)');
-  saveDb();
-  console.log('Database initialized');
-}
-
-function queryAll(sql, params = []) {
-  const stmt = db.prepare(sql);
-  if (params.length) stmt.bind(params);
-  const rows = [];
-  while (stmt.step()) rows.push(stmt.getAsObject());
-  stmt.free();
-  return rows;
-}
-
-function queryOne(sql, params = []) {
-  const rows = queryAll(sql, params);
-  return rows.length ? rows[0] : null;
-}
-
-function dbRun(sql, params = []) {
-  db.run(sql, params);
-  saveDb();
-}
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, path.join(__dirname, 'public', 'uploads')),
-  filename: (req, file, cb) => cb(null, `${uuidv4()}${path.extname(file.originalname)}`)
-});
-const upload = multer({
-  storage,
-  limits: { fileSize: 20 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    const allowed = /jpeg|jpg|png|gif|webp|mp4|webm|mp3|ogg|pdf|doc|docx|xls|xlsx|txt|zip/;
-    const ext = allowed.test(path.extname(file.originalname).toLowerCase());
-    const mime = allowed.test((file.mimetype || '').split('/')[1] || '');
-    cb(null, ext || mime);
-  }
-});
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
-app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 
-const uploadsDir = path.join(__dirname, 'public', 'uploads');
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-
-function enrichMessages(messages) {
-  const ids = messages.map(m => m.id);
-  let reactions = [], reads = [];
-  if (ids.length > 0) {
-    const ph = ids.map(() => '?').join(',');
-    reactions = queryAll(`SELECT messageId, emoji, user FROM reactions WHERE messageId IN (${ph})`, ids);
-    reads = queryAll(`SELECT messageId, user, readAt FROM read_receipts WHERE messageId IN (${ph})`, ids);
-  }
-  return messages.map(msg => ({
-    ...msg,
-    replyTo: msg.replyTo ? JSON.parse(msg.replyTo) : null,
-    deleted: !!msg.deleted,
-    starred: !!msg.starred,
-    edited: !!msg.edited,
-    reactions: reactions.filter(r => r.messageId === msg.id).map(r => ({ emoji: r.emoji, user: r.user })),
-    readBy: reads.filter(r => r.messageId === msg.id).map(r => ({ user: r.user, at: r.readAt }))
-  }));
+async function enrichMessages(messages) {
+  const ids = messages.map(m => m._id);
+  const reactions = await Reaction.find({ messageId: { $in: ids } }).lean();
+  const reads = await ReadReceipt.find({ messageId: { $in: ids } }).lean();
+  return messages.map(msg => {
+    const obj = msg.toObject ? msg.toObject() : msg;
+    const r = reactions.filter(r => r.messageId.toString() === obj._id.toString());
+    const rd = reads.filter(r => r.messageId.toString() === obj._id.toString());
+    return {
+      id: obj._id.toString(),
+      sender: obj.sender, type: obj.type, content: obj.content,
+      timestamp: obj.timestamp,
+      fileName: obj.fileName, fileSize: obj.fileSize, mimeType: obj.mimeType, duration: obj.duration,
+      replyTo: obj.replyTo || null,
+      deleted: !!obj.deleted, starred: !!obj.starred, edited: !!obj.edited,
+      reactions: r.map(x => ({ emoji: x.emoji, user: x.user })),
+      readBy: rd.map(x => ({ user: x.user, at: x.readAt }))
+    };
+  });
 }
 
-app.get('/api/messages', (req, res) => {
+app.get('/api/messages', async (req, res) => {
   try {
     const offset = parseInt(req.query.offset) || 0;
     const limit = Math.min(parseInt(req.query.limit) || 50, 100);
     const user = req.query.user || '';
-    let messages;
-    if (user) {
-      messages = queryAll(
-        'SELECT * FROM messages WHERE (deleted = 0 OR deleted IS NULL) AND (deletedFor IS NULL OR deletedFor NOT LIKE ?) ORDER BY timestamp DESC LIMIT ? OFFSET ?',
-        [`%${user}%`, limit, offset]
-      ).reverse();
-    } else {
-      messages = queryAll(
-        'SELECT * FROM messages WHERE (deleted = 0 OR deleted IS NULL) ORDER BY timestamp DESC LIMIT ? OFFSET ?',
-        [limit, offset]
-      ).reverse();
-    }
-    res.json(enrichMessages(messages));
+    let filter = { deleted: { $ne: true } };
+    if (user) filter.deletedFor = { $not: { $in: [user] } };
+    const messages = await Message.find(filter).sort({ timestamp: -1 }).skip(offset).limit(limit).lean();
+    messages.reverse();
+    const enriched = await enrichMessages(messages.map(m => ({ ...m, toObject: () => m })));
+    res.json(enriched);
   } catch (err) {
     console.error('Error fetching messages:', err);
     res.status(500).json({ error: 'Error fetching messages' });
   }
 });
 
-app.post('/api/upload', upload.single('file'), (req, res) => {
+app.post('/api/upload', upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-  res.json({ url: `/uploads/${req.file.filename}`, fileName: req.file.originalname, fileSize: req.file.size, mimeType: req.file.mimetype });
+  const msg = await Message.create({
+    sender: '_upload_', type: 'file',
+    content: '', timestamp: Date.now(),
+    fileName: req.file.originalname, fileSize: req.file.size,
+    mimeType: req.file.mimetype, fileData: req.file.buffer
+  });
+  res.json({
+    url: '/api/file/' + msg._id,
+    fileName: req.file.originalname,
+    fileSize: req.file.size,
+    mimeType: req.file.mimetype
+  });
 });
 
-app.get('/api/unread/:user', (req, res) => {
+app.get('/api/file/:id', async (req, res) => {
   try {
-    const { user } = req.params;
-    const other = user === 'Facu' ? 'Rocío' : 'Facu';
-    const row = queryOne(
-      'SELECT COUNT(*) as count FROM messages m WHERE m.sender = ? AND (m.deleted = 0 OR m.deleted IS NULL) AND (m.deletedFor IS NULL OR m.deletedFor NOT LIKE ?) AND NOT EXISTS (SELECT 1 FROM read_receipts r WHERE r.messageId = m.id AND r.user = ?)',
-      [other, `%${user}%`, user]
-    );
-    res.json({ unread: row ? row.count : 0 });
-  } catch (err) {
-    res.status(500).json({ error: 'Error' });
-  }
+    const msg = await Message.findById(req.params.id);
+    if (!msg || !msg.fileData) return res.status(404).end();
+    res.set('Content-Type', msg.mimeType || 'application/octet-stream');
+    res.set('Content-Disposition', 'inline; filename="' + (msg.fileName || 'file') + '"');
+    res.send(msg.fileData);
+  } catch (e) { res.status(404).end(); }
 });
 
-app.post('/api/clear', (req, res) => {
+app.get('/api/unread/:user', async (req, res) => {
   try {
-    db.run('DELETE FROM messages'); db.run('DELETE FROM reactions');
-    db.run('DELETE FROM read_receipts'); saveDb();
+    const other = req.params.user === 'Facu' ? 'Rocío' : 'Facu';
+    const count = await Message.countDocuments({
+      sender: other, deleted: { $ne: true },
+      deletedFor: { $not: { $in: [req.params.user] } },
+      _id: { $not: { $in: (await ReadReceipt.distinct('messageId', { user: req.params.user })) } }
+    });
+    res.json({ unread: count });
+  } catch (err) { res.status(500).json({ error: 'Error' }); }
+});
+
+app.post('/api/clear', async (req, res) => {
+  try {
+    await Message.deleteMany({});
+    await Reaction.deleteMany({});
+    await ReadReceipt.deleteMany({});
     io.emit('clear');
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: 'Error' }); }
@@ -160,40 +139,39 @@ app.post('/api/clear', (req, res) => {
 
 const onlineUsers = new Map();
 
-function getOtherUser(username) {
-  return username === 'Facu' ? 'Rocío' : 'Facu';
-}
-
 io.on('connection', (socket) => {
   let currentUser = null;
 
-  socket.on('register', (username) => {
+  socket.on('register', async (username) => {
     currentUser = username;
     onlineUsers.set(socket.id, { username, lastSeen: Date.now() });
     io.emit('presence', { user: username, online: true });
-    const other = getOtherUser(username);
-    const row = queryOne(
-      'SELECT COUNT(*) as count FROM messages m WHERE m.sender = ? AND (m.deleted = 0 OR m.deleted IS NULL) AND (m.deletedFor IS NULL OR m.deletedFor NOT LIKE ?) AND NOT EXISTS (SELECT 1 FROM read_receipts r WHERE r.messageId = m.id AND r.user = ?)',
-      [other, `%${username}%`, username]
-    );
-    socket.emit('unread_count', { count: row ? row.count : 0 });
+    const other = username === 'Facu' ? 'Rocío' : 'Facu';
+    try {
+      const count = await Message.countDocuments({
+        sender: other, deleted: { $ne: true },
+        deletedFor: { $not: { $in: [username] } },
+        _id: { $not: { $in: (await ReadReceipt.distinct('messageId', { user: username })) } }
+      });
+      socket.emit('unread_count', { count });
+    } catch (e) {}
   });
 
-  socket.on('send_message', (data) => {
+  socket.on('send_message', async (data) => {
     try {
       const msgId = data.id || `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      const replyToStr = data.replyTo ? JSON.stringify(data.replyTo) : null;
-      dbRun(
-        'INSERT INTO messages (id, sender, type, content, timestamp, fileName, fileSize, mimeType, duration, replyTo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [msgId, data.sender, data.type || 'text', data.content, data.timestamp || Date.now(),
-         data.fileName || null, data.fileSize || null, data.mimeType || null, data.duration || null, replyToStr]
-      );
-      const msg = queryOne('SELECT * FROM messages WHERE id = ?', [msgId]);
-      const message = enrichMessages([msg])[0];
-      socket.emit('message_sent', message);
-      socket.broadcast.emit('new_message', message);
+      const msg = await Message.create({
+        _id: msgId, sender: data.sender, type: data.type || 'text',
+        content: data.content, timestamp: data.timestamp || Date.now(),
+        fileName: data.fileName, fileSize: data.fileSize,
+        mimeType: data.mimeType, duration: data.duration,
+        replyTo: data.replyTo || null
+      });
+      const enriched = await enrichMessages([msg]);
+      socket.emit('message_sent', enriched[0]);
+      socket.broadcast.emit('new_message', enriched[0]);
       const otherOnline = Array.from(onlineUsers.values()).some(u => u.username !== currentUser);
-      if (otherOnline) socket.emit('message_delivered', { id: msgId });
+      if (otherOnline) socket.emit('message_delivered', { id: enriched[0].id });
     } catch (err) {
       console.error('Error saving message:', err);
       socket.emit('msg_error', { id: data.id || '', error: 'Error al guardar el mensaje' });
@@ -204,101 +182,111 @@ io.on('connection', (socket) => {
     socket.broadcast.emit('typing', { user: data.user, typing: data.typing });
   });
 
-  socket.on('mark_read', (data) => {
+  socket.on('mark_read', async (data) => {
     try {
-      const { messageId, user } = data;
-      dbRun('INSERT OR IGNORE INTO read_receipts (messageId, user, readAt) VALUES (?, ?, ?)', [messageId, user, Date.now()]);
-      socket.broadcast.emit('message_read', { id: messageId, user });
+      await ReadReceipt.updateOne(
+        { messageId: data.messageId, user: data.user },
+        { $setOnInsert: { messageId: data.messageId, user: data.user, readAt: Date.now() } },
+        { upsert: true }
+      );
+      socket.broadcast.emit('message_read', { id: data.messageId, user: data.user });
     } catch (err) { console.error('Error marking read:', err); }
   });
 
-  socket.on('mark_read_bulk', (data) => {
+  socket.on('mark_read_bulk', async (data) => {
     try {
-      const { messageIds, user } = data;
-      const stmt = db.prepare('INSERT OR IGNORE INTO read_receipts (messageId, user, readAt) VALUES (?, ?, ?)');
-      messageIds.forEach(id => { stmt.bind([id, user, Date.now()]); stmt.step(); stmt.reset(); });
-      stmt.free();
-      saveDb();
-      socket.broadcast.emit('messages_read', { ids: messageIds, user });
+      const ops = data.messageIds.map(id => ({
+        updateOne: {
+          filter: { messageId: id, user: data.user },
+          update: { $setOnInsert: { messageId: id, user: data.user, readAt: Date.now() } },
+          upsert: true
+        }
+      }));
+      await ReadReceipt.bulkWrite(ops);
+      socket.broadcast.emit('messages_read', { ids: data.messageIds, user: data.user });
     } catch (err) { console.error('Error bulk mark read:', err); }
   });
 
-  socket.on('add_reaction', (data) => {
+  socket.on('add_reaction', async (data) => {
     try {
-      dbRun('DELETE FROM reactions WHERE messageId = ? AND user = ?', [data.messageId, data.user]);
-      dbRun('INSERT OR IGNORE INTO reactions (messageId, emoji, user) VALUES (?, ?, ?)', [data.messageId, data.emoji, data.user]);
-      const reactions = queryAll('SELECT emoji, user FROM reactions WHERE messageId = ?', [data.messageId]);
-      io.emit('reaction_updated', { messageId: data.messageId, reactions });
+      const msg = await Message.findOne({ _id: data.messageId });
+      if (!msg) return;
+      await Reaction.deleteOne({ messageId: data.messageId, user: data.user });
+      await Reaction.create({ messageId: data.messageId, emoji: data.emoji, user: data.user });
+      const reactions = await Reaction.find({ messageId: data.messageId }).lean();
+      io.emit('reaction_updated', { messageId: data.messageId, reactions: reactions.map(r => ({ emoji: r.emoji, user: r.user })) });
     } catch (err) { console.error('Error adding reaction:', err); }
   });
 
-  socket.on('remove_reaction', (data) => {
+  socket.on('remove_reaction', async (data) => {
     try {
-      dbRun('DELETE FROM reactions WHERE messageId = ? AND emoji = ? AND user = ?', [data.messageId, data.emoji, data.user]);
-      const reactions = queryAll('SELECT emoji, user FROM reactions WHERE messageId = ?', [data.messageId]);
-      io.emit('reaction_updated', { messageId: data.messageId, reactions });
+      await Reaction.deleteOne({ messageId: data.messageId, emoji: data.emoji, user: data.user });
+      const reactions = await Reaction.find({ messageId: data.messageId }).lean();
+      io.emit('reaction_updated', { messageId: data.messageId, reactions: reactions.map(r => ({ emoji: r.emoji, user: r.user })) });
     } catch (err) { console.error('Error removing reaction:', err); }
   });
 
-  socket.on('delete_message', (data) => {
+  socket.on('delete_message', async (data) => {
     try {
-      const { messageId, forEveryone, user } = data;
-      const msg = queryOne('SELECT * FROM messages WHERE id = ?', [messageId]);
+      const msg = await Message.findById(data.messageId);
       if (!msg) return;
-      if (forEveryone) {
-        dbRun('UPDATE messages SET deleted = 1, content = ?, edited = 1 WHERE id = ?', ['Mensaje eliminado', messageId]);
-        io.emit('message_deleted', { id: messageId, forEveryone: true });
+      if (data.forEveryone) {
+        msg.deleted = true;
+        msg.content = 'Mensaje eliminado';
+        msg.edited = true;
+        await msg.save();
+        io.emit('message_deleted', { id: data.messageId, forEveryone: true });
       } else {
-        if (msg.deletedFor) {
-          const users = msg.deletedFor.split(',');
-          if (!users.includes(user)) users.push(user);
-          dbRun('UPDATE messages SET deletedFor = ? WHERE id = ?', [users.join(','), messageId]);
-        } else {
-          dbRun('UPDATE messages SET deletedFor = ? WHERE id = ?', [user, messageId]);
-        }
-        socket.emit('message_deleted', { id: messageId, forEveryone: false });
+        if (!msg.deletedFor.includes(data.user)) msg.deletedFor.push(data.user);
+        await msg.save();
+        socket.emit('message_deleted', { id: data.messageId, forEveryone: false });
       }
     } catch (err) { console.error('Error deleting message:', err); }
   });
 
-  socket.on('star_message', (data) => {
+  socket.on('star_message', async (data) => {
     try {
-      const msg = queryOne('SELECT * FROM messages WHERE id = ?', [data.messageId]);
+      const msg = await Message.findById(data.messageId);
       if (!msg) return;
-      const newVal = msg.starred ? 0 : 1;
-      dbRun('UPDATE messages SET starred = ? WHERE id = ?', [newVal, data.messageId]);
-      io.emit('message_starred', { id: data.messageId, starred: !!newVal });
+      msg.starred = !msg.starred;
+      await msg.save();
+      io.emit('message_starred', { id: data.messageId, starred: msg.starred });
     } catch (err) { console.error('Error starring message:', err); }
   });
 
-  socket.on('forward_message', (data) => {
+  socket.on('forward_message', async (data) => {
     try {
-      const newId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const fwdPrefix = '📩 Reenviado\n';
-      dbRun(
-        'INSERT INTO messages (id, sender, type, content, timestamp, fileName, fileSize, mimeType, duration) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [newId, data.sender, data.type, data.type === 'text' ? fwdPrefix + data.content : data.content,
-         Date.now(), data.fileName || null, data.fileSize || null, data.mimeType || null, data.duration || null]
-      );
-      const msg = queryOne('SELECT * FROM messages WHERE id = ?', [newId]);
-      const message = enrichMessages([msg])[0];
-      socket.emit('message_sent', message);
-      socket.broadcast.emit('new_message', message);
+      const content = data.type === 'text' ? fwdPrefix + data.content : data.content;
+      const msgId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const msg = await Message.create({
+        _id: msgId, sender: data.sender, type: data.type, content,
+        timestamp: Date.now(),
+        fileName: data.fileName, fileSize: data.fileSize,
+        mimeType: data.mimeType, duration: data.duration
+      });
+      const enriched = await enrichMessages([msg]);
+      socket.emit('message_sent', enriched[0]);
+      socket.broadcast.emit('new_message', enriched[0]);
     } catch (err) { console.error('Error forwarding message:', err); }
   });
 
-  socket.on('message_info', (data) => {
+  socket.on('message_info', async (data) => {
     try {
-      const msg = queryOne('SELECT * FROM messages WHERE id = ?', [data.messageId]);
+      const msg = await Message.findById(data.messageId);
       if (!msg) return;
-      const reads = queryAll('SELECT user, readAt FROM read_receipts WHERE messageId = ?', [data.messageId]);
-      socket.emit('message_info', { id: data.messageId, timestamp: msg.timestamp, readBy: reads });
+      const reads = await ReadReceipt.find({ messageId: data.messageId }).lean();
+      socket.emit('message_info', {
+        id: data.messageId,
+        timestamp: msg.timestamp,
+        readBy: reads.map(r => ({ user: r.user, at: r.readAt }))
+      });
     } catch (err) { console.error('Error getting message info:', err); }
   });
 
-  socket.on('edit_message', (data) => {
+  socket.on('edit_message', async (data) => {
     try {
-      dbRun('UPDATE messages SET content = ?, edited = 1 WHERE id = ?', [data.content, data.messageId]);
+      await Message.updateOne({ _id: data.messageId }, { content: data.content, edited: true });
       io.emit('message_edited', { id: data.messageId, content: data.content });
     } catch (err) { console.error('Error editing message:', err); }
   });
@@ -312,13 +300,12 @@ io.on('connection', (socket) => {
   });
 });
 
-const PORT = process.env.PORT || 3000;
-initDb().then(() => {
+mongoose.connect(MONGO_URI, { serverSelectionTimeoutMS: 5000, connectTimeoutMS: 10000 }).then(() => {
+  console.log('MongoDB connected');
   server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
-    console.log(`Open http://localhost:${PORT}`);
   });
 }).catch(err => {
-  console.error('Failed to initialize database:', err);
+  console.error('MongoDB connection error:', err.message);
   process.exit(1);
 });

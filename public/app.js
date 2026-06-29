@@ -167,6 +167,6 @@ async function uBadge(){if(!cur)return;try{const r=await fetch('/api/unread/'+cu
 async function ldMsgs(){try{const r=await fetch('/api/messages?offset=0&limit=100&user='+cur);msgs=await r.json();D.mList.innerHTML='';hasMore=true;D.mLoad.classList.add('hidden');msgs.forEach(m=>appMsg(m));if(msgs.length){sBot(false);markAll();}}catch(err){toast('Error al cargar');}}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&cur){document.title='Chat con '+(cur==='Facu'?'Roc'+'í'+'o':'Facu');markAll();uBadge();}});
 if('Notification'in window&&Notification.permission==='default')Notification.requestPermission();
-if('serviceWorker'in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{});}
+if('serviceWorker'in navigator){navigator.serviceWorker.getRegistrations().then(rs=>{if(rs.length){rs.forEach(r=>r.unregister());location.reload();}}).catch(()=>{});}
 /* ===== BOOT ===== */
 if(cur){D.uSel.classList.add('hidden');D.app.classList.remove('hidden');D.hName.textContent=cur==='Facu'?'Roc'+'í'+'o':'Facu';D.hAv.textContent=cur==='Facu'?'R':'F';D.sName.textContent=cur;initC();}
