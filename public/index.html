@@ -35,6 +35,7 @@
         </div>
       </div>
       <div class="header-right">
+        <button class="header-btn" id="videoCallBtn" data-icon="video" title="Videollamada"></button>
         <button class="header-btn" id="searchBtn" data-icon="search"></button>
         <button class="header-btn" id="statsBtn" data-icon="heart-filled"></button>
         <button class="header-btn" id="wallpaperBtn" data-icon="image"></button>
@@ -274,6 +275,36 @@
     </div>
     <button class="install-btn" id="installBtn">Instalar</button>
     <button class="install-close" id="installClose" data-icon="x"></button>
+  </div>
+
+  <div id="incomingCall" class="oculto">
+    <div class="call-overlay"></div>
+    <div class="call-card glass">
+      <div class="call-avatar-ring">
+        <img id="callerAvatar" class="caller-avatar" src="" style="display:none">
+        <span id="callerAvatarFallback" data-icon="heart-filled"></span>
+      </div>
+      <div class="caller-name" id="callerName">Mi amor</div>
+      <div class="call-status">Videollamada entrante...</div>
+      <div class="call-actions">
+        <button class="call-btn call-accept" id="callAccept" data-icon="phone"></button>
+        <button class="call-btn call-reject" id="callReject" data-icon="x"></button>
+      </div>
+    </div>
+  </div>
+
+  <div id="videoCallScreen" class="oculto">
+    <div class="vc-container">
+      <video id="remoteVideo" class="vc-video remote-video" autoplay playsinline></video>
+      <video id="localVideo" class="vc-video local-video" autoplay playsinline muted></video>
+      <div class="vc-controls">
+        <button class="vc-btn" id="vcMuteBtn" data-icon="mic"></button>
+        <button class="vc-btn" id="vcCamBtn" data-icon="video"></button>
+        <button class="vc-btn vc-end" id="vcEndBtn" data-icon="phone"></button>
+        <button class="vc-btn" id="vcSpeakerBtn" data-icon="speaker"></button>
+      </div>
+      <div class="vc-timer" id="vcTimer">00:00</div>
+    </div>
   </div>
 
   <div id="toastContainer" class="toastContainer"></div>

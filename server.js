@@ -230,6 +230,22 @@ io.on('connection', (socket) => {
       limpiarSalaVacia(socket.sala);
     }
   });
+
+  socket.on('call-offer', (data) => {
+    if (socket.sala) socket.to(socket.sala).emit('call-offer', { offer: data.offer });
+  });
+  socket.on('call-answer', (data) => {
+    if (socket.sala) socket.to(socket.sala).emit('call-answer', { answer: data.answer });
+  });
+  socket.on('ice-candidate', (data) => {
+    if (socket.sala) socket.to(socket.sala).emit('ice-candidate', { candidate: data.candidate });
+  });
+  socket.on('call-end', (data) => {
+    if (socket.sala) socket.to(socket.sala).emit('call-end', {});
+  });
+  socket.on('call-reject', (data) => {
+    if (socket.sala) socket.to(socket.sala).emit('call-reject', {});
+  });
 });
 
 const PORT = process.env.PORT || 3000;

@@ -1157,3 +1157,39 @@ body { overflow-x: hidden; max-width: 100vw; -webkit-overflow-scrolling: touch; 
 @media (min-width: 768px) {
   #chat { max-width: 500px; border-radius: 16px; max-height: 90vh; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
 }
+
+/* Video call */
+#incomingCall { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; }
+#incomingCall .call-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); }
+#incomingCall .call-card { position: relative; z-index: 51; padding: 40px 32px; border-radius: 28px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; min-width: 280px; animation: aparecer 0.3s ease; }
+#incomingCall .call-avatar-ring { width: 80px; height: 80px; border-radius: 50%; overflow: hidden; border: 3px solid var(--accent); display: flex; align-items: center; justify-content: center; background: var(--bg-glass-strong); }
+#incomingCall .call-avatar-ring img { width: 100%; height: 100%; object-fit: cover; }
+#incomingCall .call-avatar-ring span { font-size: 40px; }
+#incomingCall .caller-name { font-size: 20px; font-weight: 700; color: var(--text-primary); }
+#incomingCall .call-status { font-size: 13px; color: var(--text-secondary); }
+#incomingCall .call-actions { display: flex; gap: 24px; margin-top: 12px; }
+.call-btn { width: 56px; height: 56px; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+.call-btn svg { width: 24px; height: 24px; }
+.call-accept { background: #4caf50; color: white; transform: rotate(135deg); }
+.call-accept:hover { transform: rotate(135deg) scale(1.1); box-shadow: 0 4px 20px rgba(76,175,80,0.4); }
+.call-reject { background: #e53935; color: white; }
+.call-reject:hover { transform: scale(1.1); box-shadow: 0 4px 20px rgba(229,57,53,0.4); }
+
+#videoCallScreen { position: fixed; inset: 0; z-index: 50; background: #000; }
+.vc-container { position: relative; width: 100%; height: 100%; }
+.vc-video { position: absolute; object-fit: cover; }
+.remote-video { inset: 0; width: 100%; height: 100%; }
+.local-video { bottom: 100px; right: 16px; width: 120px; height: 160px; border-radius: 16px; border: 2px solid rgba(255,255,255,0.2); object-fit: cover; z-index: 2; background: #333; }
+.vc-controls { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); display: flex; gap: 16px; z-index: 3; }
+.vc-btn { width: 48px; height: 48px; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.15); backdrop-filter: blur(8px); color: white; transition: all 0.2s; }
+.vc-btn:hover { background: rgba(255,255,255,0.25); transform: scale(1.05); }
+.vc-btn svg { width: 22px; height: 22px; }
+.vc-end { background: #e53935; width: 56px; height: 56px; transform: rotate(135deg); }
+.vc-end:hover { background: #c62828; transform: rotate(135deg) scale(1.05); }
+.vc-timer { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); z-index: 3; color: white; font-size: 16px; font-weight: 600; background: rgba(0,0,0,0.4); padding: 6px 16px; border-radius: 20px; backdrop-filter: blur(4px); font-variant-numeric: tabular-nums; }
+@media (max-width: 420px) {
+  .local-video { width: 90px; height: 120px; bottom: 80px; right: 10px; }
+  .vc-btn { width: 42px; height: 42px; }
+  .vc-btn svg { width: 18px; height: 18px; }
+  .vc-end { width: 48px; height: 48px; }
+}

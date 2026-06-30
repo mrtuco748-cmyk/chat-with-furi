@@ -25,7 +25,13 @@ const ICONS = {
   'star': '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
   'message-circle': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>',
   'check-circle': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
-  'plus': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>'
+  'plus': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
+  'video': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>',
+  'phone': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>',
+  'speaker': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg>',
+  'speaker-off': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>',
+  'mic-off': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 005.12 2.12M15 9.34V4a3 3 0 00-5.94-.6"/><path d="M17 16.95A7 7 0 015 12v-2m14 0v2a7 7 0 01-.11 1.23"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>',
+  'video-off': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 16v1a2 2 0 01-2 2H3a2 2 0 01-2-2V7a2 2 0 012-2h2m5.66 0H14a2 2 0 012 2v3.34l1 1L23 7v10"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'
 };
 
 function injectIcons() { document.querySelectorAll('[data-icon]').forEach(el => { const n = el.dataset.icon; if (ICONS[n]) el.innerHTML = ICONS[n]; }); }
@@ -83,7 +89,15 @@ avatarRing.addEventListener('click', () => {
   if (foto) abrirVisorImagen(foto, 'Foto de perfil');
 });
 const headerTitle = $('headerTitle');
-let deferredPrompt = null, fotoPerfilLocal = null, fotoPerfilRemoto = null;
+let deferredPrompt = null, fotoPerfilLocal = null, fotoPerfilRemoto = null, _pendingOffer = null;
+// Video call
+let pc = null, localStream = null, remoteStream = null, callActive = false, callTimer = null, callStart = 0;
+const videoCallBtn = $('videoCallBtn'), incomingCall = $('incomingCall'), videoCallScreen = $('videoCallScreen');
+const localVideo = $('localVideo'), remoteVideo = $('remoteVideo');
+const callerName = $('callerName'), callerAvatar = $('callerAvatar'), callerAvatarFallback = $('callerAvatarFallback');
+const callAccept = $('callAccept'), callReject = $('callReject'), vcEndBtn = $('vcEndBtn');
+const vcMuteBtn = $('vcMuteBtn'), vcCamBtn = $('vcCamBtn'), vcSpeakerBtn = $('vcSpeakerBtn'), vcTimer = $('vcTimer');
+const STUN = [{ urls: 'stun:stun.l.google.com:19302' }];
 const headerNormal = $('headerNormal'), headerSelect = $('headerSelect');
 const selectClose = $('selectClose'), selectCount = $('selectCount'), selectDelete = $('selectDelete'), selectFav = $('selectFav'), selectQuiet = $('selectQuiet'), selectMoreBtn = $('selectMoreBtn');
 const deleteOptions = $('deleteOptions'), deleteOptOverlay = $('deleteOptOverlay'), deleteForMe = $('deleteForMe'), deleteForEveryone = $('deleteForEveryone'), deleteOptCancel = $('deleteOptCancel');
@@ -1158,6 +1172,89 @@ socket.on('escribiendo', (data) => {
     if (texto) texto.textContent = '';
   }
 });
+
+// Video call
+videoCallBtn.addEventListener('click', iniciarLlamada);
+callReject.addEventListener('click', rechazarLlamada);
+callAccept.addEventListener('click', aceptarLlamada);
+vcEndBtn.addEventListener('click', terminarLlamada);
+vcMuteBtn.addEventListener('click', () => { if (localStream) { const en = !localStream.getAudioTracks()[0].enabled; localStream.getAudioTracks()[0].enabled = en; vcMuteBtn.dataset.icon = en ? 'mic' : 'mic-off'; injectIconsIn(vcMuteBtn); } });
+vcCamBtn.addEventListener('click', () => { if (localStream) { const en = !localStream.getVideoTracks()[0].enabled; localStream.getVideoTracks()[0].enabled = en; vcCamBtn.dataset.icon = en ? 'video' : 'video-off'; injectIconsIn(vcCamBtn); } });
+vcSpeakerBtn.addEventListener('click', () => { if (remoteVideo) remoteVideo.muted = !remoteVideo.muted; vcSpeakerBtn.dataset.icon = remoteVideo?.muted ? 'speaker-off' : 'speaker'; injectIconsIn(vcSpeakerBtn); });
+
+async function iniciarLlamada() {
+  if (callActive) return;
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30 } }, audio: { echoCancellation: true, noiseSuppression: true } });
+    localVideo.srcObject = localStream;
+    crearPeerConnection();
+    const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
+    await pc.setLocalDescription(offer);
+    socket.emit('call-offer', { sala, offer });
+    abrirPantallaLlamada();
+    callActive = true;
+  } catch(e) { mostrarToast('Error al iniciar c\u00E1mara: ' + e.message); }
+}
+
+async function aceptarLlamada() {
+  incomingCall.classList.add('oculto');
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30 } }, audio: { echoCancellation: true, noiseSuppression: true } });
+    localVideo.srcObject = localStream;
+    crearPeerConnection();
+    await pc.setRemoteDescription(new RTCSessionDescription(_pendingOffer));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    socket.emit('call-answer', { sala, answer });
+    abrirPantallaLlamada();
+    callActive = true;
+  } catch(e) { mostrarToast('Error: ' + e.message); terminarLlamada(); }
+}
+
+function rechazarLlamada() { incomingCall.classList.add('oculto'); socket.emit('call-reject', { sala }); }
+
+function crearPeerConnection() {
+  const cfg = { iceServers: STUN, iceCandidatePoolSize: 2, bundlePolicy: 'max-bundle', rtcpMuxPolicy: 'require' };
+  pc = new RTCPeerConnection(cfg);
+  localStream?.getTracks().forEach(t => pc.addTrack(t, localStream));
+  pc.ontrack = e => { remoteStream = e.streams[0]; remoteVideo.srcObject = remoteStream; };
+  pc.onicecandidate = e => { if (e.candidate) socket.emit('ice-candidate', { sala, candidate: e.candidate }); };
+  pc.oniceconnectionstatechange = () => { if (pc?.iceConnectionState === 'disconnected' || pc?.iceConnectionState === 'failed') terminarLlamada(); };
+}
+
+function abrirPantallaLlamada() {
+  videoCallScreen.classList.remove('oculto'); incomingCall.classList.add('oculto');
+  callStart = Date.now(); callTimer = setInterval(() => { const s = Math.floor((Date.now()-callStart)/1000); vcTimer.textContent = String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }, 1000);
+}
+
+function terminarLlamada() {
+  if (callTimer) { clearInterval(callTimer); callTimer = null; }
+  videoCallScreen.classList.add('oculto'); incomingCall.classList.add('oculto');
+  if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+  if (pc) { pc.close(); pc = null; }
+  localVideo.srcObject = null; remoteVideo.srcObject = null; callActive = false;
+  socket.emit('call-end', { sala });
+}
+
+socket.on('call-offer', (data) => {
+  _pendingOffer = data.offer;
+  const cn = localStorage.getItem('chat-pareja-nombre') || 'Mi amor';
+  callerName.textContent = cn;
+  const rf = localStorage.getItem('chat-foto-remoto-' + sala);
+  if (rf) { callerAvatar.src = rf; callerAvatar.style.display = 'block'; callerAvatarFallback.style.display = 'none'; }
+  else { callerAvatar.style.display = 'none'; callerAvatarFallback.style.display = 'block'; injectIconsIn(callerAvatarFallback); }
+  incomingCall.classList.remove('oculto');
+});
+socket.on('call-answer', async (data) => {
+  if (pc && !pc.currentRemoteDescription) {
+    await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+  }
+});
+socket.on('ice-candidate', (data) => {
+  if (pc) pc.addIceCandidate(new RTCIceCandidate(data.candidate)).catch(() => {});
+});
+socket.on('call-end', () => { terminarLlamada(); mostrarToast('Llamada finalizada'); });
+socket.on('call-reject', () => { terminarLlamada(); mostrarToast('Llamada rechazada'); });
 
 function toggleDarkMode() {
   settings.darkMode = !settings.darkMode;
