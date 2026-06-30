@@ -809,6 +809,7 @@ function agregarEventosMensaje(div, msgId, data) {
       else selectedMsgs.delete(msgId);
       actualizarSelectCount();
       if (selectedMsgs.size === 0) salirSelectMode();
+      quickReactions.classList.add('oculto');
       return;
     }
     toques++; if (toques===1) td = setTimeout(()=>{toques=0;},300); else if (toques===2) { clearTimeout(td); toques=0; const frec = getReaccFrecuentes(); const emoji = frec[0] || '\u2764\uFE0F'; socket.emit('reaccion',{sala,msgId,usuario,reaccion:emoji}); mostrarReaccion(div,emoji); setReaccionMsg(msgId, emoji); registrarReaccionUsada(emoji); }
@@ -819,6 +820,7 @@ function agregarEventosMensaje(div, msgId, data) {
     lp = setTimeout(() => {
       if (selectMode) return;
       vibrar(20);
+      entrSelectMode(msgId);
       const r = div.getBoundingClientRect();
       quickReactions.style.top = Math.max(10, r.top - 50) + 'px';
       const qw = quickReactions.offsetWidth || Math.min(320, window.innerWidth * 0.85);
@@ -1073,7 +1075,7 @@ function salirSelectMode() {
   headerNormal.classList.remove('oculto'); headerSelect.classList.add('oculto');
   document.querySelectorAll('.mensaje.seleccionado').forEach(el => el.classList.remove('seleccionado'));
   selectedMsgs.clear();
-  deleteOptions.classList.add('oculto'); quietBar.classList.add('oculto');
+  deleteOptions.classList.add('oculto'); quietBar.classList.add('oculto'); quickReactions.classList.add('oculto');
 }
 function actualizarSelectCount() {
   const n = selectedMsgs.size;
