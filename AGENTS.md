@@ -71,6 +71,14 @@
 - Profile photo upload uses a hidden `<input type="file">` (same pattern as `abrirCamara` / `abrirGaleria`)
 - Custom wallpaper is stored as a full data-URL in `localStorage` key `chat-fondo-personalizado` and applied via `body.style.background = 'url(...) center/cover'`
 - Service worker update detection: `navigator.serviceWorker.register('/sw.js')` returns a registration; on `updatefound`, if the installing SW's `state` becomes `'installed'` and there's already an active SW, a toast with "Nueva versión disponible — Actualizar" is shown; clicking reloads the page
+- **Video call flow (simple)**:
+  - Caller: `iniciarLlamada()` → start camera → create PC → create offer → send `call-offer` → show "Llamando..." modal (no accept button)
+  - Callee: receive `call-offer` → vibrate + push notification (if hidden) → show incoming modal with Accept/Reject
+  - Callee taps Accept → `aceptarLlamada()` → start camera → create PC → set remote desc (from `_pendingOffer`) → create answer → send `call-answer` → `abrirPantallaLlamada()`
+  - Caller: receive `call-answer` → set remote desc → `abrirPantallaLlamada()`
+  - ICE candidates flow via `onicecandidate` callback
+  - `terminarLlamada()` guarded by `callActive` flag to prevent `call-end` broadcast loop
+  - `call-reject` handled via `_pendingOffer` null check
 
 ## Relevant Files
 - `public/script.js`: all new features — reaction system (helpers, toggle, dynamic bar), selection mode (enter/salir, fav, delete, quiet), install banner, SW update, profile photo, partner name, custom bg
