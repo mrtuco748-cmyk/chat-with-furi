@@ -138,13 +138,13 @@ mensajeInput.addEventListener('input', () => {
   clearTimeout(escribiendoTimeout); escribiendoTimeout = setTimeout(() => socket.emit('escribiendo', { usuario: '' }), 1000);
 });
 function actualizarBotonEnvio() {
+  if (grabacionBloqueada) return;
   if (mensajeInput.value.trim().length > 0) { microfonoBtn2.classList.add('oculto'); enviarBtn.classList.remove('oculto'); }
   else { microfonoBtn2.classList.remove('oculto'); enviarBtn.classList.add('oculto'); }
 }
 enviarBtn.addEventListener('click', enviarMensaje);
 mensajeInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviarMensaje(); } });
 function enviarMensaje() {
-  if (enviarBtn.dataset.sendAudio === '1') return;
   const texto = mensajeInput.value.trim(); if (!texto) return;
   try { if (settings.vibrate) vibrar(15); } catch(e) {}
   if (editandoMsgId) {
@@ -166,7 +166,7 @@ function enviarMensaje() {
   if (settings.sound) { try { new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=').play().catch(()=>{}); } catch(e){} }
 }
 let grabacionCancelada = false, audioStartX = 0, audioStartY = 0;
-let audioStream = null;
+let audioStream = null, audioTapTime = 0;
 
 cancelarGrabacion.addEventListener('click', cancelarGrabacionFn);
 function cancelarGrabacionFn(e) {
@@ -176,12 +176,20 @@ function cancelarGrabacionFn(e) {
   else limpiarGrabacionUI();
 }
 microfonoBtn2.addEventListener('pointerdown', async (e) => {
-  if (grabando) return;
+  if (grabando) {
+    if (grabacionBloqueada) {
+      e.preventDefault();
+      grabacionCancelada = false;
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+    }
+    return;
+  }
   e.preventDefault();
   grabacionCancelada = false;
   grabacionBloqueada = false;
   audioStartX = e.clientX;
   audioStartY = e.clientY;
+  audioTapTime = Date.now();
   await iniciarGrabacion();
 });
 document.addEventListener('pointermove', (e) => {
@@ -189,13 +197,7 @@ document.addEventListener('pointermove', (e) => {
   const dy = audioStartY - e.clientY;
   const dx = e.clientX - audioStartX;
   if (dy > 60) {
-    grabacionBloqueada = true;
-    microfonoBtn2.classList.add('oculto');
-    enviarBtn.innerHTML = ICONS['heart'];
-    enviarBtn.dataset.sendAudio = '1';
-    enviarBtn.classList.remove('oculto');
-    lockHint.innerHTML = '🔒 bloqueado';
-    vibrar(20);
+    entrarModoBloqueado();
   } else if (dx < -80) {
     cancelarGrabacionFn();
     mostrarToast('Grabaci\u00F3n cancelada');
@@ -203,8 +205,18 @@ document.addEventListener('pointermove', (e) => {
 });
 document.addEventListener('pointerup', (e) => {
   if (!grabando || grabacionBloqueada) return;
-  if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+  if (Date.now() - audioTapTime < 300) {
+    entrarModoBloqueado();
+  } else if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    mediaRecorder.stop();
+  }
 });
+function entrarModoBloqueado() {
+  grabacionBloqueada = true;
+  microfonoBtn2.innerHTML = ICONS['heart'];
+  lockHint.innerHTML = '🔒 bloqueado';
+  vibrar(20);
+}
 async function iniciarGrabacion() {
   try {
     audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -231,16 +243,9 @@ function limpiarGrabacionUI() {
   grabando = false; grabacionBloqueada = false; grabacionCancelada = false;
   tiempoGrabacion = 0; clearInterval(intervaloTiempo);
   grabandoDiv.classList.add('oculto'); scrollBtnBottom();
-  microfonoBtn2.classList.remove('oculto');
-  if (enviarBtn.dataset.sendAudio) { enviarBtn.dataset.sendAudio = ''; actualizarBotonEnvio(); }
+  microfonoBtn2.innerHTML = ICONS['mic'];
+  actualizarBotonEnvio();
 }
-enviarBtn.addEventListener('click', (e) => {
-  if (enviarBtn.dataset.sendAudio === '1') {
-    e.stopPropagation();
-    grabacionCancelada = false;
-    if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
-  }
-});
 function enviarAudio(blob) {
   const r = new FileReader(); const msgId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
   r.onloadend = () => {
