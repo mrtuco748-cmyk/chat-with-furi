@@ -77,7 +77,7 @@ const settingDarkMode = $('settingDarkMode'), settingSound = $('settingSound'), 
 const settingsExport = $('settingsExport'), settingsClear = $('settingsClear');
 const settingsFoto = $('settingsFoto'), settingsFotoPreview = $('settingsFotoPreview'), settingsFotoRemove = $('settingsFotoRemove'), settingsParejaNombre = $('settingsParejaNombre');
 const installBanner = $('installBanner'), installBtn = $('installBtn'), installClose = $('installClose');
-const wpCustomBg = $('wpCustomBg'), avatarRing = document.querySelector('.avatar-ring'), avatarHeart = document.querySelector('.avatar-heart');
+const wpCustomBg = $('wpCustomBg'), wpClearBg = $('wpClearBg'), avatarRing = document.querySelector('.avatar-ring'), avatarHeart = document.querySelector('.avatar-heart');
 const headerTitle = $('headerTitle');
 let deferredPrompt = null, fotoPerfilLocal = null, fotoPerfilRemoto = null;
 const headerNormal = $('headerNormal'), headerSelect = $('headerSelect');
@@ -241,9 +241,18 @@ function aplicarFondoPersonalizado(bg) {
     chatEl.style.background = 'url('+bg+') center/cover no-repeat fixed';
     chatEl.style.backgroundBlendMode = 'normal';
   }
+  wpClearBg?.classList.remove('oculto');
 }
+function limpiarFondoPersonalizado() {
+  localStorage.removeItem('chat-fondo-personalizado');
+  const chatEl = document.getElementById('chat');
+  if (chatEl) { chatEl.style.removeProperty('background'); chatEl.style.removeProperty('background-blend-mode'); }
+  wpClearBg?.classList.add('oculto');
+  document.body.className = localStorage.getItem('chat-wallpaper') ? 'wallpaper-' + localStorage.getItem('chat-wallpaper') : 'wallpaper-default';
+}
+wpClearBg?.addEventListener('click', limpiarFondoPersonalizado);
 const fondoGuardado = localStorage.getItem('chat-fondo-personalizado');
-if (fondoGuardado) aplicarFondoPersonalizado(fondoGuardado);
+if (fondoGuardado) { aplicarFondoPersonalizado(fondoGuardado); if (wpClearBg) wpClearBg.classList.remove('oculto'); }
 
 // Restore partner name & profile photo (runs after sala is set in iniciarSesion)
 function restaurarPerfil() {
@@ -533,7 +542,7 @@ attachOverlay.addEventListener('click', () => attachMenu.classList.add('oculto')
 msgmenuOverlay.addEventListener('click', () => msgMenu.classList.add('oculto'));
 wallpaperBtn.addEventListener('click', () => { emojiPicker.classList.add('oculto'); attachMenu.classList.add('oculto'); msgMenu.classList.add('oculto'); wallpaperMenu.classList.remove('oculto'); });
 wallpaperOverlay.addEventListener('click', () => wallpaperMenu.classList.add('oculto'));
-document.querySelectorAll('.wp-opt').forEach(btn => { btn.addEventListener('click', () => { document.body.className = 'wallpaper-' + btn.dataset.wp; wallpaperMenu.classList.add('oculto'); localStorage.setItem('chat-wallpaper', btn.dataset.wp); localStorage.removeItem('chat-fondo-personalizado'); document.getElementById('chat')?.style.removeProperty('background'); document.getElementById('chat')?.style.removeProperty('background-blend-mode'); }); });
+document.querySelectorAll('.wp-opt').forEach(btn => { btn.addEventListener('click', () => { document.body.className = 'wallpaper-' + btn.dataset.wp; wallpaperMenu.classList.add('oculto'); localStorage.setItem('chat-wallpaper', btn.dataset.wp); limpiarFondoPersonalizado(); }); });
 moreBtn.addEventListener('click', () => { emojiPicker.classList.add('oculto'); attachMenu.classList.add('oculto'); msgMenu.classList.add('oculto'); moreMenu.classList.toggle('oculto'); });
 moreOverlay.addEventListener('click', () => moreMenu.classList.add('oculto'));
 moreLogout.addEventListener('click', () => { localStorage.removeItem('chat-sala'); localStorage.removeItem('chat-usuario'); localStorage.removeItem('chat-msgs-'+sala); location.reload(); });
