@@ -110,14 +110,14 @@ async function iniciarGrabacion() {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     mediaRecorder = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4' });
     audioChunks = []; grabando = true; grabacionBloqueada = false; tiempoGrabacion = 0;
-    grabandoDiv.classList.remove('oculto'); tiempoGrabacionSpan.textContent = '0s';
+    grabandoDiv.classList.remove('oculto'); scrollBtnBottom(); tiempoGrabacionSpan.textContent = '0s';
     intervaloTiempo = setInterval(() => { tiempoGrabacion++; tiempoGrabacionSpan.textContent = tiempoGrabacion + 's'; }, 1000);
     mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
     mediaRecorder.onstop = () => {
       clearInterval(intervaloTiempo); const b = new Blob(audioChunks, { type: mediaRecorder.mimeType });
       stream.getTracks().forEach(t => t.stop());
       if (tiempoGrabacion >= 1 && grabando) enviarAudio(b);
-      grabandoDiv.classList.add('oculto'); grabando = false; grabacionBloqueada = false;
+      grabandoDiv.classList.add('oculto'); scrollBtnBottom(); grabando = false; grabacionBloqueada = false;
     };
     mediaRecorder.start();
   } catch (err) { alert('No se pudo acceder al micr\u00f3fono'); }
@@ -162,8 +162,14 @@ function enviarImagen(file) {
   r.readAsDataURL(file);
 }
 replyClose.addEventListener('click', cancelarReply);
-function iniciarReply(data) { respondiendoA = { msgId: data.msgId, usuario: data.usuarioUsuario || data.usuario, texto: data.texto }; replyUser.textContent = respondiendoA.usuario; replyText.textContent = respondiendoA.texto || (data.audio ? 'Audio' : 'Foto'); replyBar.classList.remove('oculto'); mensajeInput.focus(); }
-function cancelarReply() { respondiendoA = null; replyBar.classList.add('oculto'); }
+function scrollBtnBottom() {
+  let b = 64;
+  if (!replyBar.classList.contains('oculto')) b += 40;
+  if (!grabandoDiv.classList.contains('oculto')) b += 40;
+  scrollBtn.style.bottom = b + 'px';
+}
+function iniciarReply(data) { respondiendoA = { msgId: data.msgId, usuario: data.usuarioUsuario || data.usuario, texto: data.texto }; replyUser.textContent = respondiendoA.usuario; replyText.textContent = respondiendoA.texto || (data.audio ? 'Audio' : 'Foto'); replyBar.classList.remove('oculto'); scrollBtnBottom(); mensajeInput.focus(); }
+function cancelarReply() { respondiendoA = null; replyBar.classList.add('oculto'); scrollBtnBottom(); }
 menuResponder.addEventListener('click', () => { msgMenu.classList.add('oculto'); const el = document.getElementById('msg-' + msgMenuMsgId); if (el) iniciarReply({ msgId: msgMenuMsgId, usuario: el.dataset.usuario, texto: el.dataset.texto }); });
 menuCopiar.addEventListener('click', () => { msgMenu.classList.add('oculto'); const el = document.getElementById('msg-' + msgMenuMsgId); if (el?.dataset.texto) navigator.clipboard.writeText(el.dataset.texto).catch(() => {}); });
 menuEliminar.addEventListener('click', () => { msgMenu.classList.add('oculto'); const el = document.getElementById('msg-' + msgMenuMsgId); if (el) el.remove(); });
