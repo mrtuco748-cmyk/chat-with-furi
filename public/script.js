@@ -43,7 +43,7 @@ const wallpaperBtn = $('wallpaperBtn'), wallpaperMenu = $('wallpaperMenu'), wall
 const searchBtn = $('searchBtn'), searchBar = $('searchBar'), searchInput = $('searchInput'), searchBack = $('searchBack'), searchCount = $('searchCount');
 const statsBtn = $('statsBtn'), statsModal = $('statsModal'), statsOverlay = $('statsOverlay'), statsSetDate = $('statsSetDate');
 const statDias = $('statDias'), statMsgs = $('statMsgs'), statFotos = $('statFotos'), statAudios = $('statAudios');
-const quickReactions = $('quickReactions'), romanticBtn = $('romanticBtn'), romanticPanel = $('romanticPanel');
+const quickReactions = $('quickReactions');
 
 injectIcons();
 
@@ -92,7 +92,7 @@ function enviarMensaje() {
   socket.emit('mensaje', d);
   agregarMensajePropio(msgId, { usuario, texto, audio: null, imagen: null, respondiendoA });
   mensajeInput.value = ''; actualizarBotonEnvio(); mensajeInput.focus();
-  emojiPicker.classList.add('oculto'); romanticPanel.classList.add('oculto'); cancelarReply();
+  emojiPicker.classList.add('oculto'); cancelarReply();
   msgCount++; actualizarStats();
 }
 cancelarGrabacion.addEventListener('click', cancelarGrabacionFn);
@@ -143,10 +143,8 @@ function construirEmojiPicker() {
     emojiPicker.appendChild(btn);
   }
 }
-emojiBtn.addEventListener('click', () => { $('attachMenu').classList.add('oculto'); $('msgMenu').classList.add('oculto'); $('wallpaperMenu').classList.add('oculto'); romanticPanel.classList.add('oculto'); emojiPicker.classList.toggle('oculto'); });
-romanticBtn.addEventListener('click', () => { emojiPicker.classList.add('oculto'); $('attachMenu').classList.add('oculto'); romanticPanel.classList.toggle('oculto'); });
-document.querySelectorAll('.rp-option').forEach(btn => { btn.addEventListener('click', () => { mensajeInput.value = btn.dataset.msg; mensajeInput.focus(); actualizarBotonEnvio(); romanticPanel.classList.add('oculto'); }); });
-attachBtn.addEventListener('click', () => { emojiPicker.classList.add('oculto'); romanticPanel.classList.add('oculto'); $('msgMenu').classList.add('oculto'); $('wallpaperMenu').classList.add('oculto'); attachMenu.classList.remove('oculto'); });
+emojiBtn.addEventListener('click', () => { $('attachMenu').classList.add('oculto'); $('msgMenu').classList.add('oculto'); $('wallpaperMenu').classList.add('oculto'); emojiPicker.classList.toggle('oculto'); });
+attachBtn.addEventListener('click', () => { emojiPicker.classList.add('oculto'); $('msgMenu').classList.add('oculto'); $('wallpaperMenu').classList.add('oculto'); attachMenu.classList.remove('oculto'); });
 attachOverlay.addEventListener('click', () => attachMenu.classList.add('oculto'));
 msgmenuOverlay.addEventListener('click', () => msgMenu.classList.add('oculto'));
 wallpaperBtn.addEventListener('click', () => { emojiPicker.classList.add('oculto'); attachMenu.classList.add('oculto'); msgMenu.classList.add('oculto'); wallpaperMenu.classList.remove('oculto'); });
