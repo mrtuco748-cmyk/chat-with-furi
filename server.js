@@ -184,7 +184,7 @@ io.on('connection', (socket) => {
 
   socket.on('foto-perfil', (data) => {
     if (socket.sala) {
-      const foto = data.foto ? String(data.foto).slice(0, 500000) : null;
+      const foto = data.foto ? String(data.foto).slice(0, 5000000) : null;
       socket.to(socket.sala).emit('foto-perfil', { foto });
     }
   });
