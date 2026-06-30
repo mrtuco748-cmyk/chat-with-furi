@@ -43,6 +43,8 @@ io.on('connection', (socket) => {
       usuario: data.usuario,
       texto: data.texto || '',
       audio: data.audio || null,
+      imagen: data.imagen || null,
+      respondiendoA: data.respondiendoA || null,
       hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     });
 
@@ -75,6 +77,12 @@ io.on('connection', (socket) => {
     if (!socket.sala || !salas[socket.sala]) return;
     if (salas[socket.sala].usuarios[data.usuario]) {
       salas[socket.sala].usuarios[data.usuario].presente = false;
+    }
+  });
+
+  socket.on('reaccion', (data) => {
+    if (socket.sala) {
+      socket.to(socket.sala).emit('reaccion', { msgId: data.msgId, reaccion: data.reaccion });
     }
   });
 

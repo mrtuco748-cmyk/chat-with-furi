@@ -14,7 +14,7 @@
 <body>
   <div id="login">
     <div class="login-box">
-      <h1>💕 Chat con amor</h1>
+      <h1>❤️‍🔥 Chat con amor</h1>
       <p>Ingresá el código secreto y tu nombre</p>
       <input type="text" id="codigoInput" placeholder="Código secreto..." maxlength="20">
       <input type="text" id="nombreInput" placeholder="Tu nombre..." maxlength="20">
@@ -25,9 +25,9 @@
   <div id="chat" class="oculto">
     <div class="chat-header">
       <div class="header-left">
-        <span class="avatar">💕</span>
+        <span class="avatar">❤️‍🔥</span>
         <div>
-          <div class="header-title">Chat con amor</div>
+          <div class="header-title">Mi amor ❤️</div>
           <div class="header-status"><span id="estadoConexion" class="conectado"></span> <span id="headerEstado">en línea</span></div>
         </div>
       </div>
@@ -41,6 +41,14 @@
       <span class="grabando-indicator">🔴</span> Grabando... <span id="tiempoGrabacion">0s</span>
       <span class="grabando-cancel" id="cancelarGrabacion">✕</span>
     </div>
+    <div id="replyBar" class="oculto">
+      <div class="reply-line"></div>
+      <div class="reply-content">
+        <div class="reply-label">Respondiendo a <span id="replyUser"></span></div>
+        <div class="reply-text" id="replyText"></div>
+      </div>
+      <button class="reply-close" id="replyClose">✕</button>
+    </div>
     <div id="emojiPicker" class="oculto"></div>
     <div id="attachMenu" class="oculto">
       <div class="attach-overlay" id="attachOverlay"></div>
@@ -49,12 +57,20 @@
         <button class="attach-option" data-tipo="galeria">🖼️ Galería</button>
       </div>
     </div>
+    <div id="msgMenu" class="oculto">
+      <div class="msgmenu-overlay" id="msgmenuOverlay"></div>
+      <div class="msgmenu-sheet">
+        <button class="msgmenu-option" id="menuResponder">💬 Responder</button>
+        <button class="msgmenu-option" id="menuCopiar">📋 Copiar</button>
+        <button class="msgmenu-option oculto" id="menuEliminar">🗑️ Eliminar para mí</button>
+      </div>
+    </div>
     <div class="chat-input">
       <button class="input-btn" id="attachBtn">📎</button>
       <button class="input-btn" id="emojiBtn">😊</button>
       <input type="text" id="mensajeInput" placeholder="Mensaje" maxlength="500">
-      <button class="input-btn mic-btn2 oculto" id="microfonoBtn2">🎤</button>
-      <button class="send-btn oculto" id="enviarBtn">▶</button>
+      <button class="input-btn mic-btn2" id="microfonoBtn2">🎤</button>
+      <button class="send-btn oculto" id="enviarBtn">❤️</button>
     </div>
   </div>
 
