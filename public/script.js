@@ -1196,6 +1196,7 @@ async function iniciarLlamada() {
     callStatusText.textContent = 'Llamando...';
     callAccept.style.display = 'none';
     incomingCall.classList.remove('oculto');
+    callActive = true;
     socket.emit('call-offer', { sala, offer });
   } catch(e) { mostrarToast('Error al iniciar c\u00E1mara: ' + e.message); terminarLlamada(); }
 }
@@ -1221,7 +1222,7 @@ function callRejectClick() {
   incomingCall.classList.add('oculto');
   callAccept.style.display = '';
   if (_pendingOffer) { _pendingOffer = null; socket.emit('call-reject', { sala }); }
-  else { socket.emit('call-end', { sala }); terminarLlamada(); }
+  else { terminarLlamada(); }
 }
 
 function crearPeerConnection() {
@@ -1242,7 +1243,7 @@ function abrirPantallaLlamada() {
 function terminarLlamada() {
   if (callTimer) { clearInterval(callTimer); callTimer = null; }
   videoCallScreen.classList.add('oculto'); incomingCall.classList.add('oculto');
-  callAccept.style.display = '';
+  callAccept.style.display = ''; _pendingOffer = null;
   if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
   if (pc) { pc.close(); pc = null; }
   localVideo.srcObject = null; remoteVideo.srcObject = null;
@@ -1279,8 +1280,8 @@ socket.on('call-answer', async (data) => {
 socket.on('ice-candidate', (data) => {
   if (pc) pc.addIceCandidate(new RTCIceCandidate(data.candidate)).catch(() => {});
 });
-socket.on('call-end', () => { if (callActive) terminarLlamada(); mostrarToast('Llamada finalizada'); });
-socket.on('call-reject', () => { if (_pendingOffer) { _pendingOffer = null; terminarLlamada(); mostrarToast('Llamada rechazada'); } });
+socket.on('call-end', () => { terminarLlamada(); mostrarToast('Llamada finalizada'); });
+socket.on('call-reject', () => { _pendingOffer = null; terminarLlamada(); mostrarToast('Llamada rechazada'); });
 
 function toggleDarkMode() {
   settings.darkMode = !settings.darkMode;
@@ -1530,6 +1531,7 @@ function limpiarRecursos() {
   if (leidosTimer) clearTimeout(leidosTimer);
   if (intervaloTiempo) clearInterval(intervaloTiempo);
   mensajesEnviados.clear();
+  if (localStream || pc || callActive) terminarLlamada();
 }
 
 window.addEventListener('beforeunload', limpiarRecursos);
