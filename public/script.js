@@ -482,24 +482,26 @@ function mostrarReaccion(div, emoji) {
 }
 
 socket.on('mensaje', (data) => {
-  if (data.usuario === usuario) return;
-  const esSistema = data.usuario === '\uD83D\uDCE2 Sistema';
-  const mData = { msgId: data.msgId, usuario: data.usuario, texto: data.texto||'', hora: data.hora, tipo: esSistema ? 'sistema' : 'otro' };
-  if (data.respondiendoA) mData.respondiendoA = data.respondiendoA;
-  if (data.imagen) mData.imagen = { data: 'data:'+data.imagen.type+';base64,'+data.imagen.data, type: data.imagen.type };
-  if (data.audio) mData.audio = { data: 'data:'+data.audio.type+';base64,'+data.audio.data, type: data.audio.type, duracion: data.audio.duracion };
-  guardarMsgLocal(mData);
-  if (esSistema) { const d = document.createElement('div'); d.classList.add('mensaje','sistema'); d.textContent = data.texto; mensajesDiv.appendChild(d); mensajesDiv.scrollTop = mensajesDiv.scrollHeight; return; }
-  renderMsgOtro(m);
-  const div = document.getElementById('msg-'+data.msgId);
-  if (div) { agregarEventosMensaje(div, data.msgId, data); mensajesEnviados.set(data.msgId, div); }
-  mensajesDiv.scrollTop = mensajesDiv.scrollHeight;
-  if (document.hidden && 'serviceWorker' in navigator && navigator.serviceWorker.controller) {
-    let cuerpo = data.texto; if (data.audio) cuerpo = 'Audio ('+(data.audio.duracion||0)+'s)'; else if (data.imagen) cuerpo = 'Foto';
-    navigator.serviceWorker.controller.postMessage({ tipo:'notificacion', titulo:'\u2764\uFE0F '+data.usuario, cuerpo, tag:'chat-'+data.msgId });
-  }
+  try {
+    if (data.usuario === usuario) return;
+    const esSistema = data.usuario === '\uD83D\uDCE2 Sistema';
+    const mData = { msgId: data.msgId, usuario: data.usuario, texto: data.texto||'', hora: data.hora, tipo: esSistema ? 'sistema' : 'otro' };
+    if (data.respondiendoA) mData.respondiendoA = data.respondiendoA;
+    if (data.imagen) mData.imagen = { data: 'data:'+data.imagen.type+';base64,'+data.imagen.data, type: data.imagen.type };
+    if (data.audio) mData.audio = { data: 'data:'+data.audio.type+';base64,'+data.audio.data, type: data.audio.type, duracion: data.audio.duracion };
+    guardarMsgLocal(mData);
+    if (esSistema) { const d = document.createElement('div'); d.classList.add('mensaje','sistema'); d.textContent = data.texto; mensajesDiv.appendChild(d); mensajesDiv.scrollTop = mensajesDiv.scrollHeight; return; }
+    renderMsgOtro(mData);
+    const div = document.getElementById('msg-'+data.msgId);
+    if (div) { agregarEventosMensaje(div, data.msgId, data); mensajesEnviados.set(data.msgId, div); }
+    mensajesDiv.scrollTop = mensajesDiv.scrollHeight;
+    if (document.hidden && 'serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      let cuerpo = data.texto; if (data.audio) cuerpo = 'Audio ('+(data.audio.duracion||0)+'s)'; else if (data.imagen) cuerpo = 'Foto';
+      navigator.serviceWorker.controller.postMessage({ tipo:'notificacion', titulo:'\u2764\uFE0F '+data.usuario, cuerpo, tag:'chat-'+data.msgId });
+    }
+  } catch(e) {}
 });
-socket.on('estado-msg', (data) => { const el = document.getElementById('estado-'+data.msgId); if (!el) return; if (data.estado==='enviado') el.innerHTML = '<span class="tick">\u2713</span>'; else if (data.estado==='entregado') el.innerHTML = '<span class="tick doble">\u2713\u2713</span>'; else if (data.estado==='visto') el.innerHTML = ICONS['heart']; });
+socket.on('estado-msg', (data) => { const el = document.getElementById('estado-'+data.msgId); if (!el) return; if (data.estado==='enviado') el.innerHTML = '<span class="tick">\u2713</span>'; else if (data.estado==='entregado') el.innerHTML = '<span class="tick doble">\u2713\u2713</span>'; else if (data.estado==='visto') el.innerHTML = '<span class="tick doble visto">\u2713\u2713</span>'; });
 socket.on('reaccion', (data) => { const d = document.getElementById('msg-'+data.msgId); if (d) mostrarReaccion(d, data.reaccion); });
 socket.on('presencia', (data) => {
   if (data.presente) { headerEstado.textContent = 'en línea'; }
@@ -534,7 +536,14 @@ socket.on('eliminado-msg', (data) => {
 
 socket.on('escribiendo', (data) => {
   const dots = escribiendoDiv.querySelector('.typing-dots');
-  if (dots) dots.style.display = (data.usuario && data.usuario !== usuario) ? 'inline-flex' : 'none';
+  const texto = document.getElementById('escribiendoTexto');
+  if (data.usuario && data.usuario !== usuario) {
+    if (dots) dots.style.display = 'inline-flex';
+    if (texto) texto.textContent = data.usuario + ' está escribiendo';
+  } else {
+    if (dots) dots.style.display = 'none';
+    if (texto) texto.textContent = '';
+  }
 });
 
 (function() { const d = escribiendoDiv.querySelector('.typing-dots'); if (d) d.style.display = 'none'; })();

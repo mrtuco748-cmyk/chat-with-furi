@@ -182,9 +182,8 @@ body.wallpaper-lavender #chat { background: linear-gradient(135deg, #0a0a1a 0%, 
 .mensaje .estado-msg { display: inline-flex; align-items: center; }
 .mensaje .tick-enviando { font-size: 11px; opacity: 0.5; color: rgba(255,255,255,0.5); }
 .mensaje .tick { font-size: 14px; line-height: 1; opacity: 0.5; display: inline-block; }
-.mensaje .tick.doble { font-size: 9px; letter-spacing: -2px; }
-.mensaje.propio .tick.doble.visto { opacity: 1; }
-.mensaje.propio .tick.doble.visto::after { content: ''; }
+.mensaje .tick.doble { font-size: 10px; letter-spacing: 1px; }
+.mensaje.propio .tick.doble.visto { color: #64b5f6; opacity: 1; }
 .mensaje .estado-msg .heart-seen { width: 12px; height: 12px; display: inline-block; color: rgba(255,255,255,0.9); }
 
 .mensaje .imagen-msg { max-width: 240px; max-height: 240px; border-radius: 12px; display: block; margin-bottom: 2px; }
@@ -433,7 +432,8 @@ body.wallpaper-lavender #chat { background: linear-gradient(135deg, #0a0a1a 0%, 
 
 .mensaje.swiping { border-left: 3px solid #FF1493; }
 
-#escribiendo { font-size: 0; padding: 2px 16px 4px; min-height: 18px; flex-shrink: 0; display: flex; align-items: center; }
+#escribiendo { font-size: 12px; padding: 2px 16px 4px; min-height: 18px; flex-shrink: 0; display: flex; align-items: center; gap: 4px; color: rgba(255,255,255,0.6); font-style: italic; }
+#escribiendoTexto { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
 
 #toastContainer {
   position: absolute; left: 0; right: 0; bottom: 80px; z-index: 20;

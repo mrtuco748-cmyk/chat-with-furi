@@ -56,12 +56,13 @@ io.on('connection', (socket) => {
       hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     });
 
+    socket.emit('estado-msg', { msgId: data.msgId, estado: 'entregado' });
+
     const otros = Object.keys(sala.usuarios).filter(n => n !== data.usuario);
     for (const otro of otros) {
       if (sala.usuarios[otro].presente) {
         socket.emit('estado-msg', { msgId: data.msgId, estado: 'visto' });
       } else {
-        socket.emit('estado-msg', { msgId: data.msgId, estado: 'entregado' });
         sala.pendientes[otro].push({ msgId: data.msgId, emisor: data.usuario });
       }
     }
