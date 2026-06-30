@@ -1186,7 +1186,7 @@ vcSpeakerBtn.addEventListener('click', () => { if (remoteVideo) remoteVideo.mute
 async function iniciarLlamada() {
   if (callActive) return;
   try {
-    localStream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30 } }, audio: { echoCancellation: true, noiseSuppression: true } });
+    localStream = await obtenerStreamCamara();
     localVideo.srcObject = localStream;
     crearPeerConnection();
     const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
@@ -1207,7 +1207,7 @@ async function aceptarLlamada() {
   _pendingOffer = null;
   incomingCall.classList.add('oculto');
   try {
-    localStream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30 } }, audio: { echoCancellation: true, noiseSuppression: true } });
+    localStream = await obtenerStreamCamara();
     if (!oferta) { mostrarToast('Llamada cancelada'); terminarLlamada(); return; }
     localVideo.srcObject = localStream;
     crearPeerConnection();
@@ -1218,6 +1218,20 @@ async function aceptarLlamada() {
     abrirPantallaLlamada();
     callActive = true;
   } catch(e) { mostrarToast('Error: ' + e.message); terminarLlamada(); }
+}
+
+async function obtenerStreamCamara() {
+  if (typeof navigator.mediaDevices?.getUserMedia !== 'function') {
+    throw new Error('Tu navegador no soporta videollamadas o no est\u00E1s en HTTPS');
+  }
+  const c = [
+    { video: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30 } }, audio: { echoCancellation: true, noiseSuppression: true } },
+    { video: { width: { ideal: 640 }, height: { ideal: 480 } }, audio: { echoCancellation: true, noiseSuppression: true } },
+    { video: true, audio: true }
+  ];
+  for (const constr of c) {
+    try { return await navigator.mediaDevices.getUserMedia(constr); } catch(e) { if (constr === c[c.length-1]) throw e; }
+  }
 }
 
 function callRejectClick() {
