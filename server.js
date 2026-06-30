@@ -237,6 +237,12 @@ io.on('connection', (socket) => {
   socket.on('call-answer', (data) => {
     if (socket.sala) socket.to(socket.sala).emit('call-answer', { answer: data.answer });
   });
+  socket.on('call-request', (data) => {
+    if (socket.sala) socket.to(socket.sala).emit('call-request', {});
+  });
+  socket.on('call-accepted', (data) => {
+    if (socket.sala) socket.to(socket.sala).emit('call-accepted', {});
+  });
   socket.on('ice-candidate', (data) => {
     if (socket.sala) socket.to(socket.sala).emit('ice-candidate', { candidate: data.candidate });
   });
