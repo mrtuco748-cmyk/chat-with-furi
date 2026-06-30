@@ -78,6 +78,10 @@ const settingsExport = $('settingsExport'), settingsClear = $('settingsClear');
 const settingsFoto = $('settingsFoto'), settingsFotoPreview = $('settingsFotoPreview'), settingsFotoRemove = $('settingsFotoRemove'), settingsParejaNombre = $('settingsParejaNombre');
 const installBanner = $('installBanner'), installBtn = $('installBtn'), installClose = $('installClose');
 const wpCustomBg = $('wpCustomBg'), wpClearBg = $('wpClearBg'), avatarRing = document.querySelector('.avatar-ring'), avatarHeart = document.querySelector('.avatar-heart');
+avatarRing.addEventListener('click', () => {
+  const foto = fotoPerfilRemoto || fotoPerfilLocal;
+  if (foto) abrirVisorImagen(foto, 'Foto de perfil');
+});
 const headerTitle = $('headerTitle');
 let deferredPrompt = null, fotoPerfilLocal = null, fotoPerfilRemoto = null;
 const headerNormal = $('headerNormal'), headerSelect = $('headerSelect');
