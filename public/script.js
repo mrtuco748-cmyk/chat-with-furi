@@ -47,6 +47,10 @@ const msgmenuOverlay = document.getElementById('msgmenuOverlay');
 const menuResponder = document.getElementById('menuResponder');
 const menuCopiar = document.getElementById('menuCopiar');
 const menuEliminar = document.getElementById('menuEliminar');
+const scrollBtn = document.getElementById('scrollBtn');
+const camaraBtn = document.getElementById('camaraBtn');
+
+let ultimaFecha = '';
 
 entrarBtn.addEventListener('click', entrar);
 codigoInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') nombreInput.focus(); });
@@ -351,6 +355,17 @@ function cancelarReply() {
   replyBar.classList.add('oculto');
 }
 
+scrollBtn.addEventListener('click', () => {
+  mensajesDiv.scrollTo({ top: mensajesDiv.scrollHeight, behavior: 'smooth' });
+});
+
+mensajesDiv.addEventListener('scroll', () => {
+  const distancia = mensajesDiv.scrollHeight - mensajesDiv.scrollTop - mensajesDiv.clientHeight;
+  scrollBtn.classList.toggle('oculto', distancia < 100);
+});
+
+camaraBtn.addEventListener('click', abrirCamara);
+
 menuResponder.addEventListener('click', () => {
   msgMenu.classList.add('oculto');
   const msgEl = document.getElementById('msg-' + msgMenuMsgId);
@@ -376,6 +391,51 @@ menuEliminar.addEventListener('click', () => {
   if (msgEl) msgEl.remove();
 });
 
+function formatearTexto(text) {
+  const escaped = escapeHtml(text);
+  return escaped
+    .replace(/\*(.*?)\*/g, '<b>$1</b>')
+    .replace(/_(.*?)_/g, '<i>$1</i>')
+    .replace(/~(.*?)~/g, '<s>$1</s>');
+}
+
+function obtenerFechaSeparador() {
+  const ahora = new Date();
+  const hoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+  const ayer = new Date(hoy.getTime() - 86400000);
+  const dom = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate(), ahora.getHours(), ahora.getMinutes());
+  return { hoy, ayer };
+}
+
+function debeInsertarSeparador() {
+  const ahora = new Date();
+  const clave = ahora.getFullYear() + '-' + ahora.getMonth() + '-' + ahora.getDate();
+  if (clave !== ultimaFecha) {
+    ultimaFecha = clave;
+    return true;
+  }
+  return false;
+}
+
+function textoSeparador() {
+  const ahora = new Date();
+  const { hoy, ayer } = obtenerFechaSeparador();
+  const inicioHoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+  const diff = Math.round((inicioHoy.getTime() - ahora.getTime()) / 86400000);
+  if (ahora >= inicioHoy) return 'Hoy';
+  if (ahora >= ayer && ahora < inicioHoy) return 'Ayer';
+  return ahora.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
+function insertarSeparadorFecha() {
+  if (debeInsertarSeparador()) {
+    const div = document.createElement('div');
+    div.classList.add('separador-fecha');
+    div.textContent = textoSeparador();
+    mensajesDiv.appendChild(div);
+  }
+}
+
 function escapeHtml(text) {
   const d = document.createElement('div');
   d.textContent = text;
@@ -383,6 +443,7 @@ function escapeHtml(text) {
 }
 
 function agregarMensajePropio(msgId, data) {
+  insertarSeparadorFecha();
   const div = document.createElement('div');
   div.id = 'msg-' + msgId;
   div.classList.add('mensaje', 'propio');
@@ -401,7 +462,7 @@ function agregarMensajePropio(msgId, data) {
   } else if (data.audio) {
     contenido += `<div class="duracion-audio">🎤 ${data.audio.duracion || 0}s</div>`;
   } else {
-    contenido += `<div class="texto">${escapeHtml(data.texto)}</div>`;
+    contenido += `<div class="texto">${formatearTexto(data.texto)}</div>`;
   }
 
   div.innerHTML = `
@@ -472,6 +533,7 @@ function mostrarReaccion(div, emoji) {
 
 socket.on('mensaje', (data) => {
   if (data.usuario === usuario) return;
+  insertarSeparadorFecha();
 
   const div = document.createElement('div');
   div.id = 'msg-' + data.msgId;
@@ -497,7 +559,7 @@ socket.on('mensaje', (data) => {
     contenido += `<audio controls src="${src}" class="audio-msg"></audio><div class="duracion-audio">🎤 ${data.audio.duracion || 0}s</div>`;
   }
   if (data.texto) {
-    contenido += `<div class="texto">${escapeHtml(data.texto)}</div>`;
+    contenido += `<div class="texto">${formatearTexto(data.texto)}</div>`;
   }
 
   div.innerHTML = `
