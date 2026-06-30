@@ -316,17 +316,14 @@ function actualizarTituloApp(nombre) {
   document.title = nombre;
   const meta = document.querySelector('meta[name="apple-mobile-web-app-title"]');
   if (meta) meta.content = nombre;
-  const m = document.querySelector('link[rel="manifest"]');
-  if (m) {
-    const href = m.getAttribute('href');
-    if (href && href.startsWith('data:')) {
-      try {
-        const obj = JSON.parse(decodeURIComponent(href.split(',')[1]));
-        obj.name = nombre; obj.short_name = nombre.substring(0, 12);
-        m.setAttribute('href', 'data:application/json,' + encodeURIComponent(JSON.stringify(obj)));
-      } catch(e) {}
-    }
-  }
+  try {
+    const iconHref = document.querySelector('link[rel="icon"]')?.href || '/icon-192.png';
+    const manifest = { name: nombre, short_name: nombre.substring(0, 12), start_url: '/', display: 'standalone', background_color: '#764ba2', theme_color: '#764ba2', icons: [{ src: iconHref, sizes: '192x192', type: 'image/png' }] };
+    const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.querySelector('link[rel="manifest"]');
+    if (link) { if (link._blobUrl) URL.revokeObjectURL(link._blobUrl); link.href = url; link._blobUrl = url; }
+  } catch(e) {}
 }
 function actualizarFavicon(foto) {
   const img = new Image(); img.crossOrigin = 'anonymous';
@@ -341,6 +338,8 @@ function actualizarFavicon(foto) {
       if (link) link.href = dataUrl;
       link = document.querySelector('link[rel="apple-touch-icon"]');
       if (link) link.href = dataUrl;
+      const nombre = localStorage.getItem('chat-pareja-nombre') || document.title;
+      actualizarTituloApp(nombre);
     } catch(e) {}
   };
   img.onerror = () => {};
