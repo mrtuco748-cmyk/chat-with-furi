@@ -1,7 +1,2 @@
 node_modules/
-data.db
-data.db-wal
-data.db-shm
-public/uploads/*
-!public/uploads/.gitkeep
-.env
+*.log

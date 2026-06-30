@@ -1,15 +1,14 @@
 {
-  "name": "amor-chat",
+  "name": "chat-con-amor",
   "version": "1.0.0",
-  "private": true,
+  "description": "Chat para hablar con mi novia",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js"
   },
   "dependencies": {
-    "express": "^4.21.0",
-    "mongoose": "^8.8.0",
-    "multer": "^1.4.5-lts.1",
-    "socket.io": "^4.7.5"
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2"
   }
 }

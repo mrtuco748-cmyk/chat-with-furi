@@ -1,345 +1,36 @@
 <!DOCTYPE html>
-<html lang="es" data-theme="dark">
+<html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#120202">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="application-name" content="Facu ❤️ Rocío">
-  <meta name="description" content="Chat privado de Facu y Rocío ❤️">
-  <title>Facu ❤️ Rocío</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='28' font-size='28'%3E❤️%3C/text%3E%3C/svg%3E">
-  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='28' font-size='28'%3E❤️%3C/text%3E%3C/svg%3E">
-  <link rel="manifest" href="/manifest.json">
-  <link rel="stylesheet" href="style.css?v=3">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat con amor</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-<!-- ===== USER SELECTOR ===== -->
-<div id="user-selector" class="user-selector">
-  <div class="user-selector-container">
-    <div class="user-selector-header">
-      <svg viewBox="0 0 24 24" width="48" height="48" style="margin:0 auto 8px;display:block"><path fill="#c0392b" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-      <h1>Facu ❤️ Rocío</h1>
-    </div>
-    <p class="user-selector-subtitle">Elegí tu perfil para entrar</p>
-    <div class="user-selector-buttons">
-      <button class="user-btn ripple" data-user="Facu" style="--user-color:#5f9ef0">
-        <span class="user-avatar">F</span>
-        <span class="user-name">Facu</span>
-        <span class="user-sub">Iniciar sesión</span>
-      </button>
-      <button class="user-btn ripple" data-user="Rocío" style="--user-color:#d47bcd">
-        <span class="user-avatar">R</span>
-        <span class="user-name">Rocío</span>
-        <span class="user-sub">Iniciar sesión</span>
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- ===== MAIN APP ===== -->
-<div id="app" class="app hidden">
-
-  <!-- Status overlay -->
-  <div id="reconnect-overlay" class="reconnect-overlay">Sin conexión</div>
-
-  <!-- Action bar (multi-select) -->
-  <div id="action-bar" class="action-bar hidden">
-    <button id="action-bar-back" class="action-bar-back ripple" aria-label="Cerrar selección">
-      <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
-    </button>
-    <span id="action-bar-count" class="action-bar-count"></span>
-    <button id="action-bar-del" class="action-bar-btn ripple" aria-label="Eliminar">
-      <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-    </button>
-    <button class="action-bar-btn ripple" aria-label="Reenviar">
-      <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M18 8c-1.66 0-3.06.68-4.12 1.76l-4.6-2.3C9.45 6.62 9.5 6.31 9.5 6c0-1.66-1.34-3-3-3S3.5 4.34 3.5 6c0 .31.05.62.12.9l4.6 2.3C7.56 10.38 7 11.66 7 13c0 1.34.56 2.62 1.22 3.8l-4.6 2.3c-.07.28-.12.59-.12.9 0 1.66 1.34 3 3 3s3-1.34 3-3c0-.31-.05-.62-.12-.9l4.6-2.3c1.06 1.08 2.46 1.76 4.12 1.76 3.31 0 6-2.69 6-6s-2.69-6-6-6z"/></svg>
-    </button>
-  </div>
-
-  <!-- ===== HEADER ===== -->
-  <header id="chat-header" class="chat-header">
-    <div class="header-left ripple" id="header-profile-btn">
-      <div class="header-avatar" id="header-avatar">
-        <span id="header-avatar-text"></span>
-      </div>
-      <div class="header-info">
-        <div class="header-name" id="header-name"></div>
-        <div class="header-subtitle" id="header-subtitle"></div>
-      </div>
-    </div>
-    <div class="header-right">
-      <button id="header-video-btn" class="header-icon-btn ripple" aria-label="Videollamada">
-        <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
-      </button>
-      <button id="header-call-btn" class="header-icon-btn ripple" aria-label="Llamada">
-        <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/></svg>
-      </button>
-      <button id="header-menu-btn" class="header-icon-btn ripple" aria-label="Menú">
-        <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M12 7a2 2 0 1 0-.001-4.001A2 2 0 0 0 12 7zm0 2a2 2 0 1 0-.001 3.999A2 2 0 0 0 12 9zm0 6a2 2 0 1 0-.001 3.999A2 2 0 0 0 12 15z"/></svg>
-      </button>
-    </div>
-  </header>
-
-  <!-- Header dropdown -->
-  <div id="header-dropdown" class="header-dropdown hidden">
-    <button class="header-dropdown-item ripple" data-action="profile">
-      <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-      Ver contacto
-    </button>
-    <button class="header-dropdown-item ripple" data-action="search">
-      <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M15.009 13.805h-.636l-.22-.219a5.184 5.184 0 0 0 1.256-3.386 5.207 5.207 0 1 0-5.207 5.207 5.184 5.184 0 0 0 3.385-1.255l.221.22v.635l4.004 3.999 1.194-1.195-3.997-4.006zm-4.808 0a3.605 3.605 0 1 1 0-7.21 3.605 3.605 0 0 1 0 7.21z"/></svg>
-      Buscar
-    </button>
-    <button class="header-dropdown-item ripple" data-action="mute">
-      <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
-      Silenciar notificaciones
-    </button>
-    <button class="header-dropdown-item ripple" data-action="wallpaper">
-      <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M21 3H3C2 3 1 4 1 5v14c0 1 1 2 2 2h18c1 0 2-1 2-2V5c0-1-1-2-2-2zm0 15c0 .5-.5 1-1 1H4c-.5 0-1-.5-1-1V6c0-.5.5-1 1-1h16c.5 0 1 .5 1 1v12z"/><path fill="currentColor" d="M6 12l3 3.5L12 12l3 4H6z"/><path fill="currentColor" d="M17 10.5c0-.83-.67-1.5-1.5-1.5S14 9.67 14 10.5s.67 1.5 1.5 1.5S17 11.33 17 10.5z"/></svg>
-      Fondo de pantalla
-    </button>
-    <div class="action-menu-divider"></div>
-    <button class="header-dropdown-item ripple" data-action="switch">
-      <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
-      Cambiar usuario
-    </button>
-    <div class="action-menu-divider"></div>
-    <button class="header-dropdown-item ripple" data-action="settings">
-      <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M19.14 12.94a8.22 8.22 0 0 0 .06-.94c0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/></svg>
-      Ajustes
-    </button>
-  </div>
-
-  <!-- ===== SEARCH BAR ===== -->
-  <div id="search-bar" class="search-bar hidden">
-    <button id="search-close-btn" class="search-close-btn ripple" aria-label="Cerrar búsqueda">
-      <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
-    </button>
-    <input type="text" id="search-input" class="search-input" placeholder="Buscar mensajes..." aria-label="Buscar">
-    <div class="search-nav">
-      <span id="search-count" class="search-count" aria-live="polite"></span>
-      <button id="search-prev-btn" class="search-nav-btn ripple" aria-label="Anterior">
-        <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6 1.41 1.41z"/></svg>
-      </button>
-      <button id="search-next-btn" class="search-nav-btn ripple" aria-label="Siguiente">
-        <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
-      </button>
+  <div id="login">
+    <div class="login-box">
+      <h1>💕 Chat con amor</h1>
+      <p>Ingresá el código secreto y tu nombre</p>
+      <input type="text" id="codigoInput" placeholder="Código secreto..." maxlength="20">
+      <input type="text" id="nombreInput" placeholder="Tu nombre..." maxlength="20">
+      <button id="entrarBtn">Entrar</button>
     </div>
   </div>
 
-  <!-- ===== MESSAGES ===== -->
-  <main id="messages-container" class="messages-container">
-    <div id="messages-loading" class="messages-loading"><div class="spinner spinner-lg"></div></div>
-    <div id="encryption-banner" class="encryption-banner">
-      <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M8 1a4 4 0 0 0-4 4v2H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1h-1V5a4 4 0 0 0-4-4zm-2 6V5a2 2 0 1 1 4 0v2H6z"/></svg>
-      Mensajes cifrados de extremo a extremo.
+  <div id="chat" class="oculto">
+    <div class="chat-header">
+      <h2>💕 Chat con amor</h2>
+      <span id="usuarioActual"></span>
     </div>
-    <div id="messages-list" class="messages-list"></div>
-  </main>
-
-  <!-- ===== REPLY PREVIEW ===== -->
-  <div id="reply-preview" class="reply-preview hidden">
-    <div class="reply-preview-bar"></div>
-    <div class="reply-preview-content">
-      <div class="reply-preview-sender" id="reply-preview-sender"></div>
-      <div class="reply-preview-text" id="reply-preview-text"></div>
+    <div class="chat-mensajes" id="mensajes"></div>
+    <div class="chat-input">
+      <input type="text" id="mensajeInput" placeholder="Escribí un mensaje..." maxlength="500">
+      <button id="enviarBtn">Enviar</button>
     </div>
-    <button id="reply-close-btn" class="reply-close-btn ripple" aria-label="Cancelar respuesta">
-      <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
-    </button>
+    <div id="escribiendo"></div>
   </div>
 
-  <!-- ===== INPUT BAR ===== -->
-  <div class="input-bar">
-    <button id="emoji-btn" class="emoji-btn ripple" aria-label="Emojis">
-      <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M9.153 11.603c.795 0 1.44-.88 1.44-1.962s-.645-1.96-1.44-1.96c-.795 0-1.44.88-1.44 1.96s.645 1.96 1.44 1.96zm-4.414 3.205c.4-.6 2.875-1.525 5.266-1.525s4.866.925 5.266 1.525a.5.5 0 0 0 .866-.5c-.626-1.045-3.37-2.025-6.132-2.025s-5.506.98-6.132 2.025a.5.5 0 0 0 .866.5zm10.634-3.205c.795 0 1.44-.88 1.44-1.962s-.645-1.96-1.44-1.96c-.795 0-1.44.88-1.44 1.96s.645 1.96 1.44 1.96zM12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2z"/></svg>
-    </button>
-    <div class="input-field-wrapper">
-      <textarea id="message-input" class="message-input" rows="1" placeholder="Escribe un mensaje" aria-label="Mensaje"></textarea>
-      <button id="clip-btn" class="clip-btn ripple" aria-label="Adjuntar">
-        <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M1.816 15.556v.002c0 1.502.584 2.912 1.646 3.972s2.472 1.647 3.974 1.647a5.58 5.58 0 0 0 3.972-1.645l9.547-9.548a3.527 3.527 0 0 0 1.037-2.51 3.527 3.527 0 0 0-1.037-2.51 3.542 3.542 0 0 0-2.514-1.038 3.54 3.54 0 0 0-2.513 1.038l-9.547 9.547a1.96 1.96 0 0 0 2.955 2.576l7.173-7.194 1.434 1.44-7.186 7.175a3.54 3.54 0 0 1-2.512 1.038 3.46 3.46 0 0 1-2.514-1.037 3.588 3.588 0 0 1 0-5.066l9.547-9.547a5.058 5.058 0 0 1 3.557-1.474c1.362 0 2.632.53 3.557 1.474a5.025 5.025 0 0 1 1.474 3.557 5.026 5.026 0 0 1-1.474 3.557l-9.547 9.547a5.58 5.58 0 0 1-3.972 1.645 5.565 5.565 0 0 1-3.972-1.645 5.608 5.608 0 0 1-1.645-3.972c0-1.502.584-2.913 1.645-3.973l6.127-6.127 1.434 1.44-6.14 6.115z"/></svg>
-      </button>
-    </div>
-    <button id="mic-btn" class="mic-btn" aria-label="Grabar audio">
-      <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3zm7.455 10.5a.73.73 0 0 0-.728.724 6.795 6.795 0 0 1-3.178 5.625.729.729 0 0 0-.296.738l.26 1.032a.728.728 0 0 0 .706.58h3.052a.728.728 0 0 0 .727-.727v-6.383a.728.728 0 0 0-.543-.69v.1zm-11.1 0a.728.728 0 0 0-.545.69v6.382c0 .402.326.728.728.728h3.054a.727.727 0 0 0 .706-.58l.258-1.032a.727.727 0 0 0-.295-.738 6.795 6.795 0 0 1-3.177-5.625.728.728 0 0 0-.729-.725z"/></svg>
-    </button>
-    <button id="send-btn" class="send-btn hidden" aria-label="Enviar">
-      <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M1.101 21.757 23.8 12.028 1.101 2.3l.011 7.912 13.623 1.816-13.623 1.817-.011 7.912z"/></svg>
-    </button>
-  </div>
-
-  <!-- ===== RECORDING OVERLAY ===== -->
-  <div id="recording-overlay" class="recording-overlay hidden">
-    <div class="recording-cancel" id="recording-cancel-area">
-      <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
-      Cancelar
-    </div>
-    <div class="recording-center">
-      <div class="recording-waveform" id="recording-waveform"></div>
-      <span class="recording-timer" id="recording-timer">0:00</span>
-    </div>
-    <div class="recording-mic-btn" id="recording-mic-btn">
-      <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3zm7.455 10.5a.73.73 0 0 0-.728.724 6.795 6.795 0 0 1-3.178 5.625.729.729 0 0 0-.296.738l.26 1.032a.728.728 0 0 0 .706.58h3.052a.728.728 0 0 0 .727-.727v-6.383a.728.728 0 0 0-.543-.69v.1zm-11.1 0a.728.728 0 0 0-.545.69v6.382c0 .402.326.728.728.728h3.054a.727.727 0 0 0 .706-.58l.258-1.032a.727.727 0 0 0-.295-.738 6.795 6.795 0 0 1-3.177-5.625.728.728 0 0 0-.729-.725z"/></svg>
-    </div>
-  </div>
-
-  <!-- ===== SCROLL BOTTOM BUTTON ===== -->
-  <button id="scroll-bottom-btn" class="scroll-bottom-btn hidden" aria-label="Ir al último mensaje">
-    <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6-1.41-1.41z"/></svg>
-    <span id="scroll-badge" class="scroll-bottom-badge hidden"></span>
-  </button>
-
-  <!-- ===== EMOJI PICKER ===== -->
-  <div id="emoji-overlay" class="emoji-overlay hidden"></div>
-  <div id="emoji-picker" class="emoji-picker hidden">
-    <div class="emoji-picker-handle"></div>
-    <div class="emoji-search">
-      <input type="text" id="emoji-search-input" class="emoji-search-input" placeholder="Buscar emoji..." aria-label="Buscar emoji">
-    </div>
-    <div id="emoji-grid" class="emoji-grid" role="listbox"></div>
-    <div id="emoji-tabs" class="emoji-tabs" role="tablist"></div>
-  </div>
-
-  <!-- ===== ATTACHMENT SHEET ===== -->
-  <div id="attach-overlay" class="attach-sheet-overlay hidden"></div>
-  <div id="attach-sheet" class="attach-sheet hidden">
-    <div class="attach-sheet-title">Compartir algo lindo ❤️</div>
-    <div class="attach-options">
-      <button class="attach-option" data-type="gallery">
-        <div class="attach-icon gallery">
-          <svg viewBox="0 0 24 24" width="24" height="24"><path fill="white" d="M21 3H3C2 3 1 4 1 5v14c0 1 1 2 2 2h18c1 0 2-1 2-2V5c0-1-1-2-2-2zm0 15c0 .5-.5 1-1 1H4c-.5 0-1-.5-1-1V6c0-.5.5-1 1-1h16c.5 0 1 .5 1 1v12zM6 12c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2zm9.5 3L12 17l-2.5-3L6 18h12l-2.5-3z"/></svg>
-        </div>
-        <span>Galería</span>
-      </button>
-      <button class="attach-option" data-type="document">
-        <div class="attach-icon document">
-          <svg viewBox="0 0 24 24" width="24" height="24"><path fill="white" d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg>
-        </div>
-        <span>Documento</span>
-      </button>
-      <button class="attach-option" data-type="camera">
-        <div class="attach-icon camera">
-          <svg viewBox="0 0 24 24" width="24" height="24"><path fill="white" d="M21 6h-3.5l-2-3h-7l-2 3H3c-1.1 0-2 .9-2 2v11c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 13H3V8h4.05l1.67-2.5h6.56L17.05 8H21v11zM12 10c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 6c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
-        </div>
-        <span>Cámara</span>
-      </button>
-    </div>
-  </div>
-
-  <!-- ===== IMAGE PREVIEW ===== -->
-  <div id="image-preview" class="image-preview hidden">
-    <div class="image-preview-header">
-      <button id="preview-close-btn" class="preview-close-btn ripple" aria-label="Cancelar">
-        <svg viewBox="0 0 24 24" width="24" height="24"><path fill="white" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
-      </button>
-      <span id="preview-filename" class="preview-filename"></span>
-    </div>
-    <div class="image-preview-body" id="preview-body">
-      <img id="preview-img" class="preview-img" alt="Vista previa">
-      <div class="preview-actions">
-        <button class="preview-action-btn ripple" id="preview-draw-btn">
-          <svg viewBox="0 0 24 24" width="22" height="22"><path fill="white" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-        </button>
-        <button class="preview-action-btn ripple">
-          <svg viewBox="0 0 24 24" width="22" height="22"><path fill="white" d="M18 5V2l4 3.5L18 9V6H6v3.5L2 8l4-3.5V7h12z"/></svg>
-        </button>
-        <button class="preview-action-btn ripple">
-          <svg viewBox="0 0 24 24" width="22" height="22"><path fill="white" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
-        </button>
-      </div>
-    </div>
-    <div class="preview-caption-bar">
-      <input type="text" id="preview-caption" class="preview-caption" placeholder="Añadir caption..." aria-label="Añadir caption">
-      <button id="preview-send-btn" class="preview-send-btn ripple" aria-label="Enviar">
-        <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M1.101 21.757 23.8 12.028 1.101 2.3l.011 7.912 13.623 1.816-13.623 1.817-.011 7.912z"/></svg>
-      </button>
-    </div>
-  </div>
-
-  <!-- ===== LIGHTBOX ===== -->
-  <div id="lightbox" class="lightbox hidden">
-    <button id="lightbox-close-btn" class="lightbox-close-btn ripple">
-      <svg viewBox="0 0 24 24" width="24" height="24"><path fill="white" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
-    </button>
-    <div id="lightbox-content" class="lightbox-content" style="touch-action:pinch-zoom">
-      <img id="lightbox-img" class="lightbox-img" alt="Imagen">
-    </div>
-  </div>
-
-  <!-- ===== CONTEXT ACTION MENU ===== -->
-  <div id="action-menu-overlay" class="action-menu-overlay hidden"></div>
-  <div id="action-menu" class="action-menu hidden"></div>
-
-  <!-- ===== INLINE REACTIONS ===== -->
-  <div id="inline-reactions" class="inline-reactions hidden"></div>
-
-  <!-- ===== SETTINGS PANEL ===== -->
-  <div id="settings-overlay" class="settings-overlay hidden"></div>
-  <div id="settings-panel" class="settings-panel">
-    <div class="settings-header">
-      <button id="settings-back" class="settings-back ripple" aria-label="Cerrar ajustes">
-        <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
-      </button>
-      <h2>Ajustes</h2>
-    </div>
-    <div class="settings-body">
-      <div class="settings-section">
-        <div class="settings-section-title">Apariencia</div>
-        <div class="settings-row">
-          <span class="settings-label">Modo oscuro</span>
-          <div id="theme-toggle" class="settings-toggle on"></div>
-        </div>
-        <div class="settings-row">
-          <span class="settings-label">Tamaño de fuente</span>
-        </div>
-        <div class="settings-row" style="border:none">
-          <div class="font-size-options">
-            <button class="font-size-opt" data-size="small">Peq</button>
-            <button class="font-size-opt active" data-size="normal">Nor</button>
-            <button class="font-size-opt" data-size="large">Gde</button>
-            <button class="font-size-opt" data-size="xlarge">Muy gde</button>
-          </div>
-        </div>
-      </div>
-      <div class="settings-section">
-        <div class="settings-section-title">Notificaciones</div>
-        <div class="settings-row">
-          <span class="settings-label">Silenciar</span>
-          <span class="settings-value" id="mute-label">No</span>
-        </div>
-      </div>
-      <div class="settings-section">
-        <div class="settings-section-title">Chat</div>
-        <div class="settings-row">
-          <span class="settings-label">Fondo de pantalla</span>
-          <button class="settings-value ripple" id="open-wallpaper" style="background:none;border:none;padding:0;cursor:pointer;font-size:14px;color:var(--txt-secondary);font-family:inherit">Cambiar</button>
-        </div>
-      </div>
-      <div class="settings-section">
-        <div class="settings-section-title">Cuenta</div>
-        <div class="settings-row">
-          <span class="settings-label">Nombre</span>
-          <span class="settings-value" id="settings-name">Facu</span>
-        </div>
-        <div class="settings-row">
-          <span class="settings-label">Cerrar sesión</span>
-          <button id="settings-logout" class="ripple" style="background:none;border:none;padding:0;cursor:pointer;font-size:14px;color:#ef5350;font-family:inherit">Salir</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===== FILE INPUTS ===== -->
-  <input type="file" id="file-input" accept="image/*,video/*" multiple hidden>
-  <input type="file" id="document-input" accept="*/*" hidden>
-  <input type="file" id="camera-input" accept="image/*" capture="environment" hidden>
-</div>
-
-<script src="/socket.io/socket.io.js"></script>
-<script src="app.js?v=2"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
