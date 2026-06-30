@@ -236,8 +236,11 @@ wpCustomBg.addEventListener('click', () => {
   i.click();
 });
 function aplicarFondoPersonalizado(bg) {
-  document.body.style.setProperty('--bg-chat', 'url('+bg+')');
-  document.body.style.background = 'url('+bg+') center/cover no-repeat fixed';
+  const chatEl = document.getElementById('chat');
+  if (chatEl) {
+    chatEl.style.background = 'url('+bg+') center/cover no-repeat fixed';
+    chatEl.style.backgroundBlendMode = 'normal';
+  }
 }
 const fondoGuardado = localStorage.getItem('chat-fondo-personalizado');
 if (fondoGuardado) aplicarFondoPersonalizado(fondoGuardado);
@@ -530,7 +533,7 @@ attachOverlay.addEventListener('click', () => attachMenu.classList.add('oculto')
 msgmenuOverlay.addEventListener('click', () => msgMenu.classList.add('oculto'));
 wallpaperBtn.addEventListener('click', () => { emojiPicker.classList.add('oculto'); attachMenu.classList.add('oculto'); msgMenu.classList.add('oculto'); wallpaperMenu.classList.remove('oculto'); });
 wallpaperOverlay.addEventListener('click', () => wallpaperMenu.classList.add('oculto'));
-document.querySelectorAll('.wp-opt').forEach(btn => { btn.addEventListener('click', () => { document.body.className = 'wallpaper-' + btn.dataset.wp; wallpaperMenu.classList.add('oculto'); localStorage.setItem('chat-wallpaper', btn.dataset.wp); localStorage.removeItem('chat-fondo-personalizado'); document.body.style.background = ''; document.body.style.removeProperty('--bg-chat'); }); });
+document.querySelectorAll('.wp-opt').forEach(btn => { btn.addEventListener('click', () => { document.body.className = 'wallpaper-' + btn.dataset.wp; wallpaperMenu.classList.add('oculto'); localStorage.setItem('chat-wallpaper', btn.dataset.wp); localStorage.removeItem('chat-fondo-personalizado'); document.getElementById('chat')?.style.removeProperty('background'); document.getElementById('chat')?.style.removeProperty('background-blend-mode'); }); });
 moreBtn.addEventListener('click', () => { emojiPicker.classList.add('oculto'); attachMenu.classList.add('oculto'); msgMenu.classList.add('oculto'); moreMenu.classList.toggle('oculto'); });
 moreOverlay.addEventListener('click', () => moreMenu.classList.add('oculto'));
 moreLogout.addEventListener('click', () => { localStorage.removeItem('chat-sala'); localStorage.removeItem('chat-usuario'); localStorage.removeItem('chat-msgs-'+sala); location.reload(); });
@@ -1255,8 +1258,8 @@ function eliminarSeleccionados(paraTodos) {
 
 selectQuiet.addEventListener('click', () => {
   if (selectedMsgs.size === 0) return;
-  salirSelectMode();
   const ids = [...selectedMsgs];
+  salirSelectMode();
   quietBar.dataset.targetIds = JSON.stringify(ids);
   quietText.textContent = ids.length + ' mensaje' + (ids.length !== 1 ? 's' : '');
   quietBar.classList.remove('oculto');
