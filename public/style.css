@@ -153,11 +153,44 @@ body {
   padding: 6px 16px;
 }
 
+.mensaje .estado-msg {
+  display: inline-block;
+  margin-left: 6px;
+}
+
+.mensaje .tick-enviando {
+  font-size: 12px;
+  opacity: 0.5;
+}
+
+.mensaje .tick {
+  font-size: 12px;
+  letter-spacing: -2px;
+  opacity: 0.6;
+}
+
+.mensaje .tick.doble {
+  font-size: 10px;
+  letter-spacing: -1px;
+}
+
+.mensaje.propio .tick.doble.visto {
+  color: #a8e6ff;
+  opacity: 1;
+}
+
+.mensaje .hora-estado {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  margin-top: 4px;
+}
+
 .mensaje .hora {
   font-size: 11px;
   opacity: 0.6;
   text-align: right;
-  margin-top: 4px;
 }
 
 .chat-input {

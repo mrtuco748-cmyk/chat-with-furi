@@ -7,6 +7,9 @@ let audioChunks = [];
 let grabando = false;
 let tiempoGrabacion = 0;
 let intervaloTiempo = null;
+const mensajesEnviados = new Map();
+
+let presente = false;
 
 const login = document.getElementById('login');
 const chat = document.getElementById('chat');
@@ -36,15 +39,65 @@ function entrar() {
   login.classList.add('oculto');
   chat.classList.remove('oculto');
   socket.emit('unirse', { sala, usuario });
+  marcarPresente();
   mensajeInput.focus();
 }
+
+function marcarPresente() {
+  presente = true;
+  socket.emit('presente', { usuario });
+}
+
+function marcarAusente() {
+  presente = false;
+  socket.emit('ausente', { usuario });
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    marcarPresente();
+  } else {
+    marcarAusente();
+  }
+});
+
+window.addEventListener('focus', () => marcarPresente());
+window.addEventListener('blur', () => marcarAusente());
 
 function enviarMensaje() {
   const texto = mensajeInput.value.trim();
   if (!texto) return;
-  socket.emit('mensaje', { usuario, texto });
+  const msgId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+  socket.emit('mensaje', { msgId, usuario, texto });
+  agregarMensajePropio(msgId, { usuario, texto, hora: '', audio: null });
   mensajeInput.value = '';
   mensajeInput.focus();
+}
+
+function agregarMensajePropio(msgId, data) {
+  const div = document.createElement('div');
+  div.id = 'msg-' + msgId;
+  div.classList.add('mensaje', 'propio');
+  const ahora = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  let contenido = '';
+  if (data.audio) {
+    contenido += `<div class="duracion-audio">🎤 ${data.audio.duracion || 0}s</div>`;
+  } else {
+    contenido += `<div class="texto">${data.texto}</div>`;
+  }
+
+  div.innerHTML = `
+    <div class="usuario">${data.usuario}</div>
+    ${contenido}
+    <div class="hora-estado">
+      <span class="hora">${ahora}</span>
+      <span class="estado-msg" id="estado-${msgId}"><span class="tick-enviando">⏳</span></span>
+    </div>
+  `;
+  mensajesDiv.appendChild(div);
+  mensajesDiv.scrollTop = mensajesDiv.scrollHeight;
+  mensajesEnviados.set(msgId, div);
 }
 
 enviarBtn.addEventListener('click', enviarMensaje);
@@ -117,18 +170,23 @@ function detenerGrabacion() {
 
 function enviarAudio(blob) {
   const reader = new FileReader();
+  const msgId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
   reader.onloadend = () => {
     const base64 = reader.result.split(',')[1];
     socket.emit('mensaje', {
+      msgId,
       usuario,
       texto: '',
       audio: { data: base64, type: blob.type, duracion: tiempoGrabacion }
     });
+    agregarMensajePropio(msgId, { usuario, texto: '', hora: '', audio: { duracion: tiempoGrabacion } });
   };
   reader.readAsDataURL(blob);
 }
 
 socket.on('mensaje', (data) => {
+  if (data.usuario === usuario) return;
+
   const div = document.createElement('div');
   div.classList.add('mensaje');
   div.classList.add(data.usuario === usuario ? 'propio' : 'otro');
@@ -154,6 +212,17 @@ socket.on('mensaje', (data) => {
   `;
   mensajesDiv.appendChild(div);
   mensajesDiv.scrollTop = mensajesDiv.scrollHeight;
+});
+
+socket.on('estado-msg', (data) => {
+  const estadoEl = document.getElementById('estado-' + data.msgId);
+  if (!estadoEl) return;
+
+  if (data.estado === 'entregado') {
+    estadoEl.innerHTML = '<span class="tick doble">✓✓</span>';
+  } else if (data.estado === 'visto') {
+    estadoEl.innerHTML = '<span class="tick doble visto">✓✓</span>';
+  }
 });
 
 socket.on('escribiendo', (data) => {
