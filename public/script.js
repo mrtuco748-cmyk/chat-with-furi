@@ -41,6 +41,22 @@ function entrar() {
   socket.emit('unirse', { sala, usuario });
   marcarPresente();
   mensajeInput.focus();
+  registrarServiceWorker();
+  pedirPermisoNotificacion();
+}
+
+async function registrarServiceWorker() {
+  if ('serviceWorker' in navigator) {
+    try {
+      await navigator.serviceWorker.register('/sw.js');
+    } catch (e) {}
+  }
+}
+
+function pedirPermisoNotificacion() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
 }
 
 function marcarPresente() {
@@ -212,6 +228,16 @@ socket.on('mensaje', (data) => {
   `;
   mensajesDiv.appendChild(div);
   mensajesDiv.scrollTop = mensajesDiv.scrollHeight;
+
+  if (!esSistema && document.hidden && 'serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    const cuerpo = data.audio ? '🎤 Audio (' + (data.audio.duracion || 0) + 's)' : data.texto;
+    navigator.serviceWorker.controller.postMessage({
+      tipo: 'notificacion',
+      titulo: '💕 ' + data.usuario,
+      cuerpo: cuerpo,
+      tag: 'chat-' + data.msgId
+    });
+  }
 });
 
 socket.on('estado-msg', (data) => {

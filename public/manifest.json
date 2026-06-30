@@ -1,15 +1,15 @@
 {
-  "name": "Facu ❤️ Rocío",
-  "short_name": "Facu ❤️ Rocío",
-  "description": "Chat privado de Facu y Rocío",
+  "name": "Chat con amor",
+  "short_name": "Chat Amor",
   "start_url": "/",
   "display": "standalone",
-  "orientation": "portrait",
-  "theme_color": "#120202",
-  "background_color": "#0a0a0a",
-  "categories": ["social", "communication"],
+  "background_color": "#764ba2",
+  "theme_color": "#764ba2",
   "icons": [
-    { "src": "/icons/icon-192.svg", "type": "image/svg+xml", "sizes": "192x192" },
-    { "src": "/icons/icon-512.svg", "type": "image/svg+xml", "sizes": "512x512" }
+    {
+      "src": "/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    }
   ]
 }
