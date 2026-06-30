@@ -5,7 +5,7 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, { maxHttpBufferSize: 5e7 });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -28,6 +28,8 @@ io.on('connection', (socket) => {
       const u = salas[data.sala].usuarios[otro];
       socket.emit('presencia', { usuario: otro, presente: u.presente, ultimaVez: u.ultimaVez });
     }
+
+    socket.to(data.sala).emit('escribiendo', { usuario: '' });
 
     socket.to(data.sala).emit('mensaje', {
       msgId: 'sys-' + Date.now(),
@@ -86,8 +88,7 @@ io.on('connection', (socket) => {
     if (!socket.sala || !salas[socket.sala]) return;
     if (salas[socket.sala].usuarios[data.usuario]) {
       salas[socket.sala].usuarios[data.usuario].presente = false;
-      salas[socket.sala].usuarios[data.usuario].ultimaVez = Date.now();
-      socket.to(socket.sala).emit('presencia', { usuario: data.usuario, presente: false, ultimaVez: Date.now() });
+      socket.to(socket.sala).emit('presencia', { usuario: data.usuario, presente: false, ultimaVez: null });
     }
   });
 

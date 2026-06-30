@@ -12,7 +12,9 @@ const ICONS = {
   'trash': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>',
   'search': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',
   'arrow-left': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>',
-  'edit': '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>'
+  'edit': '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',
+  'play': '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
+  'pause': '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>'
 };
 
 function injectIcons() { document.querySelectorAll('[data-icon]').forEach(el => { const n = el.dataset.icon; if (ICONS[n]) el.innerHTML = ICONS[n]; }); }
@@ -63,7 +65,8 @@ function entrar() {
 }
 function iniciarSesion() {
   login.classList.add('oculto'); chat.classList.remove('oculto');
-  conectarAlSala(); mensajeInput.focus();
+  mensajesDiv.innerHTML = ''; ultimaFecha = '';
+  cargarMsgsLocal(); conectarAlSala(); mensajeInput.focus();
   registrarServiceWorker(); pedirPermisoNotificacion();
   construirEmojiPicker(); actualizarStats();
 }
@@ -75,7 +78,7 @@ function marcarAusente() { presente = false; socket.emit('ausente', { usuario })
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') marcarPresente(); else { marcarAusente(); headerEstado.textContent = 'ausente'; } });
 window.addEventListener('focus', () => marcarPresente());
 window.addEventListener('blur', () => { marcarAusente(); headerEstado.textContent = 'ausente'; });
-socket.on('connect', () => { estadoConexion.className = 'conectado'; headerEstado.textContent = 'en l\u00ednea'; if (sala && usuario) conectarAlSala(); });
+socket.on('connect', () => { estadoConexion.className = 'conectado'; headerEstado.textContent = 'en l\u00ednea'; if (sala && usuario) conectarAlSala(); const d = escribiendoDiv.querySelector('.typing-dots'); if (d) d.style.display = 'none'; });
 socket.on('disconnect', () => { estadoConexion.className = 'desconectado'; headerEstado.textContent = 'desconectado'; });
 socket.io.on('reconnect_attempt', () => { estadoConexion.className = 'reconectando'; headerEstado.textContent = 'reconectando...'; });
 socket.io.on('reconnect', () => { estadoConexion.className = 'conectado'; headerEstado.textContent = 'en l\u00ednea'; });
@@ -140,9 +143,9 @@ function detenerGrabacion() { if (mediaRecorder && mediaRecorder.state !== 'inac
 function enviarAudio(blob) {
   const r = new FileReader(); const msgId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
   r.onloadend = () => {
-    const b = r.result.split(',')[1];
+    const b64 = r.result; const b = b64.split(',')[1];
     socket.emit('mensaje', { msgId, usuario, texto: '', audio: { data: b, type: blob.type, duracion: tiempoGrabacion }, respondiendoA });
-    agregarMensajePropio(msgId, { usuario, texto: '', audio: { duracion: tiempoGrabacion }, imagen: null, respondiendoA });
+    agregarMensajePropio(msgId, { usuario, texto: '', audio: { data: b64, type: blob.type, duracion: tiempoGrabacion }, imagen: null, respondiendoA });
     if (respondiendoA) cancelarReply(); audioCount++; actualizarStats();
   }; r.readAsDataURL(blob);
 }
@@ -303,6 +306,102 @@ function mostrarToast(texto, duracion) {
 
 function vibrar(ms) { if (navigator.vibrate) navigator.vibrate(ms); }
 
+function keyMsgs() { return 'chat-msgs-' + sala; }
+function guardarMsgLocal(m) {
+  try { const arr = JSON.parse(localStorage.getItem(keyMsgs()) || '[]'); arr.push(m); localStorage.setItem(keyMsgs(), JSON.stringify(arr)); } catch(e) {}
+}
+function cargarMsgsLocal() {
+  mensajesDiv.innerHTML = ''; ultimaFecha = ''; msgCount = 0; fotoCount = 0; audioCount = 0;
+  try {
+    const arr = JSON.parse(localStorage.getItem(keyMsgs()) || '[]');
+    for (const m of arr) {
+      if (m.tipo === 'propio') renderMsgPropio(m);
+      else if (m.tipo === 'otro') renderMsgOtro(m);
+      else if (m.tipo === 'sistema') { const d = document.createElement('div'); d.classList.add('mensaje','sistema'); d.textContent = m.texto; mensajesDiv.appendChild(d); }
+      if (m.tipo !== 'sistema') { msgCount++; if (m.imagen) fotoCount++; if (m.audio) audioCount++; }
+    }
+  } catch(e) {}
+  mensajesDiv.scrollTop = mensajesDiv.scrollHeight;
+}
+function htmlPlayerAudio(src, dur) {
+  const d = dur || 0; const m = Math.floor(d/60); const s = Math.floor(d%60);
+  return '<div class="audio-player" data-src="'+src+'" data-dur="'+d+'">'+
+    '<button class="ap-play" data-icon="play"></button>'+
+    '<div class="ap-wave"><div class="ap-progress"></div></div>'+
+    '<span class="ap-time">'+m+':'+(s<10?'0':'')+s+'</span>'+
+    '<button class="ap-speed">1x</button>'+
+  '</div>';
+}
+function initAudioPlayers(container) {
+  injectIconsIn(container);
+  container.querySelectorAll('.audio-player').forEach(el => {
+    if (el.dataset.inited) return; el.dataset.inited = '1';
+    const audio = new Audio(el.dataset.src); audio.preload = 'metadata';
+    const playBtn = el.querySelector('.ap-play'), progress = el.querySelector('.ap-progress');
+    const timeEl = el.querySelector('.ap-time'), speedBtn = el.querySelector('.ap-speed');
+    audio.addEventListener('loadedmetadata', () => {
+      const dur = audio.duration || el.dataset.dur;
+      const m = Math.floor(dur/60), s = Math.floor(dur%60);
+      timeEl.textContent = m+':'+(s<10?'0':'')+s;
+    });
+    playBtn.addEventListener('click', () => {
+      if (audio.paused) { audio.play(); playBtn.dataset.icon = 'pause'; }
+      else { audio.pause(); playBtn.dataset.icon = 'play'; }
+      injectIconsIn(playBtn);
+    });
+    audio.addEventListener('timeupdate', () => {
+      const pct = (audio.currentTime / (audio.duration || el.dataset.dur)) * 100;
+      progress.style.width = Math.min(pct, 100) + '%';
+      const m = Math.floor(audio.currentTime/60), s = Math.floor(audio.currentTime%60);
+      timeEl.textContent = m+':'+(s<10?'0':'')+s;
+    });
+    audio.addEventListener('ended', () => { playBtn.dataset.icon = 'play'; injectIconsIn(playBtn); progress.style.width = '0'; });
+    el.querySelector('.ap-wave').addEventListener('click', e => {
+      const r = el.querySelector('.ap-wave').getBoundingClientRect();
+      const pct = (e.clientX - r.left) / r.width;
+      audio.currentTime = pct * (audio.duration || el.dataset.dur);
+    });
+    speedBtn.addEventListener('click', () => {
+      const speeds = [1, 1.5, 2]; const i = speeds.indexOf(audio.playbackRate);
+      audio.playbackRate = speeds[(i+1) % speeds.length];
+      speedBtn.textContent = audio.playbackRate + 'x';
+    });
+  });
+}
+function injectIconsIn(el) { el.querySelectorAll('[data-icon]').forEach(e => { const n = e.dataset.icon; if (ICONS[n]) e.innerHTML = ICONS[n]; }); }
+
+function renderMsgPropio(m) {
+  insertarSeparadorFecha();
+  const div = document.createElement('div'); div.id = 'msg-'+m.msgId; div.classList.add('mensaje','propio');
+  div.dataset.usuario = m.usuario; div.dataset.texto = m.texto||'';
+  let rh='', c='';
+  if (m.respondiendoA) rh = '<div class="reply-quote"><div class="rq-user">'+escapeHtml(m.respondiendoA.usuario)+'</div><div class="rq-text">'+escapeHtml(m.respondiendoA.texto)+'</div></div>';
+  if (m.imagen) { const s = m.imagen.data && m.imagen.data.startsWith('data:') ? m.imagen.data : 'data:'+m.imagen.type+';base64,'+ (m.imagen.data||''); c += '<img src="'+s+'" class="imagen-msg" loading="lazy">'; }
+  else if (m.audio) {
+    const src = m.audio.data && m.audio.data.startsWith('data:') ? m.audio.data : (m.audio.data ? 'data:'+m.audio.type+';base64,'+m.audio.data : '');
+    c += htmlPlayerAudio(src, m.audio.duracion||0);
+  }
+  else c += '<div class="texto">'+formatearTexto(m.texto)+'</div>';
+  div.innerHTML = rh+c+'<div class="hora-estado"><span class="hora">'+(m.hora||'')+'</span></div>';
+  mensajesDiv.appendChild(div);
+  initAudioPlayers(div);
+}
+function renderMsgOtro(m) {
+  insertarSeparadorFecha();
+  const div = document.createElement('div'); div.id = 'msg-'+m.msgId; div.classList.add('mensaje','otro');
+  div.dataset.usuario = m.usuario; div.dataset.texto = m.texto||'';
+  const esSistema = m.usuario === '\uD83D\uDCE2 Sistema';
+  if (esSistema) div.classList.add('sistema');
+  let rh='', c='';
+  if (m.respondiendoA) rh = '<div class="reply-quote"><div class="rq-user">'+escapeHtml(m.respondiendoA.usuario)+'</div><div class="rq-text">'+escapeHtml(m.respondiendoA.texto)+'</div></div>';
+  if (m.imagen) { const s='data:'+m.imagen.type+';base64,'+m.imagen.data; c+='<img src="'+s+'" class="imagen-msg" loading="lazy">'; }
+  if (m.audio) { const s='data:'+m.audio.type+';base64,'+m.audio.data; c += htmlPlayerAudio(s, m.audio.duracion||0); }
+  if (m.texto) c+='<div class="texto">'+formatearTexto(m.texto)+'</div>';
+  div.innerHTML = (esSistema?'':'<div class="usuario">'+m.usuario+'</div>')+rh+c+'<div class="hora">'+(m.hora||'')+'</div>';
+  mensajesDiv.appendChild(div);
+  initAudioPlayers(div);
+}
+
 function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
 function formatearTexto(text) {
   const urlRegex = /(https?:\/\/[^\s<]+|[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:\/[^\s<]*)?)/g;
@@ -314,18 +413,18 @@ function textoSeparador() { const a = new Date(); const h = new Date(a.getFullYe
 function insertarSeparadorFecha() { if (debeInsertarSeparador()) { const d = document.createElement('div'); d.classList.add('separador-fecha'); d.textContent = textoSeparador(); mensajesDiv.appendChild(d); } }
 
 function agregarMensajePropio(msgId, data) {
-  insertarSeparadorFecha();
-  const div = document.createElement('div'); div.id = 'msg-'+msgId; div.classList.add('mensaje','propio');
-  div.dataset.usuario = usuario; div.dataset.texto = data.texto||'';
-  const ahora = new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
-  let rh='', c='';
-  if (data.respondiendoA) rh = '<div class="reply-quote"><div class="rq-user">'+escapeHtml(data.respondiendoA.usuario)+'</div><div class="rq-text">'+escapeHtml(data.respondiendoA.texto)+'</div></div>';
-  if (data.imagen) { const s = data.imagen.data || 'data:'+data.imagen.type+';base64,'; c += '<img src="'+s+'" class="imagen-msg" loading="lazy">'; }
-  else if (data.audio) c += '<div class="duracion-audio">\uD83C\uDFA4 Audio '+(data.audio.duracion||0)+'s</div>';
-  else c += '<div class="texto">'+formatearTexto(data.texto)+'</div>';
-  div.innerHTML = rh+c+'<div class="hora-estado"><span class="hora">'+ahora+'</span><span class="estado-msg" id="estado-'+msgId+'"><span class="tick-enviando">\u23F3</span></span></div>';
-  mensajesDiv.appendChild(div); mensajesDiv.scrollTop = mensajesDiv.scrollHeight;
-  mensajesEnviados.set(msgId, div); agregarEventosMensaje(div, msgId, data);
+  const hora = new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+  const m = { msgId, usuario, texto: data.texto||'', audio: data.audio||null, imagen: data.imagen||null, respondiendoA: data.respondiendoA||null, hora, tipo: 'propio' };
+  guardarMsgLocal(m);
+  renderMsgPropio(m);
+  const div = document.getElementById('msg-'+msgId);
+  if (div) {
+    const estadoSpan = document.createElement('span'); estadoSpan.className = 'estado-msg'; estadoSpan.id = 'estado-'+msgId;
+    estadoSpan.innerHTML = '<span class="tick-enviando">\u23F3</span>';
+    div.querySelector('.hora-estado')?.appendChild(estadoSpan);
+    mensajesEnviados.set(msgId, div); agregarEventosMensaje(div, msgId, data);
+  }
+  mensajesDiv.scrollTop = mensajesDiv.scrollHeight;
 }
 
 function agregarEventosMensaje(div, msgId, data) {
@@ -338,24 +437,23 @@ function agregarEventosMensaje(div, msgId, data) {
   div.addEventListener('pointercancel', () => { clearTimeout(lp); });
   div.addEventListener('pointermove', e => { if (lp && e.movementX && Math.abs(e.movementX) > 8) clearTimeout(lp); });
 
-  let sx = 0, swiping = false, swipeEl = null;
+  let sx = 0, swiping = false, animFrame = null;
   div.addEventListener('touchstart', e => { sx = e.touches[0].clientX; swiping = false; });
   div.addEventListener('touchmove', e => {
-    if (swiping) e.preventDefault();
     const dx = e.touches[0].clientX - sx;
-    if (dx > 10 && !swiping) {
-      swiping = true; clearTimeout(lp);
-      swipeEl = document.createElement('div'); swipeEl.className = 'swipe-reply-indicator';
-      div.appendChild(swipeEl);
+    if (dx > 10 && !swiping) { swiping = true; clearTimeout(lp); e.preventDefault(); div.classList.add('swiping'); }
+    if (swiping) {
+      e.preventDefault(); cancelAnimationFrame(animFrame);
+      animFrame = requestAnimationFrame(() => { div.style.boxShadow = 'inset ' + Math.min(dx, 60) + 'px 0 0 rgba(255,20,147,0.15)'; });
     }
-    if (swiping && swipeEl) { swipeEl.style.width = Math.min(dx, 80) + 'px'; }
   }, { passive: false });
   div.addEventListener('touchend', e => {
+    cancelAnimationFrame(animFrame);
     const dx = e.changedTouches[0].clientX - sx;
     if (dx > 50) { iniciarReply({ msgId, usuario: data.usuario, texto: data.texto }); mostrarToast('Respondiendo...'); }
-    limpiarSwipe();
+    div.classList.remove('swiping'); div.style.boxShadow = ''; swiping = false;
   });
-  function limpiarSwipe() { if (swipeEl) { swipeEl.remove(); swipeEl = null; } swiping = false; }
+  div.addEventListener('touchcancel', () => { cancelAnimationFrame(animFrame); div.classList.remove('swiping'); div.style.boxShadow = ''; swiping = false; });
 }
 
 function abrirMenuMensaje(msgId, div) {
@@ -376,20 +474,18 @@ function mostrarReaccion(div, emoji) {
 
 socket.on('mensaje', (data) => {
   if (data.usuario === usuario) return;
-  insertarSeparadorFecha();
-  const div = document.createElement('div'); div.id = 'msg-'+data.msgId; div.classList.add('mensaje','otro');
-  div.dataset.usuario = data.usuario; div.dataset.texto = data.texto||'';
   const esSistema = data.usuario === '\uD83D\uDCE2 Sistema';
-  if (esSistema) div.classList.add('sistema');
-  let rh='', c='';
-  if (data.respondiendoA) rh = '<div class="reply-quote"><div class="rq-user">'+escapeHtml(data.respondiendoA.usuario)+'</div><div class="rq-text">'+escapeHtml(data.respondiendoA.texto)+'</div></div>';
-  if (data.imagen) { const s='data:'+data.imagen.type+';base64,'+data.imagen.data; c+='<img src="'+s+'" class="imagen-msg" loading="lazy">'; }
-  if (data.audio) { const s='data:'+data.audio.type+';base64,'+data.audio.data; c+='<audio controls src="'+s+'" class="audio-msg"></audio><div class="duracion-audio">\uD83C\uDFA4 Audio '+(data.audio.duracion||0)+'s</div>'; }
-  if (data.texto) c+='<div class="texto">'+formatearTexto(data.texto)+'</div>';
-  div.innerHTML = (esSistema?'':'<div class="usuario">'+data.usuario+'</div>')+rh+c+'<div class="hora">'+data.hora+'</div>';
-  mensajesDiv.appendChild(div); mensajesDiv.scrollTop = mensajesDiv.scrollHeight;
-  mensajesEnviados.set(data.msgId, div); agregarEventosMensaje(div, data.msgId, data);
-  if (!esSistema && document.hidden && 'serviceWorker' in navigator && navigator.serviceWorker.controller) {
+  const mData = { msgId: data.msgId, usuario: data.usuario, texto: data.texto||'', hora: data.hora, tipo: esSistema ? 'sistema' : 'otro' };
+  if (data.respondiendoA) mData.respondiendoA = data.respondiendoA;
+  if (data.imagen) mData.imagen = { data: 'data:'+data.imagen.type+';base64,'+data.imagen.data, type: data.imagen.type };
+  if (data.audio) mData.audio = { data: 'data:'+data.audio.type+';base64,'+data.audio.data, type: data.audio.type, duracion: data.audio.duracion };
+  guardarMsgLocal(mData);
+  if (esSistema) { const d = document.createElement('div'); d.classList.add('mensaje','sistema'); d.textContent = data.texto; mensajesDiv.appendChild(d); mensajesDiv.scrollTop = mensajesDiv.scrollHeight; return; }
+  renderMsgOtro(m);
+  const div = document.getElementById('msg-'+data.msgId);
+  if (div) { agregarEventosMensaje(div, data.msgId, data); mensajesEnviados.set(data.msgId, div); }
+  mensajesDiv.scrollTop = mensajesDiv.scrollHeight;
+  if (document.hidden && 'serviceWorker' in navigator && navigator.serviceWorker.controller) {
     let cuerpo = data.texto; if (data.audio) cuerpo = 'Audio ('+(data.audio.duracion||0)+'s)'; else if (data.imagen) cuerpo = 'Foto';
     navigator.serviceWorker.controller.postMessage({ tipo:'notificacion', titulo:'\u2764\uFE0F '+data.usuario, cuerpo, tag:'chat-'+data.msgId });
   }
@@ -397,15 +493,16 @@ socket.on('mensaje', (data) => {
 socket.on('estado-msg', (data) => { const el = document.getElementById('estado-'+data.msgId); if (!el) return; if (data.estado==='enviado') el.innerHTML = '<span class="tick">\u2713</span>'; else if (data.estado==='entregado') el.innerHTML = '<span class="tick doble">\u2713\u2713</span>'; else if (data.estado==='visto') el.innerHTML = ICONS['heart']; });
 socket.on('reaccion', (data) => { const d = document.getElementById('msg-'+data.msgId); if (d) mostrarReaccion(d, data.reaccion); });
 socket.on('presencia', (data) => {
-  if (!data.presente && data.ultimaVez) {
+  if (data.presente) { headerEstado.textContent = 'en línea'; }
+  else if (data.ultimaVez) {
     const d = new Date(data.ultimaVez);
     const hoy = new Date(); const ayer = new Date(hoy); ayer.setDate(ayer.getDate()-1);
     const hh = d.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
     if (d.toDateString() === hoy.toDateString()) headerEstado.textContent = 'últ. vez hoy a las ' + hh;
     else if (d.toDateString() === ayer.toDateString()) headerEstado.textContent = 'últ. vez ayer a las ' + hh;
     else headerEstado.textContent = 'últ. vez ' + d.toLocaleDateString('es-ES', { day:'numeric', month:'short' }) + ' a las ' + hh;
-  } else if (data.presente) {
-    headerEstado.textContent = 'en línea';
+  } else {
+    headerEstado.textContent = 'ausente';
   }
 });
 socket.on('editado-msg', (data) => {
@@ -418,16 +515,20 @@ socket.on('editado-msg', (data) => {
     const tag = document.createElement('span'); tag.className = 'editado-tag'; tag.textContent = 'editado';
     el.querySelector('.hora')?.before(tag);
   }
+  try { const arr = JSON.parse(localStorage.getItem(keyMsgs()) || '[]'); const idx = arr.findIndex(m => m.msgId === data.msgId); if (idx>=0) { arr[idx].texto = data.texto; localStorage.setItem(keyMsgs(), JSON.stringify(arr)); } } catch(e) {}
 });
 socket.on('eliminado-msg', (data) => {
   const el = document.getElementById('msg-' + data.msgId);
   if (el) el.remove();
+  try { const arr = JSON.parse(localStorage.getItem(keyMsgs()) || '[]'); const nw = arr.filter(m => m.msgId !== data.msgId); localStorage.setItem(keyMsgs(), JSON.stringify(nw)); } catch(e) {}
 });
 
 socket.on('escribiendo', (data) => {
   const dots = escribiendoDiv.querySelector('.typing-dots');
   if (dots) dots.style.display = (data.usuario && data.usuario !== usuario) ? 'inline-flex' : 'none';
 });
+
+(function() { const d = escribiendoDiv.querySelector('.typing-dots'); if (d) d.style.display = 'none'; })();
 
 const sg = localStorage.getItem('chat-sala'), su = localStorage.getItem('chat-usuario');
 if (sg && su) { sala = sg; usuario = su; iniciarSesion(); }

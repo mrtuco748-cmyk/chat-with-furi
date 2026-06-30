@@ -188,8 +188,31 @@ body.wallpaper-lavender #chat { background: linear-gradient(135deg, #0a0a1a 0%, 
 .mensaje .estado-msg .heart-seen { width: 12px; height: 12px; display: inline-block; color: rgba(255,255,255,0.9); }
 
 .mensaje .imagen-msg { max-width: 240px; max-height: 240px; border-radius: 12px; display: block; margin-bottom: 2px; }
-.mensaje .audio-msg { max-width: 220px; height: 36px; display: block; border-radius: 8px; }
-.mensaje .duracion-audio { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+
+.audio-player {
+  display: flex; align-items: center; gap: 6px; padding: 4px 0; min-width: 200px;
+}
+.ap-play {
+  background: none; border: none; cursor: pointer; width: 32px; height: 32px;
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; color: inherit; opacity: 0.9;
+}
+.ap-play:hover { opacity: 1; }
+.ap-wave {
+  flex: 1; height: 32px; background: rgba(255,255,255,0.15); border-radius: 6px;
+  position: relative; cursor: pointer; overflow: hidden; min-width: 60px;
+}
+.ap-progress {
+  position: absolute; top: 0; left: 0; bottom: 0; width: 0;
+  background: rgba(255,255,255,0.3); border-radius: 6px; transition: width 0.15s linear;
+}
+.ap-time { font-size: 11px; opacity: 0.7; white-space: nowrap; min-width: 35px; text-align: center; }
+.ap-speed {
+  background: none; border: 1px solid rgba(255,255,255,0.2); color: inherit;
+  font-size: 10px; padding: 2px 5px; border-radius: 6px; cursor: pointer; opacity: 0.6;
+  flex-shrink: 0; font-weight: 600;
+}
+.ap-speed:hover { opacity: 1; background: rgba(255,255,255,0.1); }
 
 .mensaje .reply-quote {
   background: rgba(0,0,0,0.04); border-left: 3px solid #FF1493;
@@ -408,12 +431,7 @@ body.wallpaper-lavender #chat { background: linear-gradient(135deg, #0a0a1a 0%, 
 .stats-btn { width: 100%; padding: 12px; background: rgba(255,20,147,0.1); border: 1px solid rgba(255,20,147,0.2); border-radius: 14px; font-size: 14px; cursor: pointer; color: #FF1493; transition: background 0.2s; }
 .stats-btn:hover { background: rgba(255,20,147,0.15); }
 
-.swipe-reply-indicator {
-  position: absolute; top: 0; left: 0; bottom: 0; width: 0;
-  background: rgba(255,20,147,0.15); border-left: 3px solid #FF1493;
-  border-radius: 16px 0 0 16px; pointer-events: none;
-  transition: none;
-}
+.mensaje.swiping { border-left: 3px solid #FF1493; }
 
 #escribiendo { font-size: 0; padding: 2px 16px 4px; min-height: 18px; flex-shrink: 0; display: flex; align-items: center; }
 
@@ -528,6 +546,7 @@ body { overflow-x: hidden; max-width: 100vw; }
   .scroll-btn { width: 36px; height: 36px; bottom: 54px; }
   .mensaje { max-width: 90%; padding: 6px 10px 5px 12px; }
   .mensaje .texto { font-size: 14px; }
+  .audio-player { min-width: 140px; }
   .wp-opt { width: 44px; height: 44px; }
   .stats-sheet { padding: 20px 16px 24px; }
   .stat-item { padding: 12px; }
