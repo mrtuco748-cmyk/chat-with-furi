@@ -92,7 +92,22 @@ body {
 
 .chat-header h2 {
   font-size: 18px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
+
+#estadoConexion {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  transition: background 0.3s;
+}
+
+#estadoConexion.conectado { background: #4caf50; }
+#estadoConexion.desconectado { background: #ff5252; }
+#estadoConexion.reconectando { background: #ffc107; animation: pulso 0.8s infinite; }
 
 .chat-header span {
   font-size: 14px;

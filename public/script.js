@@ -1,4 +1,10 @@
-const socket = io();
+const socket = io({
+  reconnection: true,
+  reconnectionAttempts: Infinity,
+  reconnectionDelay: 1000,
+  reconnectionDelayMax: 5000
+});
+
 let usuario = '';
 let sala = '';
 let escribiendoTimeout = null;
@@ -8,8 +14,8 @@ let grabando = false;
 let tiempoGrabacion = 0;
 let intervaloTiempo = null;
 const mensajesEnviados = new Map();
-
 let presente = false;
+let conectado = false;
 
 const login = document.getElementById('login');
 const chat = document.getElementById('chat');
@@ -24,6 +30,7 @@ const escribiendoDiv = document.getElementById('escribiendo');
 const microfonoBtn = document.getElementById('microfonoBtn');
 const grabandoDiv = document.getElementById('grabando');
 const tiempoGrabacionSpan = document.getElementById('tiempoGrabacion');
+const estadoConexion = document.getElementById('estadoConexion');
 
 entrarBtn.addEventListener('click', entrar);
 codigoInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') nombreInput.focus(); });
@@ -35,14 +42,26 @@ function entrar() {
   if (!codigo || !nombre) return;
   sala = codigo;
   usuario = nombre;
+  localStorage.setItem('chat-sala', sala);
+  localStorage.setItem('chat-usuario', usuario);
+  iniciarSesion();
+}
+
+function iniciarSesion() {
   usuarioActual.textContent = 'Conectado como: ' + usuario;
   login.classList.add('oculto');
   chat.classList.remove('oculto');
-  socket.emit('unirse', { sala, usuario });
-  marcarPresente();
+  conectarAlSala();
   mensajeInput.focus();
   registrarServiceWorker();
   pedirPermisoNotificacion();
+}
+
+function conectarAlSala() {
+  if (socket.connected) {
+    socket.emit('unirse', { sala, usuario });
+    marcarPresente();
+  }
 }
 
 async function registrarServiceWorker() {
@@ -79,6 +98,25 @@ document.addEventListener('visibilitychange', () => {
 
 window.addEventListener('focus', () => marcarPresente());
 window.addEventListener('blur', () => marcarAusente());
+
+socket.on('connect', () => {
+  conectado = true;
+  estadoConexion.className = 'conectado';
+  if (sala && usuario) conectarAlSala();
+});
+
+socket.on('disconnect', () => {
+  conectado = false;
+  estadoConexion.className = 'desconectado';
+});
+
+socket.io.on('reconnect_attempt', () => {
+  estadoConexion.className = 'reconectando';
+});
+
+socket.io.on('reconnect', () => {
+  estadoConexion.className = 'conectado';
+});
 
 function enviarMensaje() {
   const texto = mensajeInput.value.trim();
@@ -260,3 +298,11 @@ socket.on('escribiendo', (data) => {
     escribiendoDiv.textContent = '';
   }
 });
+
+const salaGuardada = localStorage.getItem('chat-sala');
+const usuarioGuardado = localStorage.getItem('chat-usuario');
+if (salaGuardada && usuarioGuardado) {
+  sala = salaGuardada;
+  usuario = usuarioGuardado;
+  iniciarSesion();
+}
