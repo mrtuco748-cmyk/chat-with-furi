@@ -815,8 +815,7 @@ function agregarEventosMensaje(div, msgId, data) {
       if (selectMode) return;
       vibrar(20);
       const r = div.getBoundingClientRect();
-      quickReactions.style.top = (r.top - 50) + 'px';
-      quickReactions.style.left = Math.min(r.left + r.width/2 - 100, window.innerWidth - 220) + 'px';
+      quickReactions.style.top = Math.max(10, r.top - 50) + 'px';
       quickReactionMsgId = msgId;
       construirQuickReactions();
       quickReactions.classList.remove('oculto');
