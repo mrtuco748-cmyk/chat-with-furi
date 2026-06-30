@@ -112,8 +112,12 @@ function iniciarSesion() {
   restaurarPerfil();
 }
 function conectarAlSala() {
-  if (socket.connected) { socket.emit('unirse', { sala, usuario }); marcarPresente(); }
-  else socket.once('connect', () => { socket.emit('unirse', { sala, usuario }); marcarPresente(); });
+  if (socket.connected) { socket.emit('unirse', { sala, usuario }); marcarPresente(); reenviarPerfil(); }
+  else socket.once('connect', () => { socket.emit('unirse', { sala, usuario }); marcarPresente(); reenviarPerfil(); });
+}
+function reenviarPerfil() {
+  const fg = localStorage.getItem('chat-foto-' + sala);
+  if (fg) socket.emit('foto-perfil', { sala, foto: fg });
 }
 async function registrarServiceWorker() { if ('serviceWorker' in navigator) { try { await navigator.serviceWorker.register('/sw.js'); } catch (e) {} } }
 function pedirPermisoNotificacion() { if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission(); }
@@ -517,7 +521,7 @@ attachOverlay.addEventListener('click', () => attachMenu.classList.add('oculto')
 msgmenuOverlay.addEventListener('click', () => msgMenu.classList.add('oculto'));
 wallpaperBtn.addEventListener('click', () => { emojiPicker.classList.add('oculto'); attachMenu.classList.add('oculto'); msgMenu.classList.add('oculto'); wallpaperMenu.classList.remove('oculto'); });
 wallpaperOverlay.addEventListener('click', () => wallpaperMenu.classList.add('oculto'));
-document.querySelectorAll('.wp-opt').forEach(btn => { btn.addEventListener('click', () => { document.body.className = 'wallpaper-' + btn.dataset.wp; wallpaperMenu.classList.add('oculto'); localStorage.setItem('chat-wallpaper', btn.dataset.wp); }); });
+document.querySelectorAll('.wp-opt').forEach(btn => { btn.addEventListener('click', () => { document.body.className = 'wallpaper-' + btn.dataset.wp; wallpaperMenu.classList.add('oculto'); localStorage.setItem('chat-wallpaper', btn.dataset.wp); localStorage.removeItem('chat-fondo-personalizado'); document.body.style.background = ''; document.body.style.removeProperty('--bg-chat'); }); });
 moreBtn.addEventListener('click', () => { emojiPicker.classList.add('oculto'); attachMenu.classList.add('oculto'); msgMenu.classList.add('oculto'); moreMenu.classList.toggle('oculto'); });
 moreOverlay.addEventListener('click', () => moreMenu.classList.add('oculto'));
 moreLogout.addEventListener('click', () => { localStorage.removeItem('chat-sala'); localStorage.removeItem('chat-usuario'); localStorage.removeItem('chat-msgs-'+sala); location.reload(); });
