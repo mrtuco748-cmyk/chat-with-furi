@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Chat con amor</title>
   <link rel="stylesheet" href="style.css">
   <link rel="icon" href="icon-192.png" type="image/png">
@@ -24,17 +24,38 @@
 
   <div id="chat" class="oculto">
     <div class="chat-header">
-      <h2>💕 Chat con amor <span id="estadoConexion" class="conectado"></span></h2>
-      <span id="usuarioActual"></span>
+      <div class="header-left">
+        <span class="avatar">💕</span>
+        <div>
+          <div class="header-title">Chat con amor</div>
+          <div class="header-status"><span id="estadoConexion" class="conectado"></span> <span id="headerEstado">en línea</span></div>
+        </div>
+      </div>
+      <div class="header-right">
+        <button class="header-btn" id="menuBtn">⋮</button>
+      </div>
     </div>
     <div class="chat-mensajes" id="mensajes"></div>
-    <div class="chat-input">
-      <input type="text" id="mensajeInput" placeholder="Escribí un mensaje..." maxlength="500">
-      <button id="microfonoBtn" class="mic-btn">🎤</button>
-      <button id="enviarBtn">Enviar</button>
-    </div>
-    <div id="grabando" class="oculto">🔴 Grabando... <span id="tiempoGrabacion">0s</span></div>
     <div id="escribiendo"></div>
+    <div id="grabando" class="oculto">
+      <span class="grabando-indicator">🔴</span> Grabando... <span id="tiempoGrabacion">0s</span>
+      <span class="grabando-cancel" id="cancelarGrabacion">✕</span>
+    </div>
+    <div id="emojiPicker" class="oculto"></div>
+    <div id="attachMenu" class="oculto">
+      <div class="attach-overlay" id="attachOverlay"></div>
+      <div class="attach-sheet">
+        <button class="attach-option" data-tipo="camara">📷 Cámara</button>
+        <button class="attach-option" data-tipo="galeria">🖼️ Galería</button>
+      </div>
+    </div>
+    <div class="chat-input">
+      <button class="input-btn" id="attachBtn">📎</button>
+      <button class="input-btn" id="emojiBtn">😊</button>
+      <input type="text" id="mensajeInput" placeholder="Mensaje" maxlength="500">
+      <button class="input-btn mic-btn2 oculto" id="microfonoBtn2">🎤</button>
+      <button class="send-btn oculto" id="enviarBtn">▶</button>
+    </div>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
