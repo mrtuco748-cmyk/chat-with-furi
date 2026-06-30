@@ -1138,7 +1138,7 @@ function agregarMensajePropio(msgId, data) {
   const ahora = new Date();
   const hora = ahora.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
   const fechaISO = ahora.toISOString();
-  const m = { msgId, usuario, texto: data.texto||'', audio: data.audio||null, imagen: data.imagen||null, respondiendoA: data.respondiendoA||null, hora, fecha: fechaISO, tipo: 'propio', estado: 'enviando' };
+  const m = { msgId, usuario, texto: data.texto||'', audio: data.audio||null, imagen: data.imagen||null, documento: data.documento||null, ubicacion: data.ubicacion||null, encuesta: data.encuesta||null, respondiendoA: data.respondiendoA||null, hora, fecha: fechaISO, tipo: 'propio', estado: 'enviando' };
   guardarMsgLocal(m);
   renderMsgPropio(m);
   const div = document.getElementById('msg-'+msgId);
