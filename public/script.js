@@ -70,7 +70,10 @@ const msgInfoModal = $('msgInfoModal'), msgInfoOverlay = $('msgInfoOverlay'), ms
 const settingsModal = $('settingsModal'), settingsOverlay = $('settingsOverlay'), settingsClose = $('settingsClose');
 const settingDarkMode = $('settingDarkMode'), settingSound = $('settingSound'), settingVibrate = $('settingVibrate'), settingNotify = $('settingNotify');
 const settingsExport = $('settingsExport'), settingsClear = $('settingsClear');
-const selectBar = $('selectBar'), selectClose = $('selectClose'), selectCount = $('selectCount'), selectDelete = $('selectDelete'), selectForward = $('selectForward');
+const headerNormal = $('headerNormal'), headerSelect = $('headerSelect');
+const selectClose = $('selectClose'), selectCount = $('selectCount'), selectDelete = $('selectDelete'), selectFav = $('selectFav'), selectQuiet = $('selectQuiet');
+const deleteOptions = $('deleteOptions'), deleteOptOverlay = $('deleteOptOverlay'), deleteForMe = $('deleteForMe'), deleteForEveryone = $('deleteForEveryone'), deleteOptCancel = $('deleteOptCancel');
+const quietBar = $('quietBar'), quietClose = $('quietClose'), quietText = $('quietText');
 const toggleSwitchTheme = $('themeIcon'), themeLabel = $('themeLabel');
 let imgPreviewFile = null;
 
@@ -150,6 +153,26 @@ mensajeInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shif
 function enviarMensaje() {
   const texto = mensajeInput.value.trim(); if (!texto) return;
   try { if (settings.vibrate) vibrar(15); } catch(e) {}
+  if (!quietBar.classList.contains('oculto')) {
+    const ids = JSON.parse(quietBar.dataset.targetIds || '[]');
+    const msgId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+    const d = { msgId, usuario, texto, silencio: true, silencioDe: ids };
+    socket.emit('mensaje', d);
+    try {
+      const arr = JSON.parse(localStorage.getItem(keyMsgs()) || '[]');
+      const mData = { msgId, usuario, texto, hora: new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}), fecha: new Date().toISOString(), tipo: 'propio', silencio: true, silencioDe: ids };
+      arr.push(mData); localStorage.setItem(keyMsgs(), JSON.stringify(arr));
+      for (const id of ids) {
+        const el = document.getElementById('msg-' + id);
+        if (el) agregarQuietToggle(el, msgId, texto);
+      }
+    } catch(e) {}
+    mensajeInput.value = ''; actualizarBotonEnvio(); mensajeInput.focus();
+    quietBar.classList.add('oculto'); $('mensajeInput').placeholder = 'Mensaje';
+    msgCount++; actualizarStats();
+    if (settings.sound) { try { new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=').play().catch(()=>{}); } catch(e){} }
+    return;
+  }
   if (editandoMsgId) {
     const el = document.getElementById('msg-' + editandoMsgId);
     if (el && el.dataset.texto !== texto) {
@@ -580,10 +603,18 @@ function cargarMsgsLocal() {
   try {
     const arr = JSON.parse(localStorage.getItem(keyMsgs()) || '[]');
     for (const m of arr) {
+      if (m.silencio) {
+        if (m.silencioDe) for (const tId of m.silencioDe) {
+          const tel = document.getElementById('msg-'+tId);
+          if (tel) agregarQuietToggle(tel, m.msgId, m.texto);
+        }
+        continue;
+      }
       if (m.tipo === 'propio') {
         renderMsgPropio(m);
         const div = document.getElementById('msg-'+m.msgId);
         if (div) {
+          if (m.favorito) mostrarFavorito(div, true);
           const estadoSpan = document.createElement('span'); estadoSpan.className = 'estado-msg'; estadoSpan.id = 'estado-'+m.msgId;
           estadoSpan.innerHTML = '<span class="tick doble visto">\u2713\u2713</span>';
           div.querySelector('.hora-estado')?.appendChild(estadoSpan);
@@ -592,7 +623,7 @@ function cargarMsgsLocal() {
           if (m.reaccion) { div.dataset.reaccionCargado = '1'; mostrarReaccion(div, m.reaccion); }
         }
       }
-      else if (m.tipo === 'otro') { renderMsgOtro(m); const od = document.getElementById('msg-'+m.msgId); if (od) { if (m.reaccion) { od.dataset.reaccionCargado = '1'; mostrarReaccion(od, m.reaccion); } agregarEventosMensaje(od, m.msgId, m); } }
+      else if (m.tipo === 'otro') { renderMsgOtro(m); const od = document.getElementById('msg-'+m.msgId); if (od) { if (m.favorito) mostrarFavorito(od, true); if (m.reaccion) { od.dataset.reaccionCargado = '1'; mostrarReaccion(od, m.reaccion); } agregarEventosMensaje(od, m.msgId, m); } }
       else if (m.tipo === 'sistema') { const d = document.createElement('div'); d.classList.add('mensaje','sistema'); d.textContent = m.texto; mensajesDiv.appendChild(d); }
       if (m.tipo !== 'sistema') { msgCount++; if (m.imagen) fotoCount++; if (m.audio) audioCount++; }
     }
@@ -840,6 +871,8 @@ socket.on('mensaje', (data) => {
     const chatVisible = !document.hidden;
     const mData = { msgId: data.msgId, usuario: data.usuario, texto: data.texto||'', hora: data.hora, fecha: new Date().toISOString(), tipo: esSistema ? 'sistema' : 'otro', leido: chatVisible };
     if (data.respondiendoA) mData.respondiendoA = data.respondiendoA;
+    if (data.silencio) mData.silencio = true;
+    if (data.silencioDe) mData.silencioDe = data.silencioDe;
     if (data.imagen) mData.imagen = { data: 'data:'+data.imagen.type+';base64,'+data.imagen.data, type: data.imagen.type };
     if (data.audio) mData.audio = { data: 'data:'+data.audio.type+';base64,'+data.audio.data, type: data.audio.type, duracion: data.audio.duracion };
     if (data.documento) mData.documento = { data: 'data:'+data.documento.type+';base64,'+data.documento.data, type: data.documento.type, nombre: data.documento.nombre, tamano: data.documento.tamano };
@@ -847,6 +880,14 @@ socket.on('mensaje', (data) => {
     if (data.encuesta) mData.encuesta = { pregunta: data.encuesta.pregunta, opciones: data.encuesta.opciones, votos: data.encuesta.votos || {} };
     if (data.reenviado) mData.reenviado = true;
     guardarMsgLocal(mData);
+    if (data.silencio) {
+      const targets = data.silencioDe || [];
+      for (const tId of targets) {
+        const tel = document.getElementById('msg-'+tId);
+        if (tel) agregarQuietToggle(tel, data.msgId, data.texto);
+      }
+      return;
+    }
     if (esSistema) { const d = document.createElement('div'); d.classList.add('mensaje','sistema'); d.textContent = data.texto; mensajesDiv.appendChild(d); mensajesDiv.scrollTop = mensajesDiv.scrollHeight; return; }
     renderMsgOtro(mData);
     const div = document.getElementById('msg-'+data.msgId);
@@ -1014,37 +1055,55 @@ msgInfoClose.addEventListener('click', () => msgInfoModal.classList.add('oculto'
 
 function entrSelectMode(msgId) {
   selectMode = true;
-  selectBar.classList.remove('oculto');
+  headerNormal.classList.add('oculto'); headerSelect.classList.remove('oculto');
   selectedMsgs.clear();
   if (msgId) { selectedMsgs.add(msgId); document.getElementById('msg-'+msgId)?.classList.add('seleccionado'); }
   actualizarSelectCount();
-  quickReactions.classList.add('oculto');
+  quickReactions.classList.add('oculto'); deleteOptions.classList.add('oculto'); quietBar.classList.add('oculto');
 }
 function salirSelectMode() {
   selectMode = false;
-  selectBar.classList.add('oculto');
+  headerNormal.classList.remove('oculto'); headerSelect.classList.add('oculto');
   document.querySelectorAll('.mensaje.seleccionado').forEach(el => el.classList.remove('seleccionado'));
   selectedMsgs.clear();
+  deleteOptions.classList.add('oculto'); quietBar.classList.add('oculto');
 }
 function actualizarSelectCount() {
   const n = selectedMsgs.size;
-  selectCount.textContent = n + ' seleccionado' + (n !== 1 ? 's' : '');
+  selectCount.textContent = n;
 }
 selectClose.addEventListener('click', salirSelectMode);
-selectDelete.addEventListener('click', eliminarSeleccionados);
-selectForward.addEventListener('click', () => {
-  forwardQueue = [...selectedMsgs];
-  salirSelectMode();
-  mostrarForwardPicker();
-});
-function eliminarSeleccionados() {
+selectFav.addEventListener('click', () => {
   if (selectedMsgs.size === 0) return;
-  if (!confirm('\u00BFEliminar ' + selectedMsgs.size + ' mensaje' + (selectedMsgs.size !== 1 ? 's' : '') + ' seleccionado' + (selectedMsgs.size !== 1 ? 's' : '') + '?')) return;
+  const ids = [...selectedMsgs];
+  try {
+    const arr = JSON.parse(localStorage.getItem(keyMsgs()) || '[]');
+    for (const id of ids) {
+      const m = arr.find(x => x.msgId === id);
+      if (m) { m.favorito = !m.favorito; const el = document.getElementById('msg-'+id); if (el) mostrarFavorito(el, m.favorito); }
+    }
+    localStorage.setItem(keyMsgs(), JSON.stringify(arr));
+  } catch(e) {}
+  mostrarToast('Actualizado');
+  salirSelectMode();
+});
+selectDelete.addEventListener('click', () => {
+  if (selectedMsgs.size === 0) return;
+  const propio = [...selectedMsgs].every(id => { const d = document.getElementById('msg-'+id); return d && d.dataset.usuario === usuario; });
+  deleteForEveryone.classList.toggle('oculto', !propio);
+  deleteOptions.classList.remove('oculto');
+});
+deleteOptOverlay.addEventListener('click', () => deleteOptions.classList.add('oculto'));
+deleteOptCancel.addEventListener('click', () => deleteOptions.classList.add('oculto'));
+deleteForMe.addEventListener('click', () => { eliminarSeleccionados(false); deleteOptions.classList.add('oculto'); });
+deleteForEveryone.addEventListener('click', () => { eliminarSeleccionados(true); deleteOptions.classList.add('oculto'); });
+function eliminarSeleccionados(paraTodos) {
+  if (selectedMsgs.size === 0) return;
   const ids = [...selectedMsgs];
   for (const id of ids) {
-    socket.emit('eliminar-msg', { msgId: id, sala });
     const el = document.getElementById('msg-' + id);
     if (el) el.remove();
+    if (paraTodos) socket.emit('eliminar-msg', { msgId: id, sala });
   }
   try {
     let arr = JSON.parse(localStorage.getItem(keyMsgs()) || '[]');
@@ -1053,6 +1112,49 @@ function eliminarSeleccionados() {
   } catch(e) {}
   salirSelectMode();
   mostrarToast(ids.length + ' mensaje' + (ids.length !== 1 ? 's' : '') + ' eliminado' + (ids.length !== 1 ? 's' : ''));
+}
+
+selectQuiet.addEventListener('click', () => {
+  if (selectedMsgs.size === 0) return;
+  salirSelectMode();
+  const ids = [...selectedMsgs];
+  quietBar.dataset.targetIds = JSON.stringify(ids);
+  quietText.textContent = ids.length + ' mensaje' + (ids.length !== 1 ? 's' : '');
+  quietBar.classList.remove('oculto');
+  $('mensajeInput').placeholder = 'Respuesta silenciosa...';
+  $('mensajeInput').focus();
+});
+quietClose.addEventListener('click', () => { quietBar.classList.add('oculto'); $('mensajeInput').placeholder = 'Mensaje'; });
+
+function mostrarFavorito(el, on) {
+  let fi = el.querySelector('.favorito-indicator');
+  if (on) {
+    if (!fi) { fi = document.createElement('span'); fi.className = 'favorito-indicator'; fi.textContent = '\u2B50'; el.appendChild(fi); }
+  } else { if (fi) fi.remove(); }
+}
+function agregarQuietToggle(containerEl, replyMsgId, texto) {
+  let c = containerEl.querySelector('.quiet-reply-container');
+  if (!c) {
+    c = document.createElement('div'); c.className = 'quiet-reply-container'; c.id = 'qr-'+containerEl.id;
+    const toggle = document.createElement('span'); toggle.className = 'quiet-toggle';
+    toggle.innerHTML = '<span data-icon="message-circle"></span> 1 respuesta';
+    injectIconsIn(toggle);
+    toggle.addEventListener('click', () => c.classList.toggle('abierto'));
+    containerEl.appendChild(toggle);
+    const msgDiv = document.createElement('div'); msgDiv.className = 'quiet-reply-msg'; msgDiv.id = 'qr-msg-'+replyMsgId;
+    msgDiv.innerHTML = '<div class="quiet-reply-label">Respuesta silenciosa</div><div>'+escapeHtml(texto)+'</div>';
+    c.appendChild(msgDiv);
+    containerEl.appendChild(c);
+  } else {
+    const existing = c.querySelector('#qr-msg-'+replyMsgId);
+    if (existing) return;
+    const msgDiv = document.createElement('div'); msgDiv.className = 'quiet-reply-msg'; msgDiv.id = 'qr-msg-'+replyMsgId;
+    msgDiv.innerHTML = '<div class="quiet-reply-label">Respuesta silenciosa</div><div>'+escapeHtml(texto)+'</div>';
+    c.appendChild(msgDiv);
+    const toggle = containerEl.querySelector('.quiet-toggle');
+    const count = c.querySelectorAll('.quiet-reply-msg').length;
+    if (toggle) { toggle.innerHTML = '<span data-icon="message-circle"></span> '+count+' respuesta'+(count!==1?'s':''); injectIconsIn(toggle); }
+  }
 }
 
 function mostrarForwardPicker() {

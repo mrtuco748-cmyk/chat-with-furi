@@ -98,6 +98,8 @@ io.on('connection', (socket) => {
     const audio = data.audio ? { data: String(data.audio.data).slice(0, 1e7), type: String(data.audio.type).slice(0, 50), duracion: Math.min(Number(data.audio.duracion) || 0, 300) } : null;
     const imagen = data.imagen ? { data: String(data.imagen.data).slice(0, 1e7), type: String(data.imagen.type).slice(0, 50) } : null;
     const respondiendoA = data.respondiendoA ? { msgId: String(data.respondiendoA.msgId).slice(0, 64), usuario: String(data.respondiendoA.usuario).slice(0, 30), texto: String(data.respondiendoA.texto).slice(0, 500) } : null;
+    const silencio = !!data.silencio;
+    const silencioDe = data.silencioDe ? (Array.isArray(data.silencioDe) ? data.silencioDe.slice(0, 10).map(id => String(id).slice(0, 64)) : [String(data.silencioDe).slice(0, 64)]) : null;
 
     socket.emit('estado-msg', { msgId, estado: 'enviado' });
 
@@ -108,6 +110,8 @@ io.on('connection', (socket) => {
       audio,
       imagen,
       respondiendoA,
+      silencio,
+      silencioDe,
       hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 

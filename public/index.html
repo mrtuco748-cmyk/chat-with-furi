@@ -25,19 +25,30 @@
 </div>
 
 <div id="chat" class="oculto">
-  <div class="chat-header glass">
-    <div class="header-left">
-      <span class="avatar-ring"><span class="avatar-heart" data-icon="heart-filled"></span></span>
-      <div class="header-left-inner">
-        <div class="header-title" id="headerTitle">Mi amor</div>
-        <div class="header-status"><span id="estadoConexion" class="conectado"></span> <span id="headerEstado">en l&iacute;nea</span></div>
+    <div class="chat-header glass">
+    <div id="headerNormal" class="header-content">
+      <div class="header-left">
+        <span class="avatar-ring"><span class="avatar-heart" data-icon="heart-filled"></span></span>
+        <div class="header-left-inner">
+          <div class="header-title" id="headerTitle">Mi amor</div>
+          <div class="header-status"><span id="estadoConexion" class="conectado"></span> <span id="headerEstado">en l&iacute;nea</span></div>
+        </div>
+      </div>
+      <div class="header-right">
+        <button class="header-btn" id="searchBtn" data-icon="search"></button>
+        <button class="header-btn" id="statsBtn" data-icon="heart-filled"></button>
+        <button class="header-btn" id="wallpaperBtn" data-icon="image"></button>
+        <button class="header-btn" id="moreBtn" data-icon="more"></button>
       </div>
     </div>
-    <div class="header-right">
-      <button class="header-btn" id="searchBtn" data-icon="search"></button>
-      <button class="header-btn" id="statsBtn" data-icon="heart-filled"></button>
-      <button class="header-btn" id="wallpaperBtn" data-icon="image"></button>
-      <button class="header-btn" id="moreBtn" data-icon="more"></button>
+    <div id="headerSelect" class="header-content oculto">
+      <button class="header-btn select-close-btn" id="selectClose" data-icon="x"></button>
+      <span class="select-count" id="selectCount">1</span>
+      <div class="header-select-actions">
+        <button class="header-btn" id="selectFav" data-icon="star" title="Favorito"></button>
+        <button class="header-btn" id="selectDelete" data-icon="trash" title="Eliminar"></button>
+        <button class="header-btn" id="selectQuiet" data-icon="message-circle" title="Responder en silencio"></button>
+      </div>
     </div>
     <div id="moreMenu" class="oculto">
       <div class="more-overlay" id="moreOverlay"></div>
@@ -52,12 +63,13 @@
     </div>
   </div>
 
-  <div id="selectBar" class="oculto">
-    <div class="select-bar-inner">
-      <button class="select-btn" id="selectClose" data-icon="x"></button>
-      <span class="select-count" id="selectCount">1 seleccionado</span>
-      <button class="select-btn" id="selectDelete" data-icon="trash"></button>
-      <button class="select-btn" id="selectForward" data-icon="reply"></button>
+  <div id="deleteOptions" class="oculto">
+    <div class="overlay-base" id="deleteOptOverlay"></div>
+    <div class="delete-opt-sheet sheet-base">
+      <div class="delete-opt-title">Eliminar mensajes</div>
+      <button class="delete-opt-btn" id="deleteForMe">Eliminar para m&iacute;</button>
+      <button class="delete-opt-btn" id="deleteForEveryone">Eliminar para todos</button>
+      <button class="delete-opt-btn cancel" id="deleteOptCancel">Cancelar</button>
     </div>
   </div>
 
@@ -88,6 +100,15 @@
       <div class="reply-text" id="replyText"></div>
     </div>
     <button class="reply-close" id="replyClose" data-icon="x"></button>
+  </div>
+
+  <div id="quietBar" class="oculto glass">
+    <div class="reply-line quiet-line"></div>
+    <div class="reply-content">
+      <div class="reply-label">Respuesta silenciosa</div>
+      <div class="reply-text" id="quietText"></div>
+    </div>
+    <button class="reply-close" id="quietClose" data-icon="x"></button>
   </div>
 
   <div id="editBar" class="oculto glass">
