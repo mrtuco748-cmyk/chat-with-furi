@@ -1,253 +1,181 @@
+const ICONS = {
+  'heart': '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>',
+  'heart-filled': '<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>',
+  'paperclip': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>',
+  'camera': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>',
+  'smile': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>',
+  'mic': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>',
+  'x': '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+  'image': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>',
+  'reply': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>',
+  'copy': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>',
+  'trash': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>'
+};
+
+function injectIcons() {
+  document.querySelectorAll('[data-icon]').forEach(el => {
+    const name = el.dataset.icon;
+    if (ICONS[name]) el.innerHTML = ICONS[name];
+  });
+}
+
 const socket = io({
-  reconnection: true,
-  reconnectionAttempts: Infinity,
-  reconnectionDelay: 1000,
-  reconnectionDelayMax: 5000
+  reconnection: true, reconnectionAttempts: Infinity,
+  reconnectionDelay: 1000, reconnectionDelayMax: 5000
 });
 
-let usuario = '';
-let sala = '';
-let escribiendoTimeout = null;
-let mediaRecorder = null;
-let audioChunks = [];
-let grabando = false;
-let tiempoGrabacion = 0;
-let intervaloTiempo = null;
+let usuario = '', sala = '', escribiendoTimeout = null;
+let mediaRecorder = null, audioChunks = [], grabando = false;
+let tiempoGrabacion = 0, intervaloTiempo = null;
 const mensajesEnviados = new Map();
-let presente = false;
-let respondiendoA = null;
-let msgMenuMsgId = null;
-
-const login = document.getElementById('login');
-const chat = document.getElementById('chat');
-const codigoInput = document.getElementById('codigoInput');
-const nombreInput = document.getElementById('nombreInput');
-const entrarBtn = document.getElementById('entrarBtn');
-const estadoConexion = document.getElementById('estadoConexion');
-const headerEstado = document.getElementById('headerEstado');
-const mensajesDiv = document.getElementById('mensajes');
-const mensajeInput = document.getElementById('mensajeInput');
-const enviarBtn = document.getElementById('enviarBtn');
-const escribiendoDiv = document.getElementById('escribiendo');
-const microfonoBtn2 = document.getElementById('microfonoBtn2');
-const grabandoDiv = document.getElementById('grabando');
-const tiempoGrabacionSpan = document.getElementById('tiempoGrabacion');
-const cancelarGrabacion = document.getElementById('cancelarGrabacion');
-const emojiBtn = document.getElementById('emojiBtn');
-const emojiPicker = document.getElementById('emojiPicker');
-const attachBtn = document.getElementById('attachBtn');
-const attachMenu = document.getElementById('attachMenu');
-const attachOverlay = document.getElementById('attachOverlay');
-const replyBar = document.getElementById('replyBar');
-const replyUser = document.getElementById('replyUser');
-const replyText = document.getElementById('replyText');
-const replyClose = document.getElementById('replyClose');
-const msgMenu = document.getElementById('msgMenu');
-const msgmenuOverlay = document.getElementById('msgmenuOverlay');
-const menuResponder = document.getElementById('menuResponder');
-const menuCopiar = document.getElementById('menuCopiar');
-const menuEliminar = document.getElementById('menuEliminar');
-const scrollBtn = document.getElementById('scrollBtn');
-const camaraBtn = document.getElementById('camaraBtn');
-
+let presente = false, respondiendoA = null, msgMenuMsgId = null;
+let grabacionBloqueada = false;
 let ultimaFecha = '';
+
+const login = document.getElementById('login'), chat = document.getElementById('chat');
+const codigoInput = document.getElementById('codigoInput'), nombreInput = document.getElementById('nombreInput');
+const entrarBtn = document.getElementById('entrarBtn'), estadoConexion = document.getElementById('estadoConexion');
+const headerEstado = document.getElementById('headerEstado'), mensajesDiv = document.getElementById('mensajes');
+const mensajeInput = document.getElementById('mensajeInput'), enviarBtn = document.getElementById('enviarBtn');
+const escribiendoDiv = document.getElementById('escribiendo'), microfonoBtn2 = document.getElementById('microfonoBtn2');
+const grabandoDiv = document.getElementById('grabando'), tiempoGrabacionSpan = document.getElementById('tiempoGrabacion');
+const cancelarGrabacion = document.getElementById('cancelarGrabacion'), lockHint = document.getElementById('lockHint');
+const emojiBtn = document.getElementById('emojiBtn'), emojiPicker = document.getElementById('emojiPicker');
+const attachBtn = document.getElementById('attachBtn'), attachMenu = document.getElementById('attachMenu');
+const attachOverlay = document.getElementById('attachOverlay');
+const replyBar = document.getElementById('replyBar'), replyUser = document.getElementById('replyUser');
+const replyText = document.getElementById('replyText'), replyClose = document.getElementById('replyClose');
+const msgMenu = document.getElementById('msgMenu'), msgmenuOverlay = document.getElementById('msgmenuOverlay');
+const menuResponder = document.getElementById('menuResponder'), menuCopiar = document.getElementById('menuCopiar');
+const menuEliminar = document.getElementById('menuEliminar'), scrollBtn = document.getElementById('scrollBtn');
+const camaraBtn = document.getElementById('camaraBtn'), wallpaperBtn = document.getElementById('wallpaperBtn');
+const wallpaperMenu = document.getElementById('wallpaperMenu'), wallpaperOverlay = document.getElementById('wallpaperOverlay');
+
+injectIcons();
 
 entrarBtn.addEventListener('click', entrar);
 codigoInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') nombreInput.focus(); });
 nombreInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') entrar(); });
 
 function entrar() {
-  const codigo = codigoInput.value.trim();
-  const nombre = nombreInput.value.trim();
+  const codigo = codigoInput.value.trim(), nombre = nombreInput.value.trim();
   if (!codigo || !nombre) return;
-  sala = codigo;
-  usuario = nombre;
+  sala = codigo; usuario = nombre;
   localStorage.setItem('chat-sala', sala);
   localStorage.setItem('chat-usuario', usuario);
   iniciarSesion();
 }
 
 function iniciarSesion() {
-  login.classList.add('oculto');
-  chat.classList.remove('oculto');
-  conectarAlSala();
-  mensajeInput.focus();
-  registrarServiceWorker();
-  pedirPermisoNotificacion();
+  login.classList.add('oculto'); chat.classList.remove('oculto');
+  conectarAlSala(); mensajeInput.focus();
+  registrarServiceWorker(); pedirPermisoNotificacion();
   construirEmojiPicker();
 }
 
 function conectarAlSala() {
-  if (socket.connected) {
-    socket.emit('unirse', { sala, usuario });
-    marcarPresente();
-  }
+  if (socket.connected) { socket.emit('unirse', { sala, usuario }); marcarPresente(); }
 }
 
 async function registrarServiceWorker() {
-  if ('serviceWorker' in navigator) {
-    try {
-      await navigator.serviceWorker.register('/sw.js');
-    } catch (e) {}
-  }
+  if ('serviceWorker' in navigator) { try { await navigator.serviceWorker.register('/sw.js'); } catch (e) {} }
 }
 
 function pedirPermisoNotificacion() {
-  if ('Notification' in window && Notification.permission === 'default') {
-    Notification.requestPermission();
-  }
+  if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
 }
 
-function marcarPresente() {
-  presente = true;
-  socket.emit('presente', { usuario });
-  headerEstado.textContent = 'en línea ❤️';
-}
-
-function marcarAusente() {
-  presente = false;
-  socket.emit('ausente', { usuario });
-}
+function marcarPresente() { presente = true; socket.emit('presente', { usuario }); headerEstado.textContent = 'en l\u00ednea'; }
+function marcarAusente() { presente = false; socket.emit('ausente', { usuario }); }
 
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') {
-    marcarPresente();
-  } else {
-    marcarAusente();
-    headerEstado.textContent = 'ausente';
-  }
+  if (document.visibilityState === 'visible') marcarPresente();
+  else { marcarAusente(); headerEstado.textContent = 'ausente'; }
 });
-
 window.addEventListener('focus', () => marcarPresente());
 window.addEventListener('blur', () => { marcarAusente(); headerEstado.textContent = 'ausente'; });
 
 socket.on('connect', () => {
-  estadoConexion.className = 'conectado';
-  headerEstado.textContent = 'en línea ❤️';
+  estadoConexion.className = 'conectado'; headerEstado.textContent = 'en l\u00ednea';
   if (sala && usuario) conectarAlSala();
 });
-
-socket.on('disconnect', () => {
-  estadoConexion.className = 'desconectado';
-  headerEstado.textContent = 'desconectado';
-});
-
-socket.io.on('reconnect_attempt', () => {
-  estadoConexion.className = 'reconectando';
-  headerEstado.textContent = 'reconectando...';
-});
-
-socket.io.on('reconnect', () => {
-  estadoConexion.className = 'conectado';
-  headerEstado.textContent = 'en línea ❤️';
-});
+socket.on('disconnect', () => { estadoConexion.className = 'desconectado'; headerEstado.textContent = 'desconectado'; });
+socket.io.on('reconnect_attempt', () => { estadoConexion.className = 'reconectando'; headerEstado.textContent = 'reconectando...'; });
+socket.io.on('reconnect', () => { estadoConexion.className = 'conectado'; headerEstado.textContent = 'en l\u00ednea'; });
 
 mensajeInput.addEventListener('input', () => {
   actualizarBotonEnvio();
   socket.emit('escribiendo', { usuario });
   clearTimeout(escribiendoTimeout);
-  escribiendoTimeout = setTimeout(() => {
-    socket.emit('escribiendo', { usuario: '' });
-  }, 1000);
+  escribiendoTimeout = setTimeout(() => socket.emit('escribiendo', { usuario: '' }), 1000);
 });
 
 function actualizarBotonEnvio() {
-  if (mensajeInput.value.trim().length > 0) {
-    microfonoBtn2.classList.add('oculto');
-    enviarBtn.classList.remove('oculto');
-  } else {
-    microfonoBtn2.classList.remove('oculto');
-    enviarBtn.classList.add('oculto');
-  }
+  if (mensajeInput.value.trim().length > 0) { microfonoBtn2.classList.add('oculto'); enviarBtn.classList.remove('oculto'); }
+  else { microfonoBtn2.classList.remove('oculto'); enviarBtn.classList.add('oculto'); }
 }
 
 enviarBtn.addEventListener('click', enviarMensaje);
-mensajeInput.addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') enviarMensaje();
-});
+mensajeInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') enviarMensaje(); });
 
 function enviarMensaje() {
   const texto = mensajeInput.value.trim();
   if (!texto) return;
   const msgId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
   const msgData = { msgId, usuario, texto };
-  if (respondiendoA) {
-    msgData.respondiendoA = respondiendoA;
-  }
+  if (respondiendoA) msgData.respondiendoA = respondiendoA;
   socket.emit('mensaje', msgData);
   agregarMensajePropio(msgId, { usuario, texto, audio: null, imagen: null, respondiendoA });
-  mensajeInput.value = '';
-  actualizarBotonEnvio();
-  mensajeInput.focus();
-  emojiPicker.classList.add('oculto');
-  cancelarReply();
+  mensajeInput.value = ''; actualizarBotonEnvio(); mensajeInput.focus();
+  emojiPicker.classList.add('oculto'); cancelarReply();
 }
 
 cancelarGrabacion.addEventListener('click', cancelarGrabacionFn);
 
 function cancelarGrabacionFn() {
-  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-    mediaRecorder.stop();
-    grabando = false;
-  }
-  microfonoBtn2.classList.remove('oculto');
-  microfonoBtn2.textContent = '🎤';
-  grabandoDiv.classList.add('oculto');
-  tiempoGrabacion = 0;
-  clearInterval(intervaloTiempo);
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') { mediaRecorder.stop(); grabando = false; }
+  microfonoBtn2.dataset.icon = 'mic'; microfonoBtn2.innerHTML = ICONS.mic;
+  grabandoDiv.classList.add('oculto'); tiempoGrabacion = 0; clearInterval(intervaloTiempo);
+  grabacionBloqueada = false; lockHint.textContent = '\u2B06 bloquear';
 }
 
 microfonoBtn2.addEventListener('click', toggleGrabacion);
+microfonoBtn2.addEventListener('pointerdown', (e) => {
+  if (grabando) { grabacionBloqueada = true; lockHint.textContent = '\uD83D\uDD12 bloqueado'; }
+});
+
+document.addEventListener('pointerup', () => {
+  if (grabando && !grabacionBloqueada) detenerGrabacion();
+});
 
 async function toggleGrabacion() {
-  if (grabando) {
-    detenerGrabacion();
-  } else {
-    await iniciarGrabacion();
-  }
+  if (grabando) detenerGrabacion();
+  else await iniciarGrabacion();
 }
 
 async function iniciarGrabacion() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     mediaRecorder = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4' });
-    audioChunks = [];
-    grabando = true;
-    tiempoGrabacion = 0;
-    microfonoBtn2.textContent = '🔴';
-    grabandoDiv.classList.remove('oculto');
+    audioChunks = []; grabando = true; grabacionBloqueada = false;
+    tiempoGrabacion = 0; lockHint.textContent = '\u2B06 bloquear';
+    microfonoBtn2.innerHTML = ICONS.mic; grabandoDiv.classList.remove('oculto');
     tiempoGrabacionSpan.textContent = '0s';
-    intervaloTiempo = setInterval(() => {
-      tiempoGrabacion++;
-      tiempoGrabacionSpan.textContent = tiempoGrabacion + 's';
-    }, 1000);
-
-    mediaRecorder.ondataavailable = (e) => {
-      audioChunks.push(e.data);
-    };
-
+    intervaloTiempo = setInterval(() => { tiempoGrabacion++; tiempoGrabacionSpan.textContent = tiempoGrabacion + 's'; }, 1000);
+    mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
     mediaRecorder.onstop = () => {
-      clearInterval(intervaloTiempo);
-      const audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
+      clearInterval(intervaloTiempo); const audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
       stream.getTracks().forEach(t => t.stop());
-      if (tiempoGrabacion >= 1 && grabando) {
-        enviarAudio(audioBlob);
-      }
-      grabandoDiv.classList.add('oculto');
-      grabando = false;
+      if (tiempoGrabacion >= 1 && grabando) enviarAudio(audioBlob);
+      grabandoDiv.classList.add('oculto'); grabando = false; grabacionBloqueada = false;
+      lockHint.textContent = '\u2B06 bloquear';
     };
-
     mediaRecorder.start();
-  } catch (err) {
-    alert('No se pudo acceder al micrófono');
-  }
+  } catch (err) { alert('No se pudo acceder al micr\u00f3fono'); }
 }
 
 function detenerGrabacion() {
-  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-    grabando = false;
-    mediaRecorder.stop();
-  }
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') { grabando = false; mediaRecorder.stop(); }
 }
 
 function enviarAudio(blob) {
@@ -255,89 +183,57 @@ function enviarAudio(blob) {
   const msgId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
   reader.onloadend = () => {
     const base64 = reader.result.split(',')[1];
-    socket.emit('mensaje', {
-      msgId, usuario, texto: '',
-      audio: { data: base64, type: blob.type, duracion: tiempoGrabacion },
-      respondiendoA
-    });
+    socket.emit('mensaje', { msgId, usuario, texto: '', audio: { data: base64, type: blob.type, duracion: tiempoGrabacion }, respondiendoA });
     agregarMensajePropio(msgId, { usuario, texto: '', audio: { duracion: tiempoGrabacion }, imagen: null, respondiendoA });
     if (respondiendoA) cancelarReply();
   };
   reader.readAsDataURL(blob);
 }
 
+const EMOJIS = ['\uD83D\uDE00','\uD83D\uDE03','\uD83D\uDE04','\uD83D\uDE01','\uD83D\uDE06','\uD83D\uDE05','\uD83E\uDD23','\uD83D\uDE02','\uD83D\uDE42','\uD83D\uDE09','\uD83D\uDE0A','\uD83D\uDE07','\uD83E\uDD70','\uD83D\uDE0D','\uD83E\uDD29','\uD83D\uDE18','\uD83D\uDE17','\uD83D\uDE1A','\uD83D\uDE0B','\uD83D\uDE1B','\uD83D\uDE1C','\uD83E\uDD2A','\uD83D\uDE1D','\uD83E\uDD11','\uD83E\uDD17','\uD83E\uDD2D','\uD83E\uDD2B','\uD83E\uDD14','\uD83E\uDD10','\uD83D\uDE10','\uD83D\uDE11','\uD83D\uDE36','\uD83D\uDE0F','\uD83D\uDE12','\uD83D\uDE44','\uD83D\uDE2C','\uD83E\uDD25','\uD83E\uDD2C','\uD83D\uDE0C','\uD83D\uDE14','\uD83D\uDE2A','\uD83E\uDD24','\uD83D\uDE34','\uD83D\uDE37','\uD83E\uDD12','\uD83E\uDD15','\uD83E\uDD22','\uD83E\uDD2E','\uD83E\uDD34','\uD83D\uDE35','\uD83E\uDD2F','\uD83E\uDD33','\uD83E\uDDD0','\uD83D\uDE0E','\uD83E\uDDD0','\uD83D\uDE22','\uD83D\uDE2D','\uD83D\uDE24','\uD83D\uDE20','\uD83D\uDE21','\uD83E\uDD2C','\uD83D\uDC95','\u2764\uFE0F','\uD83E\uDDE1','\uD83E\uDDB5','\uD83D\uDC9A','\uD83D\uDC99','\uD83D\uDC9C','\uD83D\uDDA4','\uD83E\uDD0D','\uD83E\uDD0E','\uD83D\uDC94','\u2763\uFE0F','\uD83D\uDC96','\uD83D\uDC97','\uD83D\uDC93','\uD83D\uDC9E','\uD83D\uDC9D','\uD83D\uDC98','\uD83D\uDC8B','\uD83D\uDC4B','\uD83E\uDD1A','\uD83D\uDD90','\u270B','\uD83D\uDD96','\uD83D\uDC4C','\uD83E\uDD0F','\u270C\uFE0F','\uD83E\uDD1E','\uD83E\uDD1F','\uD83E\uDD18','\uD83E\uDD19','\uD83D\uDC48','\uD83D\uDC49','\uD83D\uDC46','\uD83D\uDD95','\uD83D\uDC47','\uD83D\uDC4D','\uD83D\uDC4E','\u270A','\uD83D\uDC4A','\uD83E\uDD1B','\uD83E\uDD1C','\uD83D\uDC4F','\uD83D\uDE4C','\uD83D\uDC50','\uD83E\uDD32','\uD83E\uDD1D','\uD83D\uDE4F','\u270D','\uD83D\uDC85','\uD83E\uDD33','\uD83D\uDCAA','\uD83E\uDDB5','\uD83E\uDDB6','\uD83D\uDC42','\uD83E\uDD5B','\uD83D\uDC43','\uD83E\uDD35','\uD83E\uDDB7','\uD83D\uDC40','\uD83D\uDC45','\uD83E\uDDD2'];
+
 function construirEmojiPicker() {
-  const emojis = ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🥴','😵','🤯','🥳','😎','🧐','😢','😭','😤','😠','😡','🤬','💕','❤️','❤️‍🔥','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❣️','💖','💗','💓','💞','💝','💘','💟','♥️','💌','💋','👋','🤚','🖐️','✋','🖖','👌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','🖕','👇','👍','👎','✊','👊','🤛','🤜','👏','🙌','👐','🤲','🤝','🙏','✍️','💅','🤳','💪','🦵','🦶','👂','🦻','👃','🧠','🦷','👀','👅'];
   emojiPicker.innerHTML = '';
-  for (const e of emojis) {
+  for (const e of EMOJIS) {
     const btn = document.createElement('button');
     btn.textContent = e;
-    btn.addEventListener('click', () => {
-      mensajeInput.value += e;
-      mensajeInput.focus();
-      actualizarBotonEnvio();
-    });
+    btn.addEventListener('click', () => { mensajeInput.value += e; mensajeInput.focus(); actualizarBotonEnvio(); });
     emojiPicker.appendChild(btn);
   }
 }
 
-emojiBtn.addEventListener('click', () => {
-  attachMenu.classList.add('oculto');
-  msgMenu.classList.add('oculto');
-  emojiPicker.classList.toggle('oculto');
-});
+emojiBtn.addEventListener('click', () => { attachMenu.classList.add('oculto'); msgMenu.classList.add('oculto'); wallpaperMenu.classList.add('oculto'); emojiPicker.classList.toggle('oculto'); });
+attachBtn.addEventListener('click', () => { emojiPicker.classList.add('oculto'); msgMenu.classList.add('oculto'); wallpaperMenu.classList.add('oculto'); attachMenu.classList.remove('oculto'); });
+attachOverlay.addEventListener('click', () => attachMenu.classList.add('oculto'));
+msgmenuOverlay.addEventListener('click', () => msgMenu.classList.add('oculto'));
 
-attachBtn.addEventListener('click', () => {
-  emojiPicker.classList.add('oculto');
-  msgMenu.classList.add('oculto');
-  attachMenu.classList.remove('oculto');
+wallpaperBtn.addEventListener('click', () => { emojiPicker.classList.add('oculto'); attachMenu.classList.add('oculto'); msgMenu.classList.add('oculto'); wallpaperMenu.classList.remove('oculto'); });
+wallpaperOverlay.addEventListener('click', () => wallpaperMenu.classList.add('oculto'));
+document.querySelectorAll('.wp-opt').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.body.className = 'wallpaper-' + btn.dataset.wp;
+    wallpaperMenu.classList.add('oculto');
+    localStorage.setItem('chat-wallpaper', btn.dataset.wp);
+  });
 });
-
-attachOverlay.addEventListener('click', () => {
-  attachMenu.classList.add('oculto');
-});
-
-msgmenuOverlay.addEventListener('click', () => {
-  msgMenu.classList.add('oculto');
-});
+const wpGuardado = localStorage.getItem('chat-wallpaper');
+if (wpGuardado) document.body.className = 'wallpaper-' + wpGuardado;
 
 document.querySelectorAll('.attach-option').forEach(btn => {
   btn.addEventListener('click', () => {
     attachMenu.classList.add('oculto');
-    const tipo = btn.dataset.tipo;
-    if (tipo === 'camara') abrirCamara();
-    else if (tipo === 'galeria') abrirGaleria();
+    if (btn.dataset.tipo === 'camara') abrirCamara();
+    else if (btn.dataset.tipo === 'galeria') abrirGaleria();
   });
 });
 
-function abrirCamara() {
-  const input = document.createElement('input');
-  input.type = 'file'; input.accept = 'image/*'; input.capture = 'environment';
-  input.addEventListener('change', (e) => {
-    if (e.target.files && e.target.files[0]) enviarImagen(e.target.files[0]);
-  });
-  input.click();
-}
-
-function abrirGaleria() {
-  const input = document.createElement('input');
-  input.type = 'file'; input.accept = 'image/*';
-  input.addEventListener('change', (e) => {
-    if (e.target.files && e.target.files[0]) enviarImagen(e.target.files[0]);
-  });
-  input.click();
-}
+function abrirCamara() { const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; i.capture = 'environment'; i.addEventListener('change', e => { if (e.target.files?.[0]) enviarImagen(e.target.files[0]); }); i.click(); }
+function abrirGaleria() { const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; i.addEventListener('change', e => { if (e.target.files?.[0]) enviarImagen(e.target.files[0]); }); i.click(); }
 
 function enviarImagen(file) {
-  const reader = new FileReader();
-  const msgId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-  reader.onloadend = () => {
-    const base64 = reader.result.split(',')[1];
-    socket.emit('mensaje', { msgId, usuario, texto: '', imagen: { data: base64, type: file.type }, respondiendoA });
-    agregarMensajePropio(msgId, { usuario, texto: '', audio: null, imagen: { type: file.type }, respondiendoA });
-    if (respondiendoA) cancelarReply();
-  };
-  reader.readAsDataURL(file);
+  const r = new FileReader(); const msgId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+  r.onloadend = () => { const b = r.result.split(',')[1]; socket.emit('mensaje', { msgId, usuario, texto: '', imagen: { data: b, type: file.type }, respondiendoA }); agregarMensajePropio(msgId, { usuario, texto: '', audio: null, imagen: { type: file.type }, respondiendoA }); if (respondiendoA) cancelarReply(); };
+  r.readAsDataURL(file);
 }
 
 replyClose.addEventListener('click', cancelarReply);
@@ -345,273 +241,127 @@ replyClose.addEventListener('click', cancelarReply);
 function iniciarReply(data) {
   respondiendoA = { msgId: data.msgId, usuario: data.usuarioUsuario || data.usuario, texto: data.texto };
   replyUser.textContent = respondiendoA.usuario;
-  replyText.textContent = respondiendoA.texto || (data.audio ? '🎤 Audio' : '🖼️ Foto');
-  replyBar.classList.remove('oculto');
-  mensajeInput.focus();
+  replyText.textContent = respondiendoA.texto || (data.audio ? 'Audio' : 'Foto');
+  replyBar.classList.remove('oculto'); mensajeInput.focus();
 }
-
-function cancelarReply() {
-  respondiendoA = null;
-  replyBar.classList.add('oculto');
-}
-
-scrollBtn.addEventListener('click', () => {
-  mensajesDiv.scrollTo({ top: mensajesDiv.scrollHeight, behavior: 'smooth' });
-});
-
-mensajesDiv.addEventListener('scroll', () => {
-  const distancia = mensajesDiv.scrollHeight - mensajesDiv.scrollTop - mensajesDiv.clientHeight;
-  scrollBtn.classList.toggle('oculto', distancia < 100);
-});
-
-camaraBtn.addEventListener('click', abrirCamara);
+function cancelarReply() { respondiendoA = null; replyBar.classList.add('oculto'); }
 
 menuResponder.addEventListener('click', () => {
-  msgMenu.classList.add('oculto');
-  const msgEl = document.getElementById('msg-' + msgMenuMsgId);
-  if (msgEl) {
-    const data = mensajesEnviados.get(msgMenuMsgId) || { msgId: msgMenuMsgId, usuario: '', texto: '' };
-    const usuarioMsg = msgEl.dataset.usuario || '';
-    const textoMsg = msgEl.dataset.texto || '';
-    iniciarReply({ msgId: msgMenuMsgId, usuario: usuarioMsg, texto: textoMsg });
-  }
+  msgMenu.classList.add('oculto'); const el = document.getElementById('msg-' + msgMenuMsgId);
+  if (el) iniciarReply({ msgId: msgMenuMsgId, usuario: el.dataset.usuario, texto: el.dataset.texto });
 });
-
 menuCopiar.addEventListener('click', () => {
-  msgMenu.classList.add('oculto');
-  const msgEl = document.getElementById('msg-' + msgMenuMsgId);
-  if (msgEl && msgEl.dataset.texto) {
-    navigator.clipboard.writeText(msgEl.dataset.texto).catch(() => {});
-  }
+  msgMenu.classList.add('oculto'); const el = document.getElementById('msg-' + msgMenuMsgId);
+  if (el?.dataset.texto) navigator.clipboard.writeText(el.dataset.texto).catch(() => {});
 });
+menuEliminar.addEventListener('click', () => { msgMenu.classList.add('oculto'); const el = document.getElementById('msg-' + msgMenuMsgId); if (el) el.remove(); });
 
-menuEliminar.addEventListener('click', () => {
-  msgMenu.classList.add('oculto');
-  const msgEl = document.getElementById('msg-' + msgMenuMsgId);
-  if (msgEl) msgEl.remove();
-});
+scrollBtn.addEventListener('click', () => mensajesDiv.scrollTo({ top: mensajesDiv.scrollHeight, behavior: 'smooth' }));
+mensajesDiv.addEventListener('scroll', () => { scrollBtn.classList.toggle('oculto', mensajesDiv.scrollHeight - mensajesDiv.scrollTop - mensajesDiv.clientHeight < 100); });
+camaraBtn.addEventListener('click', abrirCamara);
+
+function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
 
 function formatearTexto(text) {
+  const urlRegex = /(https?:\/\/[^\s<]+|[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:\/[^\s<]*)?)/g;
   const escaped = escapeHtml(text);
   return escaped
     .replace(/\*(.*?)\*/g, '<b>$1</b>')
     .replace(/_(.*?)_/g, '<i>$1</i>')
-    .replace(/~(.*?)~/g, '<s>$1</s>');
-}
-
-function obtenerFechaSeparador() {
-  const ahora = new Date();
-  const hoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
-  const ayer = new Date(hoy.getTime() - 86400000);
-  const dom = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate(), ahora.getHours(), ahora.getMinutes());
-  return { hoy, ayer };
+    .replace(/~(.*?)~/g, '<s>$1</s>')
+    .replace(urlRegex, (match) => {
+      const url = match.startsWith('http') ? match : 'https://' + match;
+      return `<a href="${url}" target="_blank" rel="noopener">${match}</a>`;
+    });
 }
 
 function debeInsertarSeparador() {
-  const ahora = new Date();
-  const clave = ahora.getFullYear() + '-' + ahora.getMonth() + '-' + ahora.getDate();
-  if (clave !== ultimaFecha) {
-    ultimaFecha = clave;
-    return true;
-  }
-  return false;
+  const a = new Date(); const c = a.getFullYear()+'-'+a.getMonth()+'-'+a.getDate();
+  if (c !== ultimaFecha) { ultimaFecha = c; return true; } return false;
 }
-
 function textoSeparador() {
-  const ahora = new Date();
-  const { hoy, ayer } = obtenerFechaSeparador();
-  const inicioHoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
-  const diff = Math.round((inicioHoy.getTime() - ahora.getTime()) / 86400000);
-  if (ahora >= inicioHoy) return 'Hoy';
-  if (ahora >= ayer && ahora < inicioHoy) return 'Ayer';
-  return ahora.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+  const a = new Date(); const h = new Date(a.getFullYear(),a.getMonth(),a.getDate());
+  if (a >= h) return 'Hoy';
+  if (a >= new Date(h.getTime()-86400000) && a < h) return 'Ayer';
+  return a.toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long' });
 }
-
 function insertarSeparadorFecha() {
   if (debeInsertarSeparador()) {
-    const div = document.createElement('div');
-    div.classList.add('separador-fecha');
-    div.textContent = textoSeparador();
-    mensajesDiv.appendChild(div);
+    const d = document.createElement('div'); d.classList.add('separador-fecha'); d.textContent = textoSeparador(); mensajesDiv.appendChild(d);
   }
-}
-
-function escapeHtml(text) {
-  const d = document.createElement('div');
-  d.textContent = text;
-  return d.innerHTML;
 }
 
 function agregarMensajePropio(msgId, data) {
   insertarSeparadorFecha();
-  const div = document.createElement('div');
-  div.id = 'msg-' + msgId;
-  div.classList.add('mensaje', 'propio');
-  div.dataset.usuario = usuario;
-  div.dataset.texto = data.texto || '';
-  const ahora = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-  let replyHtml = '';
-  if (data.respondiendoA) {
-    replyHtml = `<div class="reply-quote"><div class="rq-user">${escapeHtml(data.respondiendoA.usuario)}</div><div class="rq-text">${escapeHtml(data.respondiendoA.texto)}</div></div>`;
-  }
-
-  let contenido = '';
-  if (data.imagen) {
-    contenido += `<div class="duracion-audio">🖼️ Foto</div>`;
-  } else if (data.audio) {
-    contenido += `<div class="duracion-audio">🎤 ${data.audio.duracion || 0}s</div>`;
-  } else {
-    contenido += `<div class="texto">${formatearTexto(data.texto)}</div>`;
-  }
-
-  div.innerHTML = `
-    ${replyHtml}
-    ${contenido}
-    <div class="hora-estado">
-      <span class="hora">${ahora}</span>
-      <span class="estado-msg" id="estado-${msgId}"><span class="tick-enviando">⏳</span></span>
-    </div>
-  `;
-  mensajesDiv.appendChild(div);
-  mensajesDiv.scrollTop = mensajesDiv.scrollHeight;
-  mensajesEnviados.set(msgId, div);
-  agregarEventosMensaje(div, msgId, data);
+  const div = document.createElement('div'); div.id = 'msg-'+msgId; div.classList.add('mensaje','propio');
+  div.dataset.usuario = usuario; div.dataset.texto = data.texto||'';
+  const ahora = new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+  let rh='', c='';
+  if (data.respondiendoA) rh = `<div class="reply-quote"><div class="rq-user">${escapeHtml(data.respondiendoA.usuario)}</div><div class="rq-text">${escapeHtml(data.respondiendoA.texto)}</div></div>`;
+  if (data.imagen) c += `<div class="duracion-audio">Foto</div>`;
+  else if (data.audio) c += `<div class="duracion-audio">Audio ${data.audio.duracion||0}s</div>`;
+  else c += `<div class="texto">${formatearTexto(data.texto)}</div>`;
+  div.innerHTML = `${rh}${c}<div class="hora-estado"><span class="hora">${ahora}</span><span class="estado-msg" id="estado-${msgId}"><span class="tick-enviando">&#x23F3;</span></span></div>`;
+  mensajesDiv.appendChild(div); mensajesDiv.scrollTop = mensajesDiv.scrollHeight;
+  mensajesEnviados.set(msgId, div); agregarEventosMensaje(div, msgId, data);
 }
 
 function agregarEventosMensaje(div, msgId, data) {
-  let toques = 0;
-  let timeoutDobleTap = null;
-
+  let toques = 0, td = null;
   div.addEventListener('click', () => {
     toques++;
-    if (toques === 1) {
-      timeoutDobleTap = setTimeout(() => { toques = 0; }, 300);
-    } else if (toques === 2) {
-      clearTimeout(timeoutDobleTap);
-      toques = 0;
-      socket.emit('reaccion', { sala, msgId, usuario, reaccion: '❤️' });
-      mostrarReaccion(div, '❤️');
-    }
+    if (toques===1) td = setTimeout(()=>{toques=0;},300);
+    else if (toques===2) { clearTimeout(td); toques=0; socket.emit('reaccion',{sala,msgId,usuario,reaccion:'\u2764\uFE0F'}); mostrarReaccion(div,'\u2764\uFE0F'); }
   });
-
-  let longPressTimer = null;
-  div.addEventListener('pointerdown', (e) => {
-    longPressTimer = setTimeout(() => {
-      abrirMenuMensaje(msgId, div);
-    }, 500);
-  });
-  div.addEventListener('pointerup', () => clearTimeout(longPressTimer));
-  div.addEventListener('pointerleave', () => clearTimeout(longPressTimer));
-  div.addEventListener('pointercancel', () => clearTimeout(longPressTimer));
+  let lp=null;
+  div.addEventListener('pointerdown',()=>{lp=setTimeout(()=>abrirMenuMensaje(msgId,div),500);});
+  div.addEventListener('pointerup',()=>clearTimeout(lp));
+  div.addEventListener('pointerleave',()=>clearTimeout(lp));
+  div.addEventListener('pointercancel',()=>clearTimeout(lp));
 }
 
 function abrirMenuMensaje(msgId, div) {
-  msgMenuMsgId = msgId;
-  menuEliminar.classList.toggle('oculto', div.dataset.usuario !== usuario);
-  msgMenu.classList.remove('oculto');
-  emojiPicker.classList.add('oculto');
-  attachMenu.classList.add('oculto');
+  msgMenuMsgId = msgId; menuEliminar.classList.toggle('oculto', div.dataset.usuario !== usuario);
+  msgMenu.classList.remove('oculto'); emojiPicker.classList.add('oculto'); attachMenu.classList.add('oculto');
 }
 
 function mostrarReaccion(div, emoji) {
-  let reaccionEl = div.querySelector('.reaccion');
-  if (!reaccionEl) {
-    reaccionEl = document.createElement('div');
-    reaccionEl.classList.add('reaccion');
-    div.appendChild(reaccionEl);
-  }
-  reaccionEl.textContent = emoji;
-  reaccionEl.style.animation = 'none';
-  void reaccionEl.offsetWidth;
-  reaccionEl.style.animation = 'reaccionAparicion 0.3s ease';
-  clearTimeout(reaccionEl._timeout);
-  reaccionEl._timeout = setTimeout(() => {
-    if (reaccionEl) reaccionEl.remove();
-  }, 3000);
+  let r = div.querySelector('.reaccion');
+  if (!r) { r = document.createElement('div'); r.classList.add('reaccion'); div.appendChild(r); }
+  r.textContent = emoji; r.style.animation = 'none'; void r.offsetWidth; r.style.animation = 'reaccionAparicion 0.35s ease';
+  clearTimeout(r._t); r._t = setTimeout(()=>r?.remove(), 3000);
 }
 
 socket.on('mensaje', (data) => {
   if (data.usuario === usuario) return;
   insertarSeparadorFecha();
-
-  const div = document.createElement('div');
-  div.id = 'msg-' + data.msgId;
-  div.classList.add('mensaje');
-  div.classList.add('otro');
-  div.dataset.usuario = data.usuario;
-  div.dataset.texto = data.texto || '';
-  const esSistema = data.usuario === '📢 Sistema';
+  const div = document.createElement('div'); div.id = 'msg-'+data.msgId;
+  div.classList.add('mensaje','otro'); div.dataset.usuario = data.usuario; div.dataset.texto = data.texto||'';
+  const esSistema = data.usuario === '\uD83D\uDCE2 Sistema';
   if (esSistema) div.classList.add('sistema');
-
-  let replyHtml = '';
-  if (data.respondiendoA) {
-    replyHtml = `<div class="reply-quote"><div class="rq-user">${escapeHtml(data.respondiendoA.usuario)}</div><div class="rq-text">${escapeHtml(data.respondiendoA.texto)}</div></div>`;
-  }
-
-  let contenido = '';
-  if (data.imagen) {
-    const src = 'data:' + data.imagen.type + ';base64,' + data.imagen.data;
-    contenido += `<img src="${src}" class="imagen-msg" loading="lazy">`;
-  }
-  if (data.audio) {
-    const src = 'data:' + data.audio.type + ';base64,' + data.audio.data;
-    contenido += `<audio controls src="${src}" class="audio-msg"></audio><div class="duracion-audio">🎤 ${data.audio.duracion || 0}s</div>`;
-  }
-  if (data.texto) {
-    contenido += `<div class="texto">${formatearTexto(data.texto)}</div>`;
-  }
-
-  div.innerHTML = `
-    ${esSistema ? '' : `<div class="usuario">${data.usuario}</div>`}
-    ${replyHtml}
-    ${contenido}
-    <div class="hora">${data.hora}</div>
-  `;
-  mensajesDiv.appendChild(div);
-  mensajesDiv.scrollTop = mensajesDiv.scrollHeight;
-  mensajesEnviados.set(data.msgId, div);
-  agregarEventosMensaje(div, data.msgId, data);
-
+  let rh='', c='';
+  if (data.respondiendoA) rh = `<div class="reply-quote"><div class="rq-user">${escapeHtml(data.respondiendoA.usuario)}</div><div class="rq-text">${escapeHtml(data.respondiendoA.texto)}</div></div>`;
+  if (data.imagen) { const s='data:'+data.imagen.type+';base64,'+data.imagen.data; c+=`<img src="${s}" class="imagen-msg" loading="lazy">`; }
+  if (data.audio) { const s='data:'+data.audio.type+';base64,'+data.audio.data; c+=`<audio controls src="${s}" class="audio-msg"></audio><div class="duracion-audio">Audio ${data.audio.duracion||0}s</div>`; }
+  if (data.texto) c+=`<div class="texto">${formatearTexto(data.texto)}</div>`;
+  div.innerHTML = `${esSistema?'':`<div class="usuario">${data.usuario}</div>`}${rh}${c}<div class="hora">${data.hora}</div>`;
+  mensajesDiv.appendChild(div); mensajesDiv.scrollTop = mensajesDiv.scrollHeight;
+  mensajesEnviados.set(data.msgId, div); agregarEventosMensaje(div, data.msgId, data);
   if (!esSistema && document.hidden && 'serviceWorker' in navigator && navigator.serviceWorker.controller) {
-    let cuerpo = data.texto;
-    if (data.audio) cuerpo = '🎤 Audio (' + (data.audio.duracion || 0) + 's)';
-    else if (data.imagen) cuerpo = '🖼️ Foto';
-    navigator.serviceWorker.controller.postMessage({
-      tipo: 'notificacion', titulo: '❤️ ' + data.usuario, cuerpo, tag: 'chat-' + data.msgId
-    });
+    let cuerpo = data.texto; if (data.audio) cuerpo = 'Audio ('+(data.audio.duracion||0)+'s)'; else if (data.imagen) cuerpo = 'Foto';
+    navigator.serviceWorker.controller.postMessage({ tipo:'notificacion', titulo:'\u2764\uFE0F '+data.usuario, cuerpo, tag:'chat-'+data.msgId });
   }
 });
 
 socket.on('estado-msg', (data) => {
-  const estadoEl = document.getElementById('estado-' + data.msgId);
-  if (!estadoEl) return;
-  if (data.estado === 'enviado') {
-    estadoEl.innerHTML = '<span class="tick">✓</span>';
-  } else if (data.estado === 'entregado') {
-    estadoEl.innerHTML = '<span class="tick doble">✓✓</span>';
-  } else if (data.estado === 'visto') {
-    estadoEl.innerHTML = '<span class="tick doble visto">❤️</span>';
-  }
+  const el = document.getElementById('estado-'+data.msgId); if (!el) return;
+  if (data.estado==='enviado') el.innerHTML = '<span class="tick">\u2713</span>';
+  else if (data.estado==='entregado') el.innerHTML = '<span class="tick doble">\u2713\u2713</span>';
+  else if (data.estado==='visto') el.innerHTML = ICONS['heart'];
 });
 
-socket.on('reaccion', (data) => {
-  const div = document.getElementById('msg-' + data.msgId);
-  if (div) mostrarReaccion(div, data.reaccion);
-});
+socket.on('reaccion', (data) => { const d = document.getElementById('msg-'+data.msgId); if (d) mostrarReaccion(d, data.reaccion); });
+socket.on('escribiendo', (data) => { escribiendoDiv.textContent = data.usuario && data.usuario !== usuario ? data.usuario + ' est\u00E1 escribiendo...' : ''; });
 
-socket.on('escribiendo', (data) => {
-  if (data.usuario && data.usuario !== usuario) {
-    escribiendoDiv.textContent = data.usuario + ' está escribiendo... 💕';
-  } else {
-    escribiendoDiv.textContent = '';
-  }
-});
-
-const salaGuardada = localStorage.getItem('chat-sala');
-const usuarioGuardado = localStorage.getItem('chat-usuario');
-if (salaGuardada && usuarioGuardado) {
-  sala = salaGuardada;
-  usuario = usuarioGuardado;
-  iniciarSesion();
-}
+const sg = localStorage.getItem('chat-sala'), su = localStorage.getItem('chat-usuario');
+if (sg && su) { sala = sg; usuario = su; iniciarSesion(); }
