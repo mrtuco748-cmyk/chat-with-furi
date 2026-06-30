@@ -25,7 +25,8 @@ io.on('connection', (socket) => {
     if (socket.sala) {
       io.to(socket.sala).emit('mensaje', {
         usuario: data.usuario,
-        texto: data.texto,
+        texto: data.texto || '',
+        audio: data.audio || null,
         hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       });
     }
