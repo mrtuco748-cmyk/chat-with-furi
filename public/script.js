@@ -631,6 +631,7 @@ mensajesDiv.addEventListener('scroll', () => { scrollBtn.classList.toggle('ocult
 camaraBtn.addEventListener('click', abrirCamara);
 
 mensajesDiv.addEventListener('click', e => {
+  if (selectMode) { if (!e.target.closest('.mensaje')) salirSelectMode(); return; }
   const img = e.target.closest('.imagen-msg');
   if (img) abrirVisorImagen(img.currentSrc || img.src, img.closest('.mensaje')?.dataset?.usuario || '');
 });
