@@ -1,5 +1,10 @@
 self.addEventListener('install', (e) => { e.waitUntil(self.skipWaiting()); });
-self.addEventListener('activate', (e) => { e.waitUntil(self.clients.claim()); });
+
+self.addEventListener('activate', (e) => {
+  e.waitUntil(
+    caches.keys().then(names => Promise.all(names.map(n => n.startsWith('chat-static-') ? caches.delete(n) : Promise.resolve()))).then(() => self.clients.claim())
+  );
+});
 
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
@@ -8,7 +13,7 @@ self.addEventListener('fetch', (e) => {
       const fetchPromise = fetch(e.request).then((response) => {
         if (response.ok) {
           const clone = response.clone();
-          caches.open('chat-static-v1').then((cache) => cache.put(e.request, clone));
+          caches.open('chat-static-v2').then((cache) => cache.put(e.request, clone));
         }
         return response;
       }).catch(() => cached);
@@ -19,6 +24,7 @@ self.addEventListener('fetch', (e) => {
 
 self.addEventListener('message', (event) => {
   const data = event.data;
+  if (data && data.tipo === 'skipWaiting') { self.skipWaiting(); }
   if (data && data.tipo === 'notificacion') {
     self.registration.showNotification(data.titulo, {
       body: data.cuerpo,
