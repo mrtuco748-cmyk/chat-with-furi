@@ -7,8 +7,18 @@ const httpMod = require('http');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { maxHttpBufferSize: 5e7 });
+const io = new Server(server, { maxHttpBufferSize: 5e7, pingTimeout: 10000, pingInterval: 5000 });
 
+app.use(express.json({ limit: '1mb' }));
+app.post('/api/ausente', (req, res) => {
+  const { usuario, sala } = req.body;
+  if (sala && usuario && salas[sala] && salas[sala].usuarios[usuario]) {
+    salas[sala].usuarios[usuario].presente = false;
+    salas[sala].usuarios[usuario].ultimaVez = Date.now();
+    io.to(sala).emit('presencia', { usuario, presente: false, ultimaVez: Date.now() });
+  }
+  res.end();
+});
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/api/link-preview', (req, res) => {
