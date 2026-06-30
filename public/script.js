@@ -1203,12 +1203,15 @@ async function iniciarLlamada() {
 
 async function aceptarLlamada() {
   if (callActive) return;
+  const oferta = _pendingOffer;
+  _pendingOffer = null;
   incomingCall.classList.add('oculto');
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30 } }, audio: { echoCancellation: true, noiseSuppression: true } });
+    if (!oferta) { mostrarToast('Llamada cancelada'); terminarLlamada(); return; }
     localVideo.srcObject = localStream;
     crearPeerConnection();
-    await pc.setRemoteDescription(new RTCSessionDescription(_pendingOffer));
+    await pc.setRemoteDescription(new RTCSessionDescription(oferta));
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
     socket.emit('call-answer', { sala, answer });
