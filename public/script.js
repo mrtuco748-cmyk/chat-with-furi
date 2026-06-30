@@ -717,14 +717,9 @@ function cargarMsgsLocal() {
   mensajesDiv.innerHTML = ''; ultimaFecha = ''; msgCount = 0; fotoCount = 0; audioCount = 0;
   try {
     const arr = JSON.parse(localStorage.getItem(keyMsgs()) || '[]');
+    const silencios = [];
     for (const m of arr) {
-      if (m.silencio) {
-        if (m.silencioDe) for (const tId of m.silencioDe) {
-          const tel = document.getElementById('msg-'+tId);
-          if (tel) agregarQuietToggle(tel, m.msgId, m.texto);
-        }
-        continue;
-      }
+      if (m.silencio) { silencios.push(m); continue; }
       if (m.tipo === 'propio') {
         renderMsgPropio(m);
         const div = document.getElementById('msg-'+m.msgId);
@@ -741,6 +736,12 @@ function cargarMsgsLocal() {
       else if (m.tipo === 'otro') { renderMsgOtro(m); const od = document.getElementById('msg-'+m.msgId); if (od) { if (m.favorito) mostrarFavorito(od, true); if (m.reaccion) { od.dataset.reaccionCargado = '1'; mostrarReaccion(od, m.reaccion); } agregarEventosMensaje(od, m.msgId, m); } }
       else if (m.tipo === 'sistema') { const d = document.createElement('div'); d.classList.add('mensaje','sistema'); d.textContent = m.texto; mensajesDiv.appendChild(d); }
       if (m.tipo !== 'sistema') { msgCount++; if (m.imagen) fotoCount++; if (m.audio) audioCount++; }
+    }
+    for (const m of silencios) {
+      if (m.silencioDe) for (const tId of m.silencioDe) {
+        const tel = document.getElementById('msg-'+tId);
+        if (tel) agregarQuietToggle(tel, m.msgId, m.texto);
+      }
     }
   } catch(e) {}
   mensajesDiv.scrollTop = mensajesDiv.scrollHeight;
@@ -1262,7 +1263,7 @@ function agregarQuietToggle(containerEl, replyMsgId, texto) {
   if (!c) {
     c = document.createElement('div'); c.className = 'quiet-reply-container';
     c.innerHTML = '<div class="quiet-reply-label">Mensaje silencioso <span class="quiet-chevron">\u25B8</span></div><div class="quiet-reply-msg" id="qr-msg-'+replyMsgId+'">'+escapeHtml(texto)+'</div>';
-    c.addEventListener('click', () => c.classList.toggle('abierto'));
+    c.addEventListener('click', e => { e.stopPropagation(); c.classList.toggle('abierto'); });
     containerEl.appendChild(c);
   } else {
     if (c.querySelector('#qr-msg-'+replyMsgId)) return;
