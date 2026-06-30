@@ -576,6 +576,8 @@ body {
   flex-shrink: 0; font-weight: 600; transition: opacity 0.15s;
 }
 .ap-speed:hover { opacity: 1; background: rgba(255,255,255,0.06); }
+.audio-player.escuchado .ap-progress { background: var(--accent); }
+.audio-player.escuchado .ap-wave { box-shadow: inset 0 0 0 1px var(--accent); }
 
 .mensaje .reply-quote {
   background: rgba(0,0,0,0.03); border-left: 3px solid var(--accent);

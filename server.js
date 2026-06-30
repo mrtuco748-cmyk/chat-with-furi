@@ -195,6 +195,12 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('audio-played', (data) => {
+    if (socket.sala && data.msgId) {
+      socket.to(socket.sala).emit('audio-played', { msgId: String(data.msgId).slice(0, 64) });
+    }
+  });
+
   socket.on('editar-msg', (data) => {
     if (socket.sala) {
       socket.to(socket.sala).emit('editado-msg', { msgId: String(data.msgId).slice(0, 64), texto: String(data.texto).slice(0, 2000) });

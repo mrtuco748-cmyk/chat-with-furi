@@ -760,6 +760,7 @@ function cargarMsgsLocal() {
           mensajesEnviados.set(m.msgId, div);
           agregarEventosMensaje(div, m.msgId, m);
           if (m.reaccion) { div.dataset.reaccionCargado = '1'; mostrarReaccion(div, m.reaccion); }
+          if (m.audioPlayed) { const ap = div.querySelector('.audio-player'); if (ap) ap.classList.add('escuchado'); }
         }
       }
       else if (m.tipo === 'otro') { renderMsgOtro(m); const od = document.getElementById('msg-'+m.msgId); if (od) { if (m.favorito) mostrarFavorito(od, true); if (m.reaccion) { od.dataset.reaccionCargado = '1'; mostrarReaccion(od, m.reaccion); } agregarEventosMensaje(od, m.msgId, m); } }
@@ -797,7 +798,13 @@ function initAudioPlayers(container) {
       timeEl.textContent = m+':'+(s<10?'0':'')+s;
     });
     playBtn.addEventListener('click', () => {
-      if (audio.paused) { audio.play(); playBtn.dataset.icon = 'pause'; }
+      if (audio.paused) {
+        audio.play(); playBtn.dataset.icon = 'pause';
+        const msgEl = el.closest('.mensaje');
+        if (msgEl && msgEl.dataset.usuario !== usuario) {
+          socket.emit('audio-played', { sala, msgId: msgEl.id.replace('msg-','') });
+        }
+      }
       else { audio.pause(); playBtn.dataset.icon = 'play'; }
       injectIconsIn(playBtn);
     });
@@ -1064,6 +1071,18 @@ socket.on('estado-msg', (data) => {
     const m = arr.find(x => x.msgId === data.msgId);
     if (m) { m.estado = data.estado; localStorage.setItem(keyMsgs(), JSON.stringify(arr)); }
   } catch(e) {}
+});
+socket.on('audio-played', (data) => {
+  const el = document.getElementById('msg-'+data.msgId);
+  if (el) {
+    const ap = el.querySelector('.audio-player');
+    if (ap) ap.classList.add('escuchado');
+    try {
+      const arr = JSON.parse(localStorage.getItem(keyMsgs()) || '[]');
+      const m = arr.find(x => x.msgId === data.msgId);
+      if (m) { m.audioPlayed = true; localStorage.setItem(keyMsgs(), JSON.stringify(arr)); }
+    } catch(e) {}
+  }
 });
 socket.on('reaccion', (data) => { const d = document.getElementById('msg-'+data.msgId); if (d) { if (data.reaccion) { mostrarReaccion(d, data.reaccion); setReaccionMsg(data.msgId, data.reaccion); } else { mostrarReaccion(d, ''); setReaccionMsg(data.msgId, null); } } });
 socket.on('voto-encuesta', (data) => {
