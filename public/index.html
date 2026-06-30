@@ -261,6 +261,31 @@
     </div>
   </div>
 
+  <div id="pollModal" class="oculto">
+    <div class="overlay-base" id="pollOverlay"></div>
+    <div class="poll-sheet sheet-base">
+      <div class="poll-header">
+        <h3>Crear encuesta</h3>
+        <button class="poll-close" id="pollClose" data-icon="x"></button>
+      </div>
+      <div class="poll-body">
+        <div class="poll-field">
+          <label>Pregunta</label>
+          <input type="text" id="pollQuestion" placeholder="¿Qué cenamos hoy?" maxlength="256">
+        </div>
+        <div class="poll-field">
+          <label>Opciones</label>
+          <div id="pollOptionsContainer"></div>
+          <button class="poll-add-option" id="pollAddOption" data-icon="plus">Añadir opción</button>
+        </div>
+      </div>
+      <div class="poll-footer">
+        <button class="poll-btn-cancel" id="pollCancel">Cancelar</button>
+        <button class="poll-btn-create" id="pollCreate">Crear</button>
+      </div>
+    </div>
+  </div>
+
   <button class="scroll-btn oculto" id="scrollBtn" data-icon="heart-filled"></button>
 
   <div class="chat-input glass">

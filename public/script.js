@@ -568,9 +568,13 @@ function actualizarVotosEnBurbuja(div, msgId, opcionIdx, votante) {
     const total = Object.values(votos).reduce((s, v) => s + v.length, 0);
     const count = votos[key].length;
     const pct = total > 0 ? (count / total) * 100 : 0;
-    bars[opcionIdx].querySelector('.eb-fill').style.width = pct + '%';
-    bars[opcionIdx].querySelector('.eb-pct').textContent = Math.round(pct) + '%';
-    bars[opcionIdx].querySelector('.eb-count').textContent = count + ' voto' + (count !== 1 ? 's' : '');
+    const barW = Math.round(pct);
+    const barEl = bars[opcionIdx];
+    barEl.querySelector('.eb-bar-fill').style.width = barW + '%';
+    barEl.querySelector('.eb-pct').textContent = Math.round(pct) + '%';
+    barEl.querySelector('.eb-count').textContent = count + ' voto' + (count !== 1 ? 's' : '');
+    // Mark as voted by current user
+    if (votante === usuario) barEl.classList.add('votada');
   }
   try {
     const arr = JSON.parse(localStorage.getItem(keyMsgs()) || '[]');
@@ -686,7 +690,68 @@ moreSettings.addEventListener('click', () => { moreMenu.classList.add('oculto');
 moreClearChat.addEventListener('click', () => { moreMenu.classList.add('oculto'); if (confirm('\u00BFVaciar chat?')) limpiarChat(); });
 moreExport.addEventListener('click', () => { moreMenu.classList.add('oculto'); exportarChat(); });
 const wpGuardado = localStorage.getItem('chat-wallpaper'); if (wpGuardado) { document.body.classList.remove('wallpaper-default', 'wallpaper-rose', 'wallpaper-sunset', 'wallpaper-ocean', 'wallpaper-lavender'); document.body.classList.add('wallpaper-' + wpGuardado); }
-document.querySelectorAll('.attach-option').forEach(btn => { btn.addEventListener('click', () => { attachMenu.classList.add('oculto'); const t = btn.dataset.tipo; if (t === 'camara') abrirCamara(); else if (t === 'galeria') abrirGaleria(); else if (t === 'sticker') stickerPicker.classList.remove('oculto'); else if (t === 'documento') abrirDocumento(); else if (t === 'encuesta') mostrarCrearEncuesta(); else if (t === 'ubicacion') solicitarUbicacion(); }); });
+document.querySelectorAll('.attach-option').forEach(btn => { btn.addEventListener('click', () => { attachMenu.classList.add('oculto'); const t = btn.dataset.tipo; if (t === 'camara') abrirCamara(); else if (t === 'galeria') abrirGaleria(); else if (t === 'sticker') stickerPicker.classList.remove('oculto'); else if (t === 'documento') abrirDocumento(); else if (t === 'encuesta') abrirPollModal(); else if (t === 'ubicacion') solicitarUbicacion(); }); });
+
+// Poll Modal
+const pollModal = document.getElementById('pollModal');
+const pollOverlay = document.getElementById('pollOverlay');
+const pollClose = document.getElementById('pollClose');
+const pollCancel = document.getElementById('pollCancel');
+const pollCreate = document.getElementById('pollCreate');
+const pollQuestion = document.getElementById('pollQuestion');
+const pollOptionsContainer = document.getElementById('pollOptionsContainer');
+const pollAddOption = document.getElementById('pollAddOption');
+let pollOptionCount = 0;
+
+function abrirPollModal() {
+  pollModal.classList.remove('oculto');
+  pollQuestion.value = '';
+  pollOptionsContainer.innerHTML = '';
+  pollOptionCount = 0;
+  addPollOption();
+  addPollOption();
+  pollQuestion.focus();
+}
+function cerrarPollModal() { pollModal.classList.add('oculto'); }
+pollOverlay.addEventListener('click', cerrarPollModal);
+pollClose.addEventListener('click', cerrarPollModal);
+pollCancel.addEventListener('click', cerrarPollModal);
+
+function addPollOption(value = '') {
+  pollOptionCount++;
+  const idx = pollOptionCount;
+  const row = document.createElement('div');
+  row.className = 'poll-option-row';
+  row.innerHTML = `<input type="text" placeholder="Opción ${idx}" maxlength="100" value="${escapeHtml(value)}"><button class="poll-del-opt" data-icon="x"></button>`;
+  if (idx <= 2) row.querySelector('.poll-del-opt').style.display = 'none';
+  row.querySelector('.poll-del-opt').addEventListener('click', () => {
+    row.remove();
+    updatePollOptionPlaceholders();
+    updateCreateButton();
+  });
+  row.querySelector('input').addEventListener('input', updateCreateButton);
+  pollOptionsContainer.appendChild(row);
+}
+function updatePollOptionPlaceholders() {
+  const inputs = pollOptionsContainer.querySelectorAll('input');
+  inputs.forEach((input, i) => { input.placeholder = `Opción ${i + 1}`; });
+}
+function updateCreateButton() {
+  const options = Array.from(pollOptionsContainer.querySelectorAll('input')).map(i => i.value.trim()).filter(v => v);
+  const hasQuestion = pollQuestion.value.trim().length > 0;
+  pollCreate.disabled = !(hasQuestion && options.length >= 2);
+}
+pollAddOption.addEventListener('click', () => addPollOption());
+pollQuestion.addEventListener('input', updateCreateButton);
+
+pollCreate.addEventListener('click', () => {
+  const pregunta = pollQuestion.value.trim();
+  const opciones = Array.from(pollOptionsContainer.querySelectorAll('input')).map(i => i.value.trim()).filter(v => v);
+  if (!pregunta || opciones.length < 2) return;
+  cerrarPollModal();
+  enviarEncuesta(pregunta, opciones);
+});
+
 function abrirCamara() { const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; i.capture = 'environment'; i.addEventListener('change', e => { if (e.target.files?.[0]) mostrarPreviewImagen(e.target.files[0]); }); i.click(); }
 function abrirGaleria() { const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; i.addEventListener('change', e => { if (e.target.files?.[0]) mostrarPreviewImagen(e.target.files[0]); }); i.click(); }
 function mostrarPreviewImagen(file) {
@@ -983,18 +1048,21 @@ function renderMsgPropio(m) {
     c += '<div class="doc-msg" onclick="window.open(\''+src+'\')"><span class="doc-icon" data-icon="file"></span><div class="doc-info"><div class="doc-name">'+escapeHtml(m.texto||m.documento.nombre)+'</div><div class="doc-meta">'+ext+' \u2022 '+tam+'</div></div></div>';
   }
   else if (m.ubicacion) {
+    const mapImg = `https://maps.googleapis.com/maps/api/staticmap?center=${m.ubicacion.lat},${m.ubicacion.lng}&zoom=15&size=300x140&maptype=roadmap&markers=color:red%7C${m.ubicacion.lat},${m.ubicacion.lng}&key=`;
     c += '<div class="ubic-msg" onclick="window.open(\''+escapeHtml(m.ubicacion.url)+'\',\'_blank\')"><span class="ubic-icon" data-icon="map-pin"></span><div class="ubic-info"><div class="ubic-name">'+escapeHtml(m.texto||m.ubicacion.nombre)+'</div><div class="ubic-meta">Abrir en Google Maps</div></div></div>';
+    c += '<img class="ubic-map-preview" src="'+mapImg+'" alt="Mapa" loading="lazy">';
   }
-  else if (m.encuesta) {
+else if (m.encuesta) {
     div.dataset.encuestaVotos = JSON.stringify(m.encuesta.votos || {});
     const opcs = m.encuesta.opciones.map((o, i) => {
       const key = m.msgId+'-opc-'+i;
       const v = (m.encuesta.votos||{})[key]||[];
       const total = Object.values(m.encuesta.votos||{}).reduce((s,x) => s + x.length, 0);
       const pct = total > 0 ? (v.length/total)*100 : 0;
-      return '<div class="encuesta-bar" data-idx="'+i+'" onclick="votarEncuesta(\''+m.msgId+'\','+i+')"><div class="eb-fill" style="width:'+pct+'%"></div><div class="eb-label">'+escapeHtml(o)+'</div><div class="eb-pct">'+Math.round(pct)+'%</div><div class="eb-count">'+v.length+' voto'+(v.length!==1?'s':'')+'</div></div>';
+      const voted = v.includes(usuario) ? ' votada' : '';
+      return '<div class="encuesta-bar'+voted+'" data-idx="'+i+'" onclick="votarEncuesta(\''+m.msgId+'\','+i+')"><div class="encuesta-bar-row"><span class="eb-label">'+escapeHtml(o)+'</span><span class="eb-pct">'+Math.round(pct)+'%</span><span class="eb-count">'+v.length+' voto'+(v.length!==1?'s':'')+'</span></div><div class="eb-bar-bg"><div class="eb-bar-fill" style="width:'+pct+'%"></div></div></div>';
     }).join('');
-    c += '<div class="encuesta-msg"><div class="encuesta-preg">'+formatearTexto(m.texto)+'</div><div class="encuesta-opcs">'+opcs+'</div></div>';
+    c += '<div class="encuesta-msg"><div class="encuesta-preg">'+formatearTexto(m.texto)+'</div><div class="encuesta-opcs">'+opcs+'</div></div></div>';
   }
   else c += '<div class="texto">'+formatearTexto(m.texto)+'</div>';
   if (m.reenviado) c = '<span class="msg-forward-tag">Reenviado</span>' + c;
@@ -1020,21 +1088,24 @@ function renderMsgOtro(m) {
     const tam = m.documento.tamano ? ((m.documento.tamano/1024).toFixed(1)+' KB') : '';
     const src = m.documento.data && m.documento.data.startsWith('data:') ? m.documento.data : 'data:'+m.documento.type+';base64,'+ (m.documento.data||'');
     c += '<div class="doc-msg" onclick="window.open(\''+src+'\')"><span class="doc-icon" data-icon="file"></span><div class="doc-info"><div class="doc-name">'+escapeHtml(m.texto||m.documento.nombre)+'</div><div class="doc-meta">'+ext+' \u2022 '+tam+'</div></div></div>';
-  }
-  if (m.ubicacion) {
-    c += '<div class="ubic-msg" onclick="window.open(\''+escapeHtml(m.ubicacion.url)+'\',\'_blank\')"><span class="ubic-icon" data-icon="map-pin"></span><div class="ubic-info"><div class="ubic-name">'+escapeHtml(m.texto||m.ubicacion.nombre)+'</div><div class="ubic-meta">Abrir en Google Maps</div></div></div>';
-  }
-  if (m.encuesta) {
-    div.dataset.encuestaVotos = JSON.stringify(m.encuesta.votos || {});
-    const opcs = m.encuesta.opciones.map((o, i) => {
-      const key = m.msgId+'-opc-'+i;
-      const v = (m.encuesta.votos||{})[key]||[];
-      const total = Object.values(m.encuesta.votos||{}).reduce((s,x) => s + x.length, 0);
-      const pct = total > 0 ? (v.length/total)*100 : 0;
-      return '<div class="encuesta-bar" data-idx="'+i+'" onclick="votarEncuesta(\''+m.msgId+'\','+i+')"><div class="eb-fill" style="width:'+pct+'%"></div><div class="eb-label">'+escapeHtml(o)+'</div><div class="eb-pct">'+Math.round(pct)+'%</div><div class="eb-count">'+v.length+' voto'+(v.length!==1?'s':'')+'</div></div>';
-    }).join('');
-    c += '<div class="encuesta-msg"><div class="encuesta-preg">'+formatearTexto(m.texto)+'</div><div class="encuesta-opcs">'+opcs+'</div></div>';
-  }
+}
+    if (m.ubicacion) {
+      const mapImg = `https://maps.googleapis.com/maps/api/staticmap?center=${m.ubicacion.lat},${m.ubicacion.lng}&zoom=15&size=300x140&maptype=roadmap&markers=color:red%7C${m.ubicacion.lat},${m.ubicacion.lng}&key=`;
+      c += '<div class="ubic-msg" onclick="window.open(\''+escapeHtml(m.ubicacion.url)+'\',\'_blank\')"><span class="ubic-icon" data-icon="map-pin"></span><div class="ubic-info"><div class="ubic-name">'+escapeHtml(m.texto||m.ubicacion.nombre)+'</div><div class="ubic-meta">Abrir en Google Maps</div></div></div>';
+      c += '<img class="ubic-map-preview" src="'+mapImg+'" alt="Mapa" loading="lazy">';
+    }
+    if (m.encuesta) {
+      div.dataset.encuestaVotos = JSON.stringify(m.encuesta.votos || {});
+      const opcs = m.encuesta.opciones.map((o, i) => {
+        const key = m.msgId+'-opc-'+i;
+        const v = (m.encuesta.votos||{})[key]||[];
+        const total = Object.values(m.encuesta.votos||{}).reduce((s,x) => s + x.length, 0);
+        const pct = total > 0 ? (v.length/total)*100 : 0;
+        const barW = Math.round(pct);
+        return '<div class="encuesta-bar" data-idx="'+i+'" onclick="votarEncuesta(\''+m.msgId+'\','+i+')"><div class="encuesta-bar-row"><span class="eb-label">'+escapeHtml(o)+'</span><span class="eb-pct">'+Math.round(pct)+'%</span><span class="eb-count">'+v.length+' voto'+(v.length!==1?'s':'')+'</span></div><div class="eb-bar-bg"><div class="eb-bar-fill" style="width:'+barW+'%"></div></div></div>';
+      }).join('');
+      c += '<div class="encuesta-msg"><div class="encuesta-preg">'+formatearTexto(m.texto)+'</div><div class="encuesta-opcs">'+opcs+'</div></div>';
+    }
   if (m.reenviado) c = '<span class="msg-forward-tag">Reenviado</span>' + c;
   div.innerHTML = (esSistema?'':'<div class="usuario">'+m.usuario+'</div>')+rh+c+'<div class="hora">'+(m.hora||'')+'</div>';
   mensajesDiv.appendChild(div);
