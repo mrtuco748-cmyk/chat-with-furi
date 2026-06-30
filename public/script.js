@@ -89,7 +89,7 @@ avatarRing.addEventListener('click', () => {
   if (foto) abrirVisorImagen(foto, 'Foto de perfil');
 });
 const headerTitle = $('headerTitle');
-let deferredPrompt = null, fotoPerfilLocal = null, fotoPerfilRemoto = null, _callRequested = false, _answerPending = false;
+let deferredPrompt = null, fotoPerfilLocal = null, fotoPerfilRemoto = null, _pendingOffer = null;
 // Video call
 let pc = null, localStream = null, remoteStream = null, callActive = false, callTimer = null, callStart = 0;
 const videoCallBtn = $('videoCallBtn'), incomingCall = $('incomingCall'), videoCallScreen = $('videoCallScreen');
@@ -1173,10 +1173,10 @@ socket.on('escribiendo', (data) => {
   }
 });
 
-// Video call - two-step flow (notification first, camera after accept)
+// Video call
 const callStatusText = document.getElementById('callStatusText');
 videoCallBtn.addEventListener('click', iniciarLlamada);
-callReject.addEventListener('click', cerrarModalLlamada);
+callReject.addEventListener('click', callRejectClick);
 callAccept.addEventListener('click', aceptarLlamada);
 vcEndBtn.addEventListener('click', terminarLlamada);
 vcMuteBtn.addEventListener('click', () => { if (localStream) { const en = !localStream.getAudioTracks()[0].enabled; localStream.getAudioTracks()[0].enabled = en; vcMuteBtn.dataset.icon = en ? 'mic' : 'mic-off'; injectIconsIn(vcMuteBtn); } });
@@ -1184,34 +1184,44 @@ vcCamBtn.addEventListener('click', () => { if (localStream) { const en = !localS
 vcSpeakerBtn.addEventListener('click', () => { if (remoteVideo) remoteVideo.muted = !remoteVideo.muted; vcSpeakerBtn.dataset.icon = remoteVideo?.muted ? 'speaker-off' : 'speaker'; injectIconsIn(vcSpeakerBtn); });
 
 async function iniciarLlamada() {
-  if (callActive || _callRequested) return;
-  _callRequested = true;
-  const cn = localStorage.getItem('chat-pareja-nombre') || 'Mi amor';
-  callerName.textContent = cn;
-  callStatusText.textContent = 'Llamando...';
-  callAccept.style.display = 'none';
-  callReject.dataset.icon = 'x';
-  socket.emit('call-request', { sala });
-  incomingCall.classList.remove('oculto');
-  if (navigator.vibrate) navigator.vibrate(100);
+  if (callActive) return;
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30 } }, audio: { echoCancellation: true, noiseSuppression: true } });
+    localVideo.srcObject = localStream;
+    crearPeerConnection();
+    const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
+    await pc.setLocalDescription(offer);
+    const cn = localStorage.getItem('chat-pareja-nombre') || 'Mi amor';
+    callerName.textContent = cn;
+    callStatusText.textContent = 'Llamando...';
+    callAccept.style.display = 'none';
+    incomingCall.classList.remove('oculto');
+    socket.emit('call-offer', { sala, offer });
+  } catch(e) { mostrarToast('Error al iniciar c\u00E1mara: ' + e.message); terminarLlamada(); }
 }
 
 async function aceptarLlamada() {
   if (callActive) return;
   incomingCall.classList.add('oculto');
-  _answerPending = true;
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30 } }, audio: { echoCancellation: true, noiseSuppression: true } });
     localVideo.srcObject = localStream;
-    socket.emit('call-accepted', { sala });
-  } catch(e) { mostrarToast('Error: ' + e.message); _answerPending = false; terminarLlamada(); }
+    crearPeerConnection();
+    await pc.setRemoteDescription(new RTCSessionDescription(_pendingOffer));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    socket.emit('call-answer', { sala, answer });
+    abrirPantallaLlamada();
+    callActive = true;
+  } catch(e) { mostrarToast('Error: ' + e.message); terminarLlamada(); }
 }
 
-function cerrarModalLlamada() {
+function callRejectClick() {
+  if (callActive) return;
   incomingCall.classList.add('oculto');
   callAccept.style.display = '';
-  if (_callRequested) { _callRequested = false; socket.emit('call-end', { sala }); }
-  else { socket.emit('call-reject', { sala }); }
+  if (_pendingOffer) { _pendingOffer = null; socket.emit('call-reject', { sala }); }
+  else { socket.emit('call-end', { sala }); terminarLlamada(); }
 }
 
 function crearPeerConnection() {
@@ -1232,69 +1242,45 @@ function abrirPantallaLlamada() {
 function terminarLlamada() {
   if (callTimer) { clearInterval(callTimer); callTimer = null; }
   videoCallScreen.classList.add('oculto'); incomingCall.classList.add('oculto');
-  callAccept.style.display = ''; _callRequested = false; _answerPending = false;
+  callAccept.style.display = '';
   if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
   if (pc) { pc.close(); pc = null; }
-  localVideo.srcObject = null; remoteVideo.srcObject = null; callActive = false;
-  socket.emit('call-end', { sala });
+  localVideo.srcObject = null; remoteVideo.srcObject = null;
+  if (callActive) { callActive = false; socket.emit('call-end', { sala }); }
 }
 
-socket.on('call-request', (data) => {
+socket.on('call-offer', (data) => {
   if (callActive) return;
+  _pendingOffer = data.offer;
   if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
   if (document.hidden && navigator.serviceWorker.controller) {
     navigator.serviceWorker.controller.postMessage({
       tipo: 'notificacion', titulo: '\uD83D\uDCF9 Videollamada entrante',
       cuerpo: localStorage.getItem('chat-pareja-nombre') || 'Mi amor',
-      tag: 'call-request-' + Date.now()
+      tag: 'call-' + Date.now()
     });
   }
   const cn = localStorage.getItem('chat-pareja-nombre') || 'Mi amor';
   callerName.textContent = cn;
   callStatusText.textContent = 'Videollamada entrante...';
   callAccept.style.display = '';
-  callReject.dataset.icon = 'x';
   const rf = localStorage.getItem('chat-foto-remoto-' + sala);
   if (rf) { callerAvatar.src = rf; callerAvatar.style.display = 'block'; callerAvatarFallback.style.display = 'none'; }
   else { callerAvatar.style.display = 'none'; callerAvatarFallback.style.display = 'block'; injectIconsIn(callerAvatarFallback); }
   incomingCall.classList.remove('oculto');
 });
-socket.on('call-accepted', async () => {
-  if (!_callRequested) return;
-  try {
-    localStream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30 } }, audio: { echoCancellation: true, noiseSuppression: true } });
-    localVideo.srcObject = localStream;
-    crearPeerConnection();
-    const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
-    await pc.setLocalDescription(offer);
-    socket.emit('call-offer', { sala, offer });
-    abrirPantallaLlamada();
-    callActive = true; _callRequested = false;
-  } catch(e) { mostrarToast('Error: ' + e.message); terminarLlamada(); _callRequested = false; }
-});
-socket.on('call-offer', async (data) => {
-  if (!_answerPending) return;
-  _answerPending = false;
-  try {
-    crearPeerConnection();
-    await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
-    socket.emit('call-answer', { sala, answer });
-    abrirPantallaLlamada();
-    callActive = true;
-  } catch(e) { mostrarToast('Error: ' + e.message); terminarLlamada(); }
-});
 socket.on('call-answer', async (data) => {
   if (pc && !pc.currentRemoteDescription) {
     await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+    abrirPantallaLlamada();
+    callActive = true;
   }
 });
 socket.on('ice-candidate', (data) => {
   if (pc) pc.addIceCandidate(new RTCIceCandidate(data.candidate)).catch(() => {});
 });
-socket.on('call-end', () => { terminarLlamada(); mostrarToast('Llamada finalizada'); });
-socket.on('call-reject', () => { terminarLlamada(); mostrarToast('Llamada rechazada'); });
+socket.on('call-end', () => { if (callActive) terminarLlamada(); mostrarToast('Llamada finalizada'); });
+socket.on('call-reject', () => { if (_pendingOffer) { _pendingOffer = null; terminarLlamada(); mostrarToast('Llamada rechazada'); } });
 
 function toggleDarkMode() {
   settings.darkMode = !settings.darkMode;
