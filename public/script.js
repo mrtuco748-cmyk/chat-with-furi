@@ -676,7 +676,8 @@ socket.on('mensaje', (data) => {
   try {
     if (data.usuario === usuario) return;
     const esSistema = data.usuario === '\uD83D\uDCE2 Sistema';
-    const mData = { msgId: data.msgId, usuario: data.usuario, texto: data.texto||'', hora: data.hora, fecha: new Date().toISOString(), tipo: esSistema ? 'sistema' : 'otro' };
+    const chatVisible = !document.hidden;
+    const mData = { msgId: data.msgId, usuario: data.usuario, texto: data.texto||'', hora: data.hora, fecha: new Date().toISOString(), tipo: esSistema ? 'sistema' : 'otro', leido: chatVisible };
     if (data.respondiendoA) mData.respondiendoA = data.respondiendoA;
     if (data.imagen) mData.imagen = { data: 'data:'+data.imagen.type+';base64,'+data.imagen.data, type: data.imagen.type };
     if (data.audio) mData.audio = { data: 'data:'+data.audio.type+';base64,'+data.audio.data, type: data.audio.type, duracion: data.audio.duracion };
@@ -690,11 +691,12 @@ socket.on('mensaje', (data) => {
     if (!esSistema && data.texto && /https?:\/\/[^\s]+/.test(data.texto)) {
       obtenerLinkPreview(data.texto).then(p => { if (p) { mData.linkPreview = p; const d2 = document.getElementById('msg-'+data.msgId); if (d2) mostrarLinkPreviewEnBurbuja(d2, p); } });
     }
-    if (document.hidden && 'serviceWorker' in navigator && navigator.serviceWorker.controller && settings.notify) {
+    if (chatVisible) {
+      socket.emit('mensaje-leido', { msgId: data.msgId });
+    } else if ('serviceWorker' in navigator && navigator.serviceWorker.controller && settings.notify) {
       let cuerpo = data.texto; if (data.audio) cuerpo = 'Audio ('+(data.audio.duracion||0)+'s)'; else if (data.imagen) cuerpo = 'Foto';
       navigator.serviceWorker.controller.postMessage({ tipo:'notificacion', titulo:'\u2764\uFE0F '+data.usuario, cuerpo, tag:'chat-'+data.msgId });
     }
-    socket.emit('mensaje-leido', { msgId: data.msgId });
   } catch(e) {}
 });
 socket.on('estado-msg', (data) => { const el = document.getElementById('estado-'+data.msgId); if (!el) return; if (data.estado==='enviado') el.innerHTML = '<span class="tick">\u2713</span>'; else if (data.estado==='entregado') el.innerHTML = '<span class="tick doble">\u2713\u2713</span>'; else if (data.estado==='visto') el.innerHTML = '<span class="tick doble visto">\u2713\u2713</span>'; });
