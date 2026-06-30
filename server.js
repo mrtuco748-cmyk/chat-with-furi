@@ -20,8 +20,14 @@ io.on('connection', (socket) => {
     if (!salas[data.sala]) {
       salas[data.sala] = { usuarios: {}, pendientes: {} };
     }
-    salas[data.sala].usuarios[data.usuario] = { socketId: socket.id, presente: false };
+    salas[data.sala].usuarios[data.usuario] = { socketId: socket.id, presente: false, ultimaVez: null };
     salas[data.sala].pendientes[data.usuario] = [];
+
+    const otros = Object.keys(salas[data.sala].usuarios).filter(n => n !== data.usuario);
+    for (const otro of otros) {
+      const u = salas[data.sala].usuarios[otro];
+      socket.emit('presencia', { usuario: otro, presente: u.presente, ultimaVez: u.ultimaVez });
+    }
 
     socket.to(data.sala).emit('mensaje', {
       msgId: 'sys-' + Date.now(),
@@ -62,6 +68,7 @@ io.on('connection', (socket) => {
   socket.on('presente', (data) => {
     if (!socket.sala || !salas[socket.sala]) return;
     salas[socket.sala].usuarios[data.usuario].presente = true;
+    salas[socket.sala].usuarios[data.usuario].ultimaVez = null;
 
     const pendientes = salas[socket.sala].pendientes[data.usuario] || [];
     for (const p of pendientes) {
@@ -71,12 +78,16 @@ io.on('connection', (socket) => {
       }
     }
     salas[socket.sala].pendientes[data.usuario] = [];
+
+    socket.to(socket.sala).emit('presencia', { usuario: data.usuario, presente: true, ultimaVez: null });
   });
 
   socket.on('ausente', (data) => {
     if (!socket.sala || !salas[socket.sala]) return;
     if (salas[socket.sala].usuarios[data.usuario]) {
       salas[socket.sala].usuarios[data.usuario].presente = false;
+      salas[socket.sala].usuarios[data.usuario].ultimaVez = Date.now();
+      socket.to(socket.sala).emit('presencia', { usuario: data.usuario, presente: false, ultimaVez: Date.now() });
     }
   });
 
@@ -96,6 +107,8 @@ io.on('connection', (socket) => {
     if (socket.sala && socket.usuario && salas[socket.sala]) {
       if (salas[socket.sala].usuarios[socket.usuario]) {
         salas[socket.sala].usuarios[socket.usuario].presente = false;
+        salas[socket.sala].usuarios[socket.usuario].ultimaVez = Date.now();
+        socket.to(socket.sala).emit('presencia', { usuario: socket.usuario, presente: false, ultimaVez: Date.now() });
       }
       io.to(socket.sala).emit('mensaje', {
         msgId: 'sys-' + Date.now(),

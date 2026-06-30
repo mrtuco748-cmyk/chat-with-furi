@@ -205,6 +205,14 @@ function actualizarStats() {
 
 document.querySelectorAll('.qr-emoji').forEach(el => { el.addEventListener('click', () => { if (quickReactionMsgId) { socket.emit('reaccion', { sala, msgId: quickReactionMsgId, usuario, reaccion: el.dataset.reaccion }); const d = document.getElementById('msg-' + quickReactionMsgId); if (d) mostrarReaccion(d, el.dataset.reaccion); } quickReactions.classList.add('oculto'); }); });
 
+function mostrarToast(texto, duracion) {
+  duracion = duracion || 2500;
+  const c = $('toastContainer');
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = texto;
+  c.appendChild(t);
+  setTimeout(() => { t.style.animation = 'toastOut 0.25s ease forwards'; setTimeout(() => t.remove(), 250); }, duracion);
+}
+
 function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
 function formatearTexto(text) {
   const urlRegex = /(https?:\/\/[^\s<]+|[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:\/[^\s<]*)?)/g;
@@ -235,9 +243,29 @@ function agregarEventosMensaje(div, msgId, data) {
   div.addEventListener('click', () => { toques++; if (toques===1) td = setTimeout(()=>{toques=0;},300); else if (toques===2) { clearTimeout(td); toques=0; socket.emit('reaccion',{sala,msgId,usuario,reaccion:'\u2764\uFE0F'}); mostrarReaccion(div,'\u2764\uFE0F'); } });
   let lp = null;
   div.addEventListener('pointerdown', e => { lp = setTimeout(() => { const r = div.getBoundingClientRect(); quickReactions.style.top = (r.top - 50) + 'px'; quickReactions.style.left = Math.min(r.left + r.width/2 - 100, window.innerWidth - 220) + 'px'; quickReactionMsgId = msgId; quickReactions.classList.remove('oculto'); }, 600); });
-  div.addEventListener('pointerup', () => { clearTimeout(lp); });
+  div.addEventListener('pointerup', () => { clearTimeout(lp); limpiarSwipe(); });
   div.addEventListener('pointerleave', () => { clearTimeout(lp); });
   div.addEventListener('pointercancel', () => { clearTimeout(lp); });
+  div.addEventListener('pointermove', e => { if (lp && e.movementX && Math.abs(e.movementX) > 8) clearTimeout(lp); });
+
+  let sx = 0, swiping = false, swipeEl = null;
+  div.addEventListener('touchstart', e => { sx = e.touches[0].clientX; swiping = false; });
+  div.addEventListener('touchmove', e => {
+    if (swiping) e.preventDefault();
+    const dx = e.touches[0].clientX - sx;
+    if (dx > 10 && !swiping) {
+      swiping = true; clearTimeout(lp);
+      swipeEl = document.createElement('div'); swipeEl.className = 'swipe-reply-indicator';
+      div.appendChild(swipeEl);
+    }
+    if (swiping && swipeEl) { swipeEl.style.width = Math.min(dx, 80) + 'px'; }
+  }, { passive: false });
+  div.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - sx;
+    if (dx > 50) { iniciarReply({ msgId, usuario: data.usuario, texto: data.texto }); mostrarToast('Respondiendo...'); }
+    limpiarSwipe();
+  });
+  function limpiarSwipe() { if (swipeEl) { swipeEl.remove(); swipeEl = null; } swiping = false; }
 }
 
 function abrirMenuMensaje(msgId, div) {
@@ -273,6 +301,19 @@ socket.on('mensaje', (data) => {
 });
 socket.on('estado-msg', (data) => { const el = document.getElementById('estado-'+data.msgId); if (!el) return; if (data.estado==='enviado') el.innerHTML = '<span class="tick">\u2713</span>'; else if (data.estado==='entregado') el.innerHTML = '<span class="tick doble">\u2713\u2713</span>'; else if (data.estado==='visto') el.innerHTML = ICONS['heart']; });
 socket.on('reaccion', (data) => { const d = document.getElementById('msg-'+data.msgId); if (d) mostrarReaccion(d, data.reaccion); });
+socket.on('presencia', (data) => {
+  if (!data.presente && data.ultimaVez) {
+    const d = new Date(data.ultimaVez);
+    const hoy = new Date(); const ayer = new Date(hoy); ayer.setDate(ayer.getDate()-1);
+    const hh = d.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+    if (d.toDateString() === hoy.toDateString()) headerEstado.textContent = 'últ. vez hoy a las ' + hh;
+    else if (d.toDateString() === ayer.toDateString()) headerEstado.textContent = 'últ. vez ayer a las ' + hh;
+    else headerEstado.textContent = 'últ. vez ' + d.toLocaleDateString('es-ES', { day:'numeric', month:'short' }) + ' a las ' + hh;
+  } else if (data.presente) {
+    headerEstado.textContent = 'en línea';
+  }
+});
+
 socket.on('escribiendo', (data) => {
   const dots = escribiendoDiv.querySelector('.typing-dots');
   if (dots) dots.style.display = (data.usuario && data.usuario !== usuario) ? 'inline-flex' : 'none';
