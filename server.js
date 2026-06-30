@@ -97,6 +97,17 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('editar-msg', (data) => {
+    if (socket.sala) {
+      socket.to(socket.sala).emit('editado-msg', { msgId: data.msgId, texto: data.texto });
+    }
+  });
+  socket.on('eliminar-msg', (data) => {
+    if (socket.sala) {
+      socket.to(socket.sala).emit('eliminado-msg', { msgId: data.msgId });
+    }
+  });
+
   socket.on('escribiendo', (data) => {
     if (socket.sala) {
       socket.to(socket.sala).emit('escribiendo', data);

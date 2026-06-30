@@ -172,6 +172,7 @@ body.wallpaper-lavender #chat { background: linear-gradient(135deg, #0a0a1a 0%, 
 
 .mensaje .texto a { color: #FF1493; text-decoration: underline; }
 .mensaje.propio .texto a { color: rgba(255,255,255,0.9); }
+.editado-tag { font-size: 9px; opacity: 0.5; margin-right: 4px; font-style: italic; color: inherit; }
 
 .mensaje .hora-estado { display: flex; align-items: center; justify-content: flex-end; gap: 3px; margin-top: 0; }
 .mensaje.propio .hora-estado { margin-right: -2px; }
@@ -249,6 +250,13 @@ body.wallpaper-lavender #chat { background: linear-gradient(135deg, #0a0a1a 0%, 
   color: #a05a5a; flex-shrink: 0;
 }
 .reply-close:hover { background: rgba(139,0,0,0.06); }
+
+#editBar {
+  display: flex; align-items: center; padding: 8px 12px; gap: 10px;
+  flex-shrink: 0; background: rgba(255,255,255,0.5);
+  border-top: 1px solid rgba(255,255,255,0.2); font-size: 14px; color: #1a0a0a;
+}
+#editBar .edit-icon { width: 20px; height: 20px; color: #FF1493; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
 
 #emojiPicker {
   padding: 8px; display: flex; flex-wrap: wrap; gap: 4px;

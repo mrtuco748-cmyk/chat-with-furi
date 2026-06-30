@@ -11,7 +11,8 @@ const ICONS = {
   'copy': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2 2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>',
   'trash': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>',
   'search': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',
-  'arrow-left': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>'
+  'arrow-left': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>',
+  'edit': '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>'
 };
 
 function injectIcons() { document.querySelectorAll('[data-icon]').forEach(el => { const n = el.dataset.icon; if (ICONS[n]) el.innerHTML = ICONS[n]; }); }
@@ -24,7 +25,7 @@ const mensajesEnviados = new Map();
 let presente = false, respondiendoA = null, msgMenuMsgId = null;
 let grabacionBloqueada = false, ultimaFecha = '';
 let busquedaActiva = false, msgCount = 0, fotoCount = 0, audioCount = 0;
-let quickReactionMsgId = null;
+let quickReactionMsgId = null, editandoMsgId = null;
 
 const $ = id => document.getElementById(id);
 const login = $('login'), chat = $('chat'), codigoInput = $('codigoInput'), nombreInput = $('nombreInput');
@@ -36,8 +37,9 @@ const cancelarGrabacion = $('cancelarGrabacion'), lockHint = $('lockHint');
 const emojiBtn = $('emojiBtn'), emojiPicker = $('emojiPicker');
 const attachBtn = $('attachBtn'), attachMenu = $('attachMenu'), attachOverlay = $('attachOverlay');
 const replyBar = $('replyBar'), replyUser = $('replyUser'), replyText = $('replyText'), replyClose = $('replyClose');
+const editBar = $('editBar'), editClose = $('editClose');
 const msgMenu = $('msgMenu'), msgmenuOverlay = $('msgmenuOverlay');
-const menuResponder = $('menuResponder'), menuCopiar = $('menuCopiar'), menuEliminar = $('menuEliminar');
+const menuResponder = $('menuResponder'), menuCopiar = $('menuCopiar'), menuEliminar = $('menuEliminarPropio'), menuEliminarTodos = $('menuEliminarTodos'), menuEditar = $('menuEditar');
 const scrollBtn = $('scrollBtn'), camaraBtn = $('camaraBtn');
 const wallpaperBtn = $('wallpaperBtn'), wallpaperMenu = $('wallpaperMenu'), wallpaperOverlay = $('wallpaperOverlay');
 const searchBtn = $('searchBtn'), searchBar = $('searchBar'), searchInput = $('searchInput'), searchBack = $('searchBack'), searchCount = $('searchCount');
@@ -87,6 +89,15 @@ enviarBtn.addEventListener('click', enviarMensaje);
 mensajeInput.addEventListener('keypress', e => { if (e.key === 'Enter') enviarMensaje(); });
 function enviarMensaje() {
   const texto = mensajeInput.value.trim(); if (!texto) return;
+  if (editandoMsgId) {
+    const el = document.getElementById('msg-' + editandoMsgId);
+    if (el && el.dataset.texto !== texto) {
+      socket.emit('editar-msg', { msgId: editandoMsgId, sala, texto });
+    }
+    cancelarEditar();
+    mensajeInput.value = ''; actualizarBotonEnvio(); mensajeInput.focus();
+    return;
+  }
   const msgId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
   const d = { msgId, usuario, texto }; if (respondiendoA) d.respondiendoA = respondiendoA;
   socket.emit('mensaje', d);
@@ -163,6 +174,7 @@ replyClose.addEventListener('click', cancelarReply);
 function scrollBtnBottom() {
   let b = 64;
   if (!replyBar.classList.contains('oculto')) b += 40;
+  if (!editBar.classList.contains('oculto')) b += 40;
   if (!grabandoDiv.classList.contains('oculto')) b += 40;
   scrollBtn.style.bottom = b + 'px';
 }
@@ -171,6 +183,21 @@ function cancelarReply() { respondiendoA = null; replyBar.classList.add('oculto'
 menuResponder.addEventListener('click', () => { msgMenu.classList.add('oculto'); const el = document.getElementById('msg-' + msgMenuMsgId); if (el) iniciarReply({ msgId: msgMenuMsgId, usuario: el.dataset.usuario, texto: el.dataset.texto }); });
 menuCopiar.addEventListener('click', () => { msgMenu.classList.add('oculto'); const el = document.getElementById('msg-' + msgMenuMsgId); if (el?.dataset.texto) navigator.clipboard.writeText(el.dataset.texto).catch(() => {}); });
 menuEliminar.addEventListener('click', () => { msgMenu.classList.add('oculto'); const el = document.getElementById('msg-' + msgMenuMsgId); if (el) el.remove(); });
+menuEliminarTodos.addEventListener('click', () => { msgMenu.classList.add('oculto'); socket.emit('eliminar-msg', { msgId: msgMenuMsgId, sala }); const el = document.getElementById('msg-' + msgMenuMsgId); if (el) el.remove(); });
+menuEditar.addEventListener('click', () => {
+  msgMenu.classList.add('oculto');
+  const el = document.getElementById('msg-' + msgMenuMsgId);
+  if (!el?.dataset?.texto) return;
+  editandoMsgId = msgMenuMsgId;
+  mensajeInput.value = el.dataset.texto;
+  mensajeInput.focus(); actualizarBotonEnvio();
+  editBar.classList.remove('oculto'); scrollBtnBottom();
+});
+function cancelarEditar() {
+  editandoMsgId = null; editBar.classList.add('oculto');
+  mensajeInput.value = ''; actualizarBotonEnvio(); scrollBtnBottom();
+}
+editClose.addEventListener('click', cancelarEditar);
 
 searchBtn.addEventListener('click', () => { emojiPicker.classList.add('oculto'); attachMenu.classList.add('oculto'); msgMenu.classList.add('oculto'); searchBar.classList.remove('oculto'); searchInput.focus(); busquedaActiva = true; });
 searchBack.addEventListener('click', cerrarBusqueda);
@@ -297,7 +324,12 @@ function agregarEventosMensaje(div, msgId, data) {
 }
 
 function abrirMenuMensaje(msgId, div) {
-  msgMenuMsgId = msgId; menuEliminar.classList.toggle('oculto', div.dataset.usuario !== usuario);
+  msgMenuMsgId = msgId;
+  const propio = div.dataset.usuario === usuario;
+  const txt = !!div.dataset.texto;
+  menuEditar.classList.toggle('oculto', !(propio && txt));
+  menuEliminar.classList.toggle('oculto', !propio);
+  menuEliminarTodos.classList.toggle('oculto', !propio);
   msgMenu.classList.remove('oculto'); emojiPicker.classList.add('oculto'); attachMenu.classList.add('oculto');
 }
 function mostrarReaccion(div, emoji) {
@@ -340,6 +372,21 @@ socket.on('presencia', (data) => {
   } else if (data.presente) {
     headerEstado.textContent = 'en línea';
   }
+});
+socket.on('editado-msg', (data) => {
+  const el = document.getElementById('msg-' + data.msgId);
+  if (!el) return;
+  el.dataset.texto = data.texto;
+  const txt = el.querySelector('.texto');
+  if (txt) { txt.innerHTML = formatearTexto(data.texto); txt.classList.add('editado'); }
+  if (!el.querySelector('.editado-tag')) {
+    const tag = document.createElement('span'); tag.className = 'editado-tag'; tag.textContent = 'editado';
+    el.querySelector('.hora')?.before(tag);
+  }
+});
+socket.on('eliminado-msg', (data) => {
+  const el = document.getElementById('msg-' + data.msgId);
+  if (el) el.remove();
 });
 
 socket.on('escribiendo', (data) => {

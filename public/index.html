@@ -57,6 +57,11 @@
       </div>
       <button class="reply-close" id="replyClose" data-icon="x"></button>
     </div>
+    <div id="editBar" class="oculto glass">
+      <span class="edit-icon" data-icon="edit"></span>
+      <span>Editando mensaje</span>
+      <button class="reply-close" id="editClose" data-icon="x"></button>
+    </div>
     <div id="emojiPicker" class="oculto glass"></div>
     <div id="attachMenu" class="oculto">
       <div class="attach-overlay" id="attachOverlay"></div>
@@ -102,9 +107,11 @@
     <div id="msgMenu" class="oculto">
       <div class="msgmenu-overlay" id="msgmenuOverlay"></div>
       <div class="msgmenu-sheet glass">
+        <button class="msgmenu-option oculto" id="menuEditar"><span data-icon="edit"></span> Editar</button>
         <button class="msgmenu-option" id="menuResponder"><span data-icon="reply"></span> Responder</button>
         <button class="msgmenu-option" id="menuCopiar"><span data-icon="copy"></span> Copiar</button>
-        <button class="msgmenu-option oculto" id="menuEliminar"><span data-icon="trash"></span> Eliminar para m&iacute;</button>
+        <button class="msgmenu-option oculto" id="menuEliminarPropio"><span data-icon="trash"></span> Eliminar para m&iacute;</button>
+        <button class="msgmenu-option oculto" id="menuEliminarTodos"><span data-icon="trash"></span> Eliminar para todos</button>
       </div>
     </div>
     <button class="scroll-btn oculto" id="scrollBtn" data-icon="heart-filled"></button>
