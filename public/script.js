@@ -21,7 +21,10 @@ const ICONS = {
   'moon': '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>',
   'file': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
   'map-pin': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>',
-  'bar-chart': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>'
+  'bar-chart': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+  'star': '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
+  'message-circle': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>',
+  'check-circle': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>'
 };
 
 function injectIcons() { document.querySelectorAll('[data-icon]').forEach(el => { const n = el.dataset.icon; if (ICONS[n]) el.innerHTML = ICONS[n]; }); }
@@ -52,14 +55,14 @@ const attachBtn = $('attachBtn'), attachMenu = $('attachMenu'), attachOverlay = 
 const replyBar = $('replyBar'), replyUser = $('replyUser'), replyText = $('replyText'), replyClose = $('replyClose');
 const editBar = $('editBar'), editClose = $('editClose');
 const msgMenu = $('msgMenu'), msgmenuOverlay = $('msgmenuOverlay');
-const menuResponder = $('menuResponder'), menuCopiar = $('menuCopiar'), menuEliminar = $('menuEliminarPropio'), menuEliminarTodos = $('menuEliminarTodos'), menuEditar = $('menuEditar');
+const menuResponder = $('menuResponder'), menuCopiar = $('menuCopiar'), menuEliminar = $('menuEliminarPropio'), menuEliminarTodos = $('menuEliminarTodos'), menuEditar = $('menuEditar'), menuSeleccionar = $('menuSeleccionar');
 const menuInfo = $('menuInfo'), menuForward = $('menuForward');
 const scrollBtn = $('scrollBtn'), camaraBtn = $('camaraBtn');
 const wallpaperBtn = $('wallpaperBtn'), wallpaperMenu = $('wallpaperMenu'), wallpaperOverlay = $('wallpaperOverlay');
 const searchBtn = $('searchBtn'), searchBar = $('searchBar'), searchInput = $('searchInput'), searchBack = $('searchBack'), searchCount = $('searchCount');
 const searchUp = $('searchUp'), searchDown = $('searchDown');
 const moreBtn = $('moreBtn'), moreMenu = $('moreMenu'), moreOverlay = $('moreOverlay');
-const moreTheme = $('moreTheme'), moreSettings = $('moreSettings'), moreClearChat = $('moreClearChat'), moreExport = $('moreExport'), moreLogout = $('moreLogout');
+const moreTheme = $('moreTheme'), moreSelect = $('moreSelect'), moreSettings = $('moreSettings'), moreClearChat = $('moreClearChat'), moreExport = $('moreExport'), moreLogout = $('moreLogout');
 const statsBtn = $('statsBtn'), statsModal = $('statsModal'), statsOverlay = $('statsOverlay'), statsSetDate = $('statsSetDate');
 const statDias = $('statDias'), statMsgs = $('statMsgs'), statFotos = $('statFotos'), statAudios = $('statAudios');
 const quickReactions = $('quickReactions');
@@ -410,6 +413,7 @@ moreBtn.addEventListener('click', () => { emojiPicker.classList.add('oculto'); a
 moreOverlay.addEventListener('click', () => moreMenu.classList.add('oculto'));
 moreLogout.addEventListener('click', () => { localStorage.removeItem('chat-sala'); localStorage.removeItem('chat-usuario'); localStorage.removeItem('chat-msgs-'+sala); location.reload(); });
 moreTheme.addEventListener('click', () => { toggleDarkMode(); moreMenu.classList.add('oculto'); });
+moreSelect.addEventListener('click', () => { moreMenu.classList.add('oculto'); entrSelectMode(); });
 moreSettings.addEventListener('click', () => { moreMenu.classList.add('oculto'); settingsModal.classList.remove('oculto'); });
 moreClearChat.addEventListener('click', () => { moreMenu.classList.add('oculto'); if (confirm('\u00BFVaciar chat?')) limpiarChat(); });
 moreExport.addEventListener('click', () => { moreMenu.classList.add('oculto'); exportarChat(); });
@@ -462,6 +466,7 @@ function cancelarEditar() {
 editClose.addEventListener('click', cancelarEditar);
 menuInfo.addEventListener('click', () => { msgMenu.classList.add('oculto'); mostrarInfoMensaje(msgMenuMsgId); });
 menuForward.addEventListener('click', () => { msgMenu.classList.add('oculto'); forwardQueue = [msgMenuMsgId]; mostrarForwardPicker(); });
+menuSeleccionar.addEventListener('click', () => { msgMenu.classList.add('oculto'); entrSelectMode(msgMenuMsgId); });
 
 const STICKERS = ['😀','😂','🥰','😍','❤️','🔥','💕','✨','😢','😮','🙏','🎉','😈','🤗','💀','👋','👍','👎','✌️','🤞','💪','🌹','🌸','💖','🌟','⭐','🦋','🐱','🐶','🦊','🐼','🐸','🌈','🍀','🎀','🎁','🎂','🍰','☕','🍕','🍔','🌮','🍣','🍩','🍪','🧁','🍫','🍭','🍬','🍷','🥂','🍺','🍻','☕','🧃'];
 function construirStickerPicker() {
@@ -816,6 +821,8 @@ function agregarEventosMensaje(div, msgId, data) {
       vibrar(20);
       const r = div.getBoundingClientRect();
       quickReactions.style.top = Math.max(10, r.top - 50) + 'px';
+      const qw = quickReactions.offsetWidth || Math.min(320, window.innerWidth * 0.85);
+      quickReactions.style.left = Math.max(10, (window.innerWidth - qw) / 2) + 'px';
       quickReactionMsgId = msgId;
       construirQuickReactions();
       quickReactions.classList.remove('oculto');
@@ -843,6 +850,7 @@ function agregarEventosMensaje(div, msgId, data) {
     div.classList.remove('swiping'); div.style.boxShadow = ''; swiping = false;
   });
   div.addEventListener('touchcancel', () => { cancelAnimationFrame(animFrame); div.classList.remove('swiping'); div.style.boxShadow = ''; swiping = false; });
+  div.addEventListener('contextmenu', e => { e.preventDefault(); abrirMenuMensaje(msgId, div); });
 }
 
 function abrirMenuMensaje(msgId, div) {
