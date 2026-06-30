@@ -364,7 +364,7 @@ function construirEmojiPicker() {
     const panel = document.createElement('div'); panel.className = 'emoji-panel';
     cat.e.forEach(em => {
       const btn = document.createElement('button'); btn.textContent = em;
-      btn.addEventListener('click', () => { mensajeInput.value += em; mensajeInput.focus(); actualizarBotonEnvio(); });
+      btn.addEventListener('click', () => { if (emojiPicker._modoReaccion) { const mid = emojiPicker._msgId; const d2 = document.getElementById('msg-'+mid); if (mid && d2) { vibrar(10); setReaccionMsg(mid, em); mostrarReaccion(d2, em); registrarReaccionUsada(em); socket.emit('reaccion',{sala,msgId:mid,usuario,reaccion:em}); } emojiPicker._modoReaccion = false; emojiPicker.classList.add('oculto'); } else { mensajeInput.value += em; mensajeInput.focus(); actualizarBotonEnvio(); } });
       panel.appendChild(btn);
     });
     panels.appendChild(panel);
@@ -535,7 +535,7 @@ function actualizarStats() {
   statMsgs.textContent = msgCount; statFotos.textContent = fotoCount; statAudios.textContent = audioCount;
 }
 
-document.querySelectorAll('.qr-emoji').forEach(el => { el.addEventListener('click', () => { vibrar(10); if (quickReactionMsgId) { socket.emit('reaccion', { sala, msgId: quickReactionMsgId, usuario, reaccion: el.dataset.reaccion }); const d = document.getElementById('msg-' + quickReactionMsgId); if (d) mostrarReaccion(d, el.dataset.reaccion); } quickReactions.classList.add('oculto'); }); });
+
 
 function mostrarToast(texto, duracion) {
   duracion = duracion || 2500;
@@ -548,6 +548,30 @@ function mostrarToast(texto, duracion) {
 function vibrar(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch(e) {} }
 
 function keyMsgs() { return 'chat-msgs-' + sala; }
+function getReaccionMsg(msgId) { try { const arr = JSON.parse(localStorage.getItem(keyMsgs()) || '[]'); const m = arr.find(x => x.msgId === msgId); return m ? m.reaccion : null; } catch(e) { return null; } }
+function setReaccionMsg(msgId, emoji) { try { const arr = JSON.parse(localStorage.getItem(keyMsgs()) || '[]'); const m = arr.find(x => x.msgId === msgId); if (m) { if (emoji) m.reaccion = emoji; else delete m.reaccion; localStorage.setItem(keyMsgs(), JSON.stringify(arr)); } } catch(e) {} }
+function keyReaccFrec() { return 'chat-reacciones-frecuentes-' + sala; }
+function keyReaccConteo() { return 'chat-reacciones-conteo-' + sala; }
+function getReaccFrecuentes() { return JSON.parse(localStorage.getItem(keyReaccFrec()) || '[]'); }
+function registrarReaccionUsada(emoji) { try { let c = JSON.parse(localStorage.getItem(keyReaccConteo()) || '{}'); c[emoji] = (c[emoji]||0) + 1; const ord = Object.keys(c).sort((a,b) => c[b] - c[a]); localStorage.setItem(keyReaccFrec(), JSON.stringify(ord.slice(0,5))); localStorage.setItem(keyReaccConteo(), JSON.stringify(c)); } catch(e) {} }
+function onClickReaccion(e) {
+  vibrar(10); const el = e.currentTarget; const emoji = el.dataset.reaccion; const msgId = quickReactionMsgId; const div = document.getElementById('msg-' + msgId);
+  if (!msgId || !div) { quickReactions.classList.add('oculto'); return; }
+  const actual = getReaccionMsg(msgId);
+  if (actual === emoji) { setReaccionMsg(msgId, null); mostrarReaccion(div, ''); socket.emit('reaccion', { sala, msgId, usuario, reaccion: '' }); }
+  else { setReaccionMsg(msgId, emoji); mostrarReaccion(div, emoji); registrarReaccionUsada(emoji); socket.emit('reaccion', { sala, msgId, usuario, reaccion: emoji }); }
+  quickReactions.classList.add('oculto');
+}
+function construirQuickReactions() {
+  quickReactions.innerHTML = '';
+  getReaccFrecuentes().forEach(emoji => {
+    const s = document.createElement('span'); s.className = 'qr-emoji'; s.dataset.reaccion = emoji; s.textContent = emoji;
+    s.addEventListener('click', onClickReaccion); quickReactions.appendChild(s);
+  });
+  const p = document.createElement('span'); p.className = 'qr-emoji qr-plus'; p.textContent = '+';
+  p.addEventListener('click', () => { quickReactions.classList.add('oculto'); emojiPicker._modoReaccion = true; emojiPicker._msgId = quickReactionMsgId; emojiPicker.classList.remove('oculto'); });
+  quickReactions.appendChild(p);
+}
 function guardarMsgLocal(m) {
   try { const arr = JSON.parse(localStorage.getItem(keyMsgs()) || '[]'); arr.push(m); localStorage.setItem(keyMsgs(), JSON.stringify(arr)); } catch(e) {}
 }
@@ -565,9 +589,10 @@ function cargarMsgsLocal() {
           div.querySelector('.hora-estado')?.appendChild(estadoSpan);
           mensajesEnviados.set(m.msgId, div);
           agregarEventosMensaje(div, m.msgId, m);
+          if (m.reaccion) { div.dataset.reaccionCargado = '1'; mostrarReaccion(div, m.reaccion); }
         }
       }
-      else if (m.tipo === 'otro') renderMsgOtro(m);
+      else if (m.tipo === 'otro') { renderMsgOtro(m); const od = document.getElementById('msg-'+m.msgId); if (od) { if (m.reaccion) { od.dataset.reaccionCargado = '1'; mostrarReaccion(od, m.reaccion); } agregarEventosMensaje(od, m.msgId, m); } }
       else if (m.tipo === 'sistema') { const d = document.createElement('div'); d.classList.add('mensaje','sistema'); d.textContent = m.texto; mensajesDiv.appendChild(d); }
       if (m.tipo !== 'sistema') { msgCount++; if (m.imagen) fotoCount++; if (m.audio) audioCount++; }
     }
@@ -750,7 +775,7 @@ function agregarEventosMensaje(div, msgId, data) {
       if (selectedMsgs.size === 0) salirSelectMode();
       return;
     }
-    toques++; if (toques===1) td = setTimeout(()=>{toques=0;},300); else if (toques===2) { clearTimeout(td); toques=0; socket.emit('reaccion',{sala,msgId,usuario,reaccion:'\u2764\uFE0F'}); mostrarReaccion(div,'\u2764\uFE0F'); }
+    toques++; if (toques===1) td = setTimeout(()=>{toques=0;},300); else if (toques===2) { clearTimeout(td); toques=0; const frec = getReaccFrecuentes(); const emoji = frec[0] || '\u2764\uFE0F'; socket.emit('reaccion',{sala,msgId,usuario,reaccion:emoji}); mostrarReaccion(div,emoji); setReaccionMsg(msgId, emoji); registrarReaccionUsada(emoji); }
   });
   let lp = null;
   div.addEventListener('pointerdown', e => {
@@ -762,6 +787,7 @@ function agregarEventosMensaje(div, msgId, data) {
       quickReactions.style.top = (r.top - 50) + 'px';
       quickReactions.style.left = Math.min(r.left + r.width/2 - 100, window.innerWidth - 220) + 'px';
       quickReactionMsgId = msgId;
+      construirQuickReactions();
       quickReactions.classList.remove('oculto');
     }, 600);
   });
@@ -800,10 +826,11 @@ function abrirMenuMensaje(msgId, div) {
   msgMenu.classList.remove('oculto'); emojiPicker.classList.add('oculto'); attachMenu.classList.add('oculto');
 }
 function mostrarReaccion(div, emoji) {
+  if (!emoji) { const r = div.querySelector('.reaccion'); if (r) r.remove(); return; }
   let r = div.querySelector('.reaccion');
   if (!r) { r = document.createElement('div'); r.classList.add('reaccion'); div.appendChild(r); }
-  r.textContent = emoji; r.style.animation = 'none'; void r.offsetWidth; r.style.animation = 'reaccionAparicion 0.35s ease';
-  clearTimeout(r._t); r._t = setTimeout(()=>r?.remove(), 3000);
+  r.textContent = emoji;
+  if (!div.dataset.reaccionCargado) { r.style.animation = 'none'; void r.offsetWidth; r.style.animation = 'reaccionAparicion 0.35s ease'; }
 }
 
 socket.on('mensaje', (data) => {
@@ -837,7 +864,7 @@ socket.on('mensaje', (data) => {
   } catch(e) {}
 });
 socket.on('estado-msg', (data) => { const el = document.getElementById('estado-'+data.msgId); if (!el) return; if (data.estado==='enviado') el.innerHTML = '<span class="tick">\u2713</span>'; else if (data.estado==='entregado') el.innerHTML = '<span class="tick doble">\u2713\u2713</span>'; else if (data.estado==='visto') el.innerHTML = '<span class="tick doble visto">\u2713\u2713</span>'; });
-socket.on('reaccion', (data) => { const d = document.getElementById('msg-'+data.msgId); if (d) mostrarReaccion(d, data.reaccion); });
+socket.on('reaccion', (data) => { const d = document.getElementById('msg-'+data.msgId); if (d) { if (data.reaccion) { mostrarReaccion(d, data.reaccion); setReaccionMsg(data.msgId, data.reaccion); } else { mostrarReaccion(d, ''); setReaccionMsg(data.msgId, null); } } });
 socket.on('voto-encuesta', (data) => {
   const d = document.getElementById('msg-'+data.msgId);
   if (d) actualizarVotosEnBurbuja(d, data.msgId, data.opcionIdx, data.usuario);
