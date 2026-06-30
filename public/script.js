@@ -24,7 +24,8 @@ const ICONS = {
   'bar-chart': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
   'star': '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
   'message-circle': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>',
-  'check-circle': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>'
+  'check-circle': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+  'plus': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>'
 };
 
 function injectIcons() { document.querySelectorAll('[data-icon]').forEach(el => { const n = el.dataset.icon; if (ICONS[n]) el.innerHTML = ICONS[n]; }); }
@@ -79,7 +80,7 @@ const wpCustomBg = $('wpCustomBg'), avatarRing = document.querySelector('.avatar
 const headerTitle = $('headerTitle');
 let deferredPrompt = null, fotoPerfilLocal = null, fotoPerfilRemoto = null;
 const headerNormal = $('headerNormal'), headerSelect = $('headerSelect');
-const selectClose = $('selectClose'), selectCount = $('selectCount'), selectDelete = $('selectDelete'), selectFav = $('selectFav'), selectQuiet = $('selectQuiet');
+const selectClose = $('selectClose'), selectCount = $('selectCount'), selectDelete = $('selectDelete'), selectFav = $('selectFav'), selectQuiet = $('selectQuiet'), selectMoreBtn = $('selectMoreBtn');
 const deleteOptions = $('deleteOptions'), deleteOptOverlay = $('deleteOptOverlay'), deleteForMe = $('deleteForMe'), deleteForEveryone = $('deleteForEveryone'), deleteOptCancel = $('deleteOptCancel');
 const quietBar = $('quietBar'), quietClose = $('quietClose'), quietText = $('quietText');
 const toggleSwitchTheme = $('themeIcon'), themeLabel = $('themeLabel');
@@ -954,8 +955,10 @@ function agregarEventosMensaje(div, msgId, data) {
   div.addEventListener('contextmenu', e => { e.preventDefault(); abrirMenuMensaje(msgId, div); });
 }
 
-function abrirMenuMensaje(msgId, div) {
-  if (selectMode) return;
+function abrirMenuMensaje(msgId, div, desdeSelect) {
+  if (selectMode && !desdeSelect) return;
+  if (!div) div = document.getElementById('msg-'+msgId);
+  if (!div) return;
   msgMenuMsgId = msgId;
   const propio = div.dataset.usuario === usuario;
   const txt = !!div.dataset.texto;
@@ -1181,6 +1184,11 @@ function actualizarSelectCount() {
   selectCount.textContent = n;
 }
 selectClose.addEventListener('click', salirSelectMode);
+selectMoreBtn.addEventListener('click', () => {
+  if (selectedMsgs.size === 0) return;
+  const id = [...selectedMsgs][0];
+  abrirMenuMensaje(id, null, true);
+});
 selectFav.addEventListener('click', () => {
   if (selectedMsgs.size === 0) return;
   const ids = [...selectedMsgs];
