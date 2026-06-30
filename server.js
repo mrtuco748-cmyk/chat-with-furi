@@ -80,6 +80,11 @@ io.on('connection', (socket) => {
       socket.emit('presencia', { usuario: otro, presente: u.presente, ultimaVez: u.ultimaVez });
     }
 
+    const pendientes = sala.pendientes[usuarioNombre] || [];
+    for (const p of pendientes) {
+      socket.emit('mensaje', p.msg);
+    }
+
     socket.to(salaNombre).emit('escribiendo', { usuario: '' });
 
     socket.to(salaNombre).emit('mensaje', {
@@ -115,18 +120,18 @@ io.on('connection', (socket) => {
 
     io.to(socket.sala).emit('mensaje', mensajeCompleto);
 
-    const otros = Object.keys(sala.usuarios).filter(n => n !== socket.usuario);
-    for (const otro of otros) {
-      const u = sala.usuarios[otro];
-      if (!u.presente) {
-        const pendientes = sala.pendientes[otro] || [];
-        pendientes.push({ msgId, emisor: socket.usuario, timestamp: Date.now() });
-        if (pendientes.length > 100) pendientes.shift();
-        sala.pendientes[otro] = pendientes;
+      const otros = Object.keys(sala.usuarios).filter(n => n !== socket.usuario);
+      for (const otro of otros) {
+        const u = sala.usuarios[otro];
+        if (!u.presente) {
+          const pendientes = sala.pendientes[otro] || [];
+          pendientes.push({ msg: mensajeCompleto, emisor: socket.usuario });
+          if (pendientes.length > 100) pendientes.shift();
+          sala.pendientes[otro] = pendientes;
+        }
       }
-    }
 
-    socket.emit('estado-msg', { msgId, estado: 'entregado' });
+      socket.emit('estado-msg', { msgId, estado: 'entregado' });
   });
 
   socket.on('mensaje-leido', (data) => {
@@ -156,7 +161,7 @@ io.on('connection', (socket) => {
     for (const p of pendientes) {
       const emisor = sala.usuarios[p.emisor];
       if (emisor && emisor.socketId) {
-        io.to(emisor.socketId).emit('estado-msg', { msgId: p.msgId, estado: 'entregado' });
+        io.to(emisor.socketId).emit('estado-msg', { msgId: p.msg.msgId, estado: 'entregado' });
       }
     }
     sala.pendientes[usuario] = [];
