@@ -73,6 +73,11 @@ const msgInfoModal = $('msgInfoModal'), msgInfoOverlay = $('msgInfoOverlay'), ms
 const settingsModal = $('settingsModal'), settingsOverlay = $('settingsOverlay'), settingsClose = $('settingsClose');
 const settingDarkMode = $('settingDarkMode'), settingSound = $('settingSound'), settingVibrate = $('settingVibrate'), settingNotify = $('settingNotify');
 const settingsExport = $('settingsExport'), settingsClear = $('settingsClear');
+const settingsFoto = $('settingsFoto'), settingsFotoPreview = $('settingsFotoPreview'), settingsFotoRemove = $('settingsFotoRemove'), settingsParejaNombre = $('settingsParejaNombre');
+const installBanner = $('installBanner'), installBtn = $('installBtn'), installClose = $('installClose');
+const wpCustomBg = $('wpCustomBg'), avatarRing = document.querySelector('.avatar-ring'), avatarHeart = document.querySelector('.avatar-heart');
+const headerTitle = $('headerTitle');
+let deferredPrompt = null, fotoPerfilLocal = null, fotoPerfilRemoto = null;
 const headerNormal = $('headerNormal'), headerSelect = $('headerSelect');
 const selectClose = $('selectClose'), selectCount = $('selectCount'), selectDelete = $('selectDelete'), selectFav = $('selectFav'), selectQuiet = $('selectQuiet');
 const deleteOptions = $('deleteOptions'), deleteOptOverlay = $('deleteOptOverlay'), deleteForMe = $('deleteForMe'), deleteForEveryone = $('deleteForEveryone'), deleteOptCancel = $('deleteOptCancel');
@@ -102,6 +107,7 @@ function iniciarSesion() {
   cargarMsgsLocal(); conectarAlSala(); mensajeInput.focus();
   registrarServiceWorker(); pedirPermisoNotificacion();
   construirEmojiPicker(); construirStickerPicker(); actualizarStats();
+  restaurarPerfil();
 }
 function conectarAlSala() {
   if (socket.connected) { socket.emit('unirse', { sala, usuario }); marcarPresente(); }
@@ -142,6 +148,99 @@ socket.on('connect', () => { estadoConexion.className = 'conectado'; headerEstad
 socket.on('disconnect', () => { estadoConexion.className = 'desconectado'; headerEstado.textContent = 'desconectado'; });
 socket.io.on('reconnect_attempt', () => { estadoConexion.className = 'reconectando'; headerEstado.textContent = 'reconectando...'; });
 socket.io.on('reconnect', () => { estadoConexion.className = 'conectado'; headerEstado.textContent = 'en l\u00ednea'; });
+
+// Install prompt
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; setTimeout(() => installBanner.classList.remove('oculto'), 3000); });
+installBtn.addEventListener('click', async () => { if (deferredPrompt) { deferredPrompt.prompt(); const r = await deferredPrompt.userChoice; if (r.outcome === 'accepted') installBanner.classList.add('oculto'); deferredPrompt = null; } });
+installClose.addEventListener('click', () => installBanner.classList.add('oculto'));
+window.addEventListener('appinstalled', () => installBanner.classList.add('oculto'));
+
+// SW update check
+async function checkSWUpdate() {
+  if ('serviceWorker' in navigator) {
+    try {
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (reg && reg.waiting) { reg.waiting.postMessage({ tipo: 'skipWaiting' }); location.reload(true); return; }
+      if (reg) { reg.update().then(() => { if (reg.waiting) { mostrarToast('Nueva versi\u00F3n disponible. Actualizando...', 4000); reg.waiting.postMessage({ tipo: 'skipWaiting' }); setTimeout(() => location.reload(true), 1000); } }); }
+    } catch(e) {}
+  }
+}
+setTimeout(checkSWUpdate, 2000);
+navigator.serviceWorker?.addEventListener('controllerchange', () => { location.reload(true); });
+
+// Profile photo
+settingsFoto.addEventListener('click', () => {
+  const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*';
+  i.addEventListener('change', e => {
+    const file = e.target.files?.[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      fotoPerfilLocal = ev.target.result;
+      localStorage.setItem('chat-foto-' + sala, fotoPerfilLocal);
+      settingsFotoPreview.src = fotoPerfilLocal; settingsFotoPreview.parentElement.style.display = 'flex';
+      actualizarAvatar(fotoPerfilLocal);
+      socket.emit('foto-perfil', { sala, foto: fotoPerfilLocal });
+      mostrarToast('Foto de perfil actualizada');
+    };
+    reader.readAsDataURL(file);
+  });
+  i.click();
+});
+settingsFotoRemove.addEventListener('click', () => {
+  fotoPerfilLocal = null; localStorage.removeItem('chat-foto-' + sala);
+  settingsFotoPreview.src = ''; settingsFotoPreview.parentElement.style.display = 'none';
+  actualizarAvatar(null);
+  socket.emit('foto-perfil', { sala, foto: null });
+  mostrarToast('Foto eliminada');
+});
+function actualizarAvatar(foto) {
+  if (foto) { avatarRing.innerHTML = '<img src="'+foto+'" class="avatar-img" style="width:100%;height:100%;border-radius:50%;object-fit:cover">'; }
+  else { avatarRing.innerHTML = '<span class="avatar-heart" data-icon="heart-filled"></span>'; injectIconsIn(avatarRing); }
+}
+// Partner name
+settingsParejaNombre.addEventListener('input', () => {
+  const nombre = settingsParejaNombre.value.trim() || 'Mi amor';
+  localStorage.setItem('chat-pareja-nombre', nombre);
+  headerTitle.textContent = nombre;
+});
+
+// Custom background
+wpCustomBg.addEventListener('click', () => {
+  wallpaperMenu.classList.add('oculto');
+  const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*';
+  i.addEventListener('change', e => {
+    const file = e.target.files?.[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const bg = ev.target.result;
+      localStorage.setItem('chat-fondo-personalizado', bg);
+      aplicarFondoPersonalizado(bg);
+      mostrarToast('Fondo personalizado aplicado');
+    };
+    reader.readAsDataURL(file);
+  });
+  i.click();
+});
+function aplicarFondoPersonalizado(bg) {
+  document.body.style.setProperty('--bg-chat', 'url('+bg+')');
+  document.body.style.background = 'url('+bg+') center/cover no-repeat fixed';
+}
+const fondoGuardado = localStorage.getItem('chat-fondo-personalizado');
+if (fondoGuardado) aplicarFondoPersonalizado(fondoGuardado);
+
+// Restore partner name (runs after sala is set in iniciarSesion)
+function restaurarPerfil() {
+  const pn = localStorage.getItem('chat-pareja-nombre');
+  if (pn) headerTitle.textContent = pn;
+  settingsParejaNombre.value = pn || '';
+  const fg = localStorage.getItem('chat-foto-' + sala);
+  if (fg) { fotoPerfilLocal = fg; settingsFotoPreview.src = fg; settingsFotoPreview.parentElement.style.display = 'flex'; actualizarAvatar(fg); }
+}
+socket.on('foto-perfil', (data) => {
+  if (data.foto) { fotoPerfilRemoto = data.foto; actualizarAvatar(data.foto); }
+  else { fotoPerfilRemoto = null; if (!fotoPerfilLocal) actualizarAvatar(null); }
+});
+
 mensajeInput.addEventListener('input', () => {
   actualizarBotonEnvio(); socket.emit('escribiendo', { usuario });
   clearTimeout(escribiendoTimeout); escribiendoTimeout = setTimeout(() => socket.emit('escribiendo', { usuario: '' }), 1000);

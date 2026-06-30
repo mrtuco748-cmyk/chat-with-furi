@@ -144,7 +144,8 @@
         <button class="wp-opt" data-wp="ocean"></button>
         <button class="wp-opt" data-wp="lavender"></button>
       </div>
-      <div style="margin-top:16px"><button class="settings-btn" id="wpDarkToggle">Alternar modo oscuro</button></div>
+      <button class="settings-btn" id="wpCustomBg" style="margin-top:12px"><span data-icon="image"></span> Subir fondo propio</button>
+      <div style="margin-top:10px"><button class="settings-btn" id="wpDarkToggle">Alternar modo oscuro</button></div>
     </div>
   </div>
 
@@ -199,6 +200,21 @@
         </div>
       </div>
       <div class="settings-group">
+        <div class="settings-group-title">Perfil</div>
+        <div class="settings-row">
+          <div><div class="settings-row-label">Foto de perfil</div><div class="settings-row-desc">Se ver&aacute; en el chat</div></div>
+          <button class="settings-btn small" id="settingsFoto">Subir foto</button>
+        </div>
+        <div class="settings-row" id="fotoPreviewRow" style="display:none">
+          <img id="settingsFotoPreview" class="settings-foto-preview" src="">
+          <button class="settings-btn small danger" id="settingsFotoRemove">Quitar</button>
+        </div>
+        <div class="settings-row">
+          <div><div class="settings-row-label">Nombre de tu pareja</div><div class="settings-row-desc">Como aparece en el chat</div></div>
+        </div>
+        <input type="text" id="settingsParejaNombre" placeholder="Mi amor" maxlength="30" style="width:100%;padding:10px;border-radius:12px;border:1px solid var(--border-light);background:var(--bg-input);color:var(--text-primary);font-size:14px">
+      </div>
+      <div class="settings-group">
         <div class="settings-group-title">Notificaciones</div>
         <div class="settings-row">
           <div><div class="settings-row-label">Sonido al enviar</div><div class="settings-row-desc">Reproducir sonido al enviar mensaje</div></div>
@@ -245,6 +261,16 @@
     <input type="text" id="mensajeInput" placeholder="Mensaje" maxlength="500">
     <button class="input-btn mic-btn2" id="microfonoBtn2" data-icon="mic"></button>
     <button class="send-btn oculto" id="enviarBtn" data-icon="heart"></button>
+  </div>
+
+  <div id="installBanner" class="oculto glass">
+    <div class="install-icon" data-icon="heart-filled"></div>
+    <div class="install-text">
+      <div class="install-title">Instalar Furi Chat</div>
+      <div class="install-desc">Ocupa muy poco espacio. Instalala en tu pantalla de inicio.</div>
+    </div>
+    <button class="install-btn" id="installBtn">Instalar</button>
+    <button class="install-close" id="installClose" data-icon="x"></button>
   </div>
 
   <div id="toastContainer" class="toastContainer"></div>

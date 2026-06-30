@@ -182,6 +182,13 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('foto-perfil', (data) => {
+    if (socket.sala) {
+      const foto = data.foto ? String(data.foto).slice(0, 500000) : null;
+      socket.to(socket.sala).emit('foto-perfil', { foto });
+    }
+  });
+
   socket.on('votar-encuesta', (data) => {
     if (socket.sala && data.msgId && typeof data.opcionIdx === 'number') {
       socket.to(socket.sala).emit('voto-encuesta', { msgId: String(data.msgId).slice(0, 64), opcionIdx: data.opcionIdx, usuario: String(data.usuario).slice(0, 30) });
