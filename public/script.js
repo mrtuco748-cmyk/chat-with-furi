@@ -179,7 +179,6 @@ settingsFoto.addEventListener('click', () => {
       fotoPerfilLocal = ev.target.result;
       localStorage.setItem('chat-foto-' + sala, fotoPerfilLocal);
       settingsFotoPreview.src = fotoPerfilLocal; settingsFotoPreview.parentElement.style.display = 'flex';
-      actualizarAvatar(fotoPerfilLocal);
       socket.emit('foto-perfil', { sala, foto: fotoPerfilLocal });
       mostrarToast('Foto de perfil actualizada');
     };
@@ -190,7 +189,7 @@ settingsFoto.addEventListener('click', () => {
 settingsFotoRemove.addEventListener('click', () => {
   fotoPerfilLocal = null; localStorage.removeItem('chat-foto-' + sala);
   settingsFotoPreview.src = ''; settingsFotoPreview.parentElement.style.display = 'none';
-  actualizarAvatar(null);
+  if (fotoPerfilRemoto) actualizarAvatar(fotoPerfilRemoto); else actualizarAvatar(null);
   socket.emit('foto-perfil', { sala, foto: null });
   mostrarToast('Foto eliminada');
 });
@@ -229,17 +228,26 @@ function aplicarFondoPersonalizado(bg) {
 const fondoGuardado = localStorage.getItem('chat-fondo-personalizado');
 if (fondoGuardado) aplicarFondoPersonalizado(fondoGuardado);
 
-// Restore partner name (runs after sala is set in iniciarSesion)
+// Restore partner name & profile photo (runs after sala is set in iniciarSesion)
 function restaurarPerfil() {
   const pn = localStorage.getItem('chat-pareja-nombre');
   if (pn) headerTitle.textContent = pn;
   settingsParejaNombre.value = pn || '';
   const fg = localStorage.getItem('chat-foto-' + sala);
-  if (fg) { fotoPerfilLocal = fg; settingsFotoPreview.src = fg; settingsFotoPreview.parentElement.style.display = 'flex'; actualizarAvatar(fg); }
+  if (fg) { fotoPerfilLocal = fg; settingsFotoPreview.src = fg; settingsFotoPreview.parentElement.style.display = 'flex'; }
+  const rf = localStorage.getItem('chat-foto-remoto-' + sala);
+  if (rf) { fotoPerfilRemoto = rf; actualizarAvatar(rf); }
 }
 socket.on('foto-perfil', (data) => {
-  if (data.foto) { fotoPerfilRemoto = data.foto; actualizarAvatar(data.foto); }
-  else { fotoPerfilRemoto = null; if (!fotoPerfilLocal) actualizarAvatar(null); }
+  if (data.foto) {
+    fotoPerfilRemoto = data.foto;
+    localStorage.setItem('chat-foto-remoto-' + sala, data.foto);
+    actualizarAvatar(data.foto);
+  } else {
+    fotoPerfilRemoto = null;
+    localStorage.removeItem('chat-foto-remoto-' + sala);
+    actualizarAvatar(null);
+  }
 });
 
 mensajeInput.addEventListener('input', () => {
@@ -952,7 +960,7 @@ function agregarEventosMensaje(div, msgId, data) {
     div.classList.remove('swiping'); div.style.boxShadow = ''; swiping = false;
   });
   div.addEventListener('touchcancel', () => { cancelAnimationFrame(animFrame); div.classList.remove('swiping'); div.style.boxShadow = ''; swiping = false; });
-  div.addEventListener('contextmenu', e => { e.preventDefault(); abrirMenuMensaje(msgId, div); });
+  div.addEventListener('contextmenu', e => { e.preventDefault(); if (!selectMode) abrirMenuMensaje(msgId, div); });
 }
 
 function abrirMenuMensaje(msgId, div, desdeSelect) {
