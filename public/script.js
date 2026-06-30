@@ -144,6 +144,7 @@ function actualizarBotonEnvio() {
 enviarBtn.addEventListener('click', enviarMensaje);
 mensajeInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviarMensaje(); } });
 function enviarMensaje() {
+  if (enviarBtn.dataset.sendAudio === '1') return;
   const texto = mensajeInput.value.trim(); if (!texto) return;
   try { if (settings.vibrate) vibrar(15); } catch(e) {}
   if (editandoMsgId) {
@@ -164,34 +165,82 @@ function enviarMensaje() {
   msgCount++; actualizarStats();
   if (settings.sound) { try { new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=').play().catch(()=>{}); } catch(e){} }
 }
+let grabacionCancelada = false, audioStartX = 0, audioStartY = 0;
+let audioStream = null;
+
 cancelarGrabacion.addEventListener('click', cancelarGrabacionFn);
-function cancelarGrabacionFn() {
-  if (mediaRecorder && mediaRecorder.state !== 'inactive') { mediaRecorder.stop(); grabando = false; }
-  microfonoBtn2.innerHTML = ICONS.mic; grabandoDiv.classList.add('oculto');
-  tiempoGrabacion = 0; clearInterval(intervaloTiempo); grabacionBloqueada = false;
+function cancelarGrabacionFn(e) {
+  if (e) e.stopPropagation();
+  grabacionCancelada = true;
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+  else limpiarGrabacionUI();
 }
-microfonoBtn2.addEventListener('click', toggleGrabacion);
-microfonoBtn2.addEventListener('pointerdown', () => { if (grabando) { grabacionBloqueada = true; } });
-document.addEventListener('pointerup', () => { if (grabando && !grabacionBloqueada) detenerGrabacion(); });
-async function toggleGrabacion() { if (grabando) detenerGrabacion(); else await iniciarGrabacion(); }
+microfonoBtn2.addEventListener('pointerdown', async (e) => {
+  if (grabando) return;
+  e.preventDefault();
+  grabacionCancelada = false;
+  grabacionBloqueada = false;
+  audioStartX = e.clientX;
+  audioStartY = e.clientY;
+  await iniciarGrabacion();
+});
+document.addEventListener('pointermove', (e) => {
+  if (!grabando || grabacionBloqueada) return;
+  const dy = audioStartY - e.clientY;
+  const dx = e.clientX - audioStartX;
+  if (dy > 60) {
+    grabacionBloqueada = true;
+    microfonoBtn2.classList.add('oculto');
+    enviarBtn.innerHTML = ICONS['heart'];
+    enviarBtn.dataset.sendAudio = '1';
+    enviarBtn.classList.remove('oculto');
+    lockHint.innerHTML = '🔒 bloqueado';
+    vibrar(20);
+  } else if (dx < -80) {
+    cancelarGrabacionFn();
+    mostrarToast('Grabaci\u00F3n cancelada');
+  }
+});
+document.addEventListener('pointerup', (e) => {
+  if (!grabando || grabacionBloqueada) return;
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+});
 async function iniciarGrabacion() {
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    mediaRecorder = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4' });
-    audioChunks = []; grabando = true; grabacionBloqueada = false; tiempoGrabacion = 0; vibrar(30);
+    audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const mime = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
+    mediaRecorder = new MediaRecorder(audioStream, { mimeType: mime });
+    audioChunks = []; grabando = true; grabacionBloqueada = false; tiempoGrabacion = 0;
+    vibrar(30); lockHint.innerHTML = '&uarr; bloquear';
     grabandoDiv.classList.remove('oculto'); scrollBtnBottom(); tiempoGrabacionSpan.textContent = '0s';
     intervaloTiempo = setInterval(() => { tiempoGrabacion++; tiempoGrabacionSpan.textContent = tiempoGrabacion + 's'; }, 1000);
     mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
     mediaRecorder.onstop = () => {
-      clearInterval(intervaloTiempo); const b = new Blob(audioChunks, { type: mediaRecorder.mimeType });
-      stream.getTracks().forEach(t => t.stop());
-      if (tiempoGrabacion >= 1 && grabando) enviarAudio(b);
-      grabandoDiv.classList.add('oculto'); scrollBtnBottom(); grabando = false; grabacionBloqueada = false;
+      clearInterval(intervaloTiempo);
+      if (audioStream) { audioStream.getTracks().forEach(t => t.stop()); audioStream = null; }
+      if (tiempoGrabacion >= 1 && !grabacionCancelada) {
+        const b = new Blob(audioChunks, { type: mediaRecorder.mimeType });
+        enviarAudio(b);
+      }
+      limpiarGrabacionUI();
     };
     mediaRecorder.start();
   } catch (err) { alert('No se pudo acceder al micr\u00f3fono'); }
 }
-function detenerGrabacion() { if (mediaRecorder && mediaRecorder.state !== 'inactive') { grabando = false; mediaRecorder.stop(); } }
+function limpiarGrabacionUI() {
+  grabando = false; grabacionBloqueada = false; grabacionCancelada = false;
+  tiempoGrabacion = 0; clearInterval(intervaloTiempo);
+  grabandoDiv.classList.add('oculto'); scrollBtnBottom();
+  microfonoBtn2.classList.remove('oculto');
+  if (enviarBtn.dataset.sendAudio) { enviarBtn.dataset.sendAudio = ''; actualizarBotonEnvio(); }
+}
+enviarBtn.addEventListener('click', (e) => {
+  if (enviarBtn.dataset.sendAudio === '1') {
+    e.stopPropagation();
+    grabacionCancelada = false;
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+  }
+});
 function enviarAudio(blob) {
   const r = new FileReader(); const msgId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
   r.onloadend = () => {
