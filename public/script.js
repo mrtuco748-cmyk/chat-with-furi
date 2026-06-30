@@ -46,6 +46,8 @@ const searchBtn = $('searchBtn'), searchBar = $('searchBar'), searchInput = $('s
 const statsBtn = $('statsBtn'), statsModal = $('statsModal'), statsOverlay = $('statsOverlay'), statsSetDate = $('statsSetDate');
 const statDias = $('statDias'), statMsgs = $('statMsgs'), statFotos = $('statFotos'), statAudios = $('statAudios');
 const quickReactions = $('quickReactions');
+const imgPreview = $('imagePreview'), imgPrevImage = $('imgPrevImage'), imgPrevOverlay = $('imgPrevOverlay'), imgPrevSend = $('imgPrevSend');
+let imgPreviewFile = null;
 
 injectIcons();
 
@@ -89,6 +91,7 @@ enviarBtn.addEventListener('click', enviarMensaje);
 mensajeInput.addEventListener('keypress', e => { if (e.key === 'Enter') enviarMensaje(); });
 function enviarMensaje() {
   const texto = mensajeInput.value.trim(); if (!texto) return;
+  vibrar(15);
   if (editandoMsgId) {
     const el = document.getElementById('msg-' + editandoMsgId);
     if (el && el.dataset.texto !== texto) {
@@ -120,7 +123,7 @@ async function iniciarGrabacion() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     mediaRecorder = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4' });
-    audioChunks = []; grabando = true; grabacionBloqueada = false; tiempoGrabacion = 0;
+    audioChunks = []; grabando = true; grabacionBloqueada = false; tiempoGrabacion = 0; vibrar(30);
     grabandoDiv.classList.remove('oculto'); scrollBtnBottom(); tiempoGrabacionSpan.textContent = '0s';
     intervaloTiempo = setInterval(() => { tiempoGrabacion++; tiempoGrabacionSpan.textContent = tiempoGrabacion + 's'; }, 1000);
     mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
@@ -144,15 +147,36 @@ function enviarAudio(blob) {
   }; r.readAsDataURL(blob);
 }
 
-const EMOJIS = ['\uD83D\uDE00','\uD83D\uDE03','\uD83D\uDE04','\uD83D\uDE01','\uD83D\uDE06','\uD83D\uDE05','\uD83E\uDD23','\uD83D\uDE02','\uD83D\uDE42','\uD83D\uDE09','\uD83D\uDE0A','\uD83D\uDE07','\uD83E\uDD70','\uD83D\uDE0D','\uD83E\uDD29','\uD83D\uDE18','\uD83D\uDE17','\uD83D\uDE1A','\uD83D\uDE0B','\uD83D\uDE1B','\uD83D\uDE1C','\uD83E\uDD2A','\uD83D\uDE1D','\uD83E\uDD11','\uD83E\uDD17','\uD83E\uDD2D','\uD83E\uDD2B','\uD83E\uDD14','\uD83E\uDD10','\uD83D\uDE10','\uD83D\uDE11','\uD83D\uDE36','\uD83D\uDE0F','\uD83D\uDE12','\uD83D\uDE44','\uD83D\uDE2C','\uD83E\uDD25','\uD83E\uDD2C','\uD83D\uDE0C','\uD83D\uDE14','\uD83D\uDE2A','\uD83E\uDD24','\uD83D\uDE34','\uD83D\uDE37','\uD83E\uDD12','\uD83E\uDD15','\uD83E\uDD22','\uD83E\uDD2E','\uD83E\uDD34','\uD83D\uDE35','\uD83E\uDD2F','\uD83E\uDD33','\uD83E\uDDD0','\uD83D\uDE0E','\uD83E\uDDD0','\uD83D\uDE22','\uD83D\uDE2D','\uD83D\uDE24','\uD83D\uDE20','\uD83D\uDE21','\uD83E\uDD2C','\uD83D\uDC95','\u2764\uFE0F','\uD83E\uDDE1','\uD83E\uDDB5','\uD83D\uDC9A','\uD83D\uDC99','\uD83D\uDC9C','\uD83D\uDDA4','\uD83E\uDD0D','\uD83E\uDD0E','\uD83D\uDC94','\u2763\uFE0F','\uD83D\uDC96','\uD83D\uDC97','\uD83D\uDC93','\uD83D\uDC9E','\uD83D\uDC9D','\uD83D\uDC98','\uD83D\uDC8B','\uD83D\uDC4B','\uD83E\uDD1A','\uD83D\uDD90','\u270B','\uD83D\uDD96','\uD83D\uDC4C','\uD83E\uDD0F','\u270C\uFE0F','\uD83E\uDD1E','\uD83E\uDD1F','\uD83E\uDD18','\uD83E\uDD19','\uD83D\uDC48','\uD83D\uDC49','\uD83D\uDC46','\uD83D\uDD95','\uD83D\uDC47','\uD83D\uDC4D','\uD83D\uDC4E','\u270A','\uD83D\uDC4A','\uD83E\uDD1B','\uD83E\uDD1C','\uD83D\uDC4F','\uD83D\uDE4C','\uD83D\uDC50','\uD83E\uDD32','\uD83E\uDD1D','\uD83D\uDE4F','\u270D','\uD83D\uDC85','\uD83E\uDD33','\uD83D\uDCAA','\uD83E\uDDB5','\uD83E\uDDB6','\uD83D\uDC42','\uD83E\uDD5B','\uD83D\uDC43','\uD83E\uDD35','\uD83E\uDDB7','\uD83D\uDC40','\uD83D\uDC45','\uD83E\uDDD2'];
+const EMOJI_CATS = [
+  { name:'Caritas', i:'😊', e:['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','😉','😊','😇','🥰','😍','🤩','😘','😗','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🥵','🥶','🥴','😵','🤯','🤠','🥳','🥸','😎','🤓','🧐','😕','😟','🙁','😮','😯','😲','😳','🥺','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','💀','☠️','💩','🤡','👹','👺','👻','👽','👾','🤖'] },
+  { name:'Corazones', i:'❤️', e:['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❣️','💕','💞','💓','💗','💖','💘','💝','💟','💌','💋','💑','💏','👩‍❤️‍👨'] },
+  { name:'Manos', i:'👋', e:['👋','🤚','🖐️','✋','🖖','👌','🤌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','👍','👎','✊','👊','🤛','🤜','👏','🙌','👐','🤲','🤝','🙏','✍️','💅','🤳','💪'] },
+  { name:'Celebracion', i:'🎉', e:['🎉','🎊','🎈','🎁','🎀','🎃','🎄','🎆','🎇','✨','🎓','🏆','🥇','🥈','🥉','🏅','🎯','🎲','🎮','🎸','🎺','🎻','🎤','🎧','🎼'] },
+  { name:'Comida', i:'🍕', e:['🍕','🍔','🌭','🥪','🌮','🌯','🥙','🥟','🍿','🥗','🥘','🍜','🍝','🍣','🍤','🍱','🥡','🍦','🍩','🍪','🎂','🍰','🧁','🍫','🍬','🍭','🍼','☕','🍵','🧃','🥤','🍺','🍻','🥂','🥃','🍷'] },
+  { name:'Actividades', i:'⚽', e:['⚽','🏀','🏈','⚾','🥎','🎾','🏐','🏉','🥏','🎱','🪀','🏓','🏸','🏒','🥊','🎽','🛹','🛼','🚴','🤼','🤸','🤺','⛸️','🎣','🎿','⛷️','🏄','🏊','🤿','🥌'] }
+];
 function construirEmojiPicker() {
   emojiPicker.innerHTML = '';
-  for (const e of EMOJIS) {
-    const btn = document.createElement('button');
-    btn.textContent = e;
-    btn.addEventListener('click', () => { mensajeInput.value += e; mensajeInput.focus(); actualizarBotonEnvio(); });
-    emojiPicker.appendChild(btn);
+  const tabs = document.createElement('div'); tabs.className = 'emoji-tabs';
+  const panels = document.createElement('div'); panels.className = 'emoji-panels';
+  EMOJI_CATS.forEach((cat, idx) => {
+    const tab = document.createElement('button'); tab.className = 'emoji-tab'; tab.textContent = cat.i;
+    tab.dataset.idx = idx; tab.addEventListener('click', () => mostrarCat(idx));
+    tabs.appendChild(tab);
+    const panel = document.createElement('div'); panel.className = 'emoji-panel';
+    cat.e.forEach(em => {
+      const btn = document.createElement('button'); btn.textContent = em;
+      btn.addEventListener('click', () => { mensajeInput.value += em; mensajeInput.focus(); actualizarBotonEnvio(); });
+      panel.appendChild(btn);
+    });
+    panels.appendChild(panel);
+  });
+  emojiPicker.appendChild(tabs); emojiPicker.appendChild(panels);
+  function mostrarCat(idx) {
+    tabs.querySelectorAll('.emoji-tab').forEach(t => t.classList.toggle('activo', +t.dataset.idx === idx));
+    panels.querySelectorAll('.emoji-panel').forEach((p, i) => p.classList.toggle('oculto', i !== idx));
   }
+  mostrarCat(0);
 }
 emojiBtn.addEventListener('click', () => { $('attachMenu').classList.add('oculto'); $('msgMenu').classList.add('oculto'); $('wallpaperMenu').classList.add('oculto'); emojiPicker.classList.toggle('oculto'); });
 attachBtn.addEventListener('click', () => { emojiPicker.classList.add('oculto'); $('msgMenu').classList.add('oculto'); $('wallpaperMenu').classList.add('oculto'); attachMenu.classList.remove('oculto'); });
@@ -163,8 +187,17 @@ wallpaperOverlay.addEventListener('click', () => wallpaperMenu.classList.add('oc
 document.querySelectorAll('.wp-opt').forEach(btn => { btn.addEventListener('click', () => { document.body.className = 'wallpaper-' + btn.dataset.wp; wallpaperMenu.classList.add('oculto'); localStorage.setItem('chat-wallpaper', btn.dataset.wp); }); });
 const wpGuardado = localStorage.getItem('chat-wallpaper'); if (wpGuardado) document.body.className = 'wallpaper-' + wpGuardado;
 document.querySelectorAll('.attach-option').forEach(btn => { btn.addEventListener('click', () => { attachMenu.classList.add('oculto'); if (btn.dataset.tipo === 'camara') abrirCamara(); else abrirGaleria(); }); });
-function abrirCamara() { const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; i.capture = 'environment'; i.addEventListener('change', e => { if (e.target.files?.[0]) enviarImagen(e.target.files[0]); }); i.click(); }
-function abrirGaleria() { const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; i.addEventListener('change', e => { if (e.target.files?.[0]) enviarImagen(e.target.files[0]); }); i.click(); }
+function abrirCamara() { const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; i.capture = 'environment'; i.addEventListener('change', e => { if (e.target.files?.[0]) mostrarPreviewImagen(e.target.files[0]); }); i.click(); }
+function abrirGaleria() { const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; i.addEventListener('change', e => { if (e.target.files?.[0]) mostrarPreviewImagen(e.target.files[0]); }); i.click(); }
+function mostrarPreviewImagen(file) {
+  imgPreviewFile = file;
+  const r = new FileReader();
+  r.onloadend = () => { imgPrevImage.src = r.result; imgPreview.classList.remove('oculto'); };
+  r.readAsDataURL(file);
+}
+function cerrarPreviewImagen() { imgPreview.classList.add('oculto'); imgPrevImage.src = ''; imgPreviewFile = null; }
+imgPrevOverlay.addEventListener('click', cerrarPreviewImagen);
+imgPrevSend.addEventListener('click', () => { if (imgPreviewFile) enviarImagen(imgPreviewFile); cerrarPreviewImagen(); });
 function enviarImagen(file) {
   const r = new FileReader(); const msgId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
   r.onloadend = () => { const b64 = r.result; const b = b64.split(',')[1]; socket.emit('mensaje', { msgId, usuario, texto: '', imagen: { data: b, type: file.type }, respondiendoA }); agregarMensajePropio(msgId, { usuario, texto: '', audio: null, imagen: { data: b64, type: file.type }, respondiendoA }); if (respondiendoA) cancelarReply(); fotoCount++; actualizarStats(); };
@@ -258,7 +291,7 @@ function actualizarStats() {
   statMsgs.textContent = msgCount; statFotos.textContent = fotoCount; statAudios.textContent = audioCount;
 }
 
-document.querySelectorAll('.qr-emoji').forEach(el => { el.addEventListener('click', () => { if (quickReactionMsgId) { socket.emit('reaccion', { sala, msgId: quickReactionMsgId, usuario, reaccion: el.dataset.reaccion }); const d = document.getElementById('msg-' + quickReactionMsgId); if (d) mostrarReaccion(d, el.dataset.reaccion); } quickReactions.classList.add('oculto'); }); });
+document.querySelectorAll('.qr-emoji').forEach(el => { el.addEventListener('click', () => { vibrar(10); if (quickReactionMsgId) { socket.emit('reaccion', { sala, msgId: quickReactionMsgId, usuario, reaccion: el.dataset.reaccion }); const d = document.getElementById('msg-' + quickReactionMsgId); if (d) mostrarReaccion(d, el.dataset.reaccion); } quickReactions.classList.add('oculto'); }); });
 
 function mostrarToast(texto, duracion) {
   duracion = duracion || 2500;
@@ -267,6 +300,8 @@ function mostrarToast(texto, duracion) {
   c.appendChild(t);
   setTimeout(() => { t.style.animation = 'toastOut 0.25s ease forwards'; setTimeout(() => t.remove(), 250); }, duracion);
 }
+
+function vibrar(ms) { if (navigator.vibrate) navigator.vibrate(ms); }
 
 function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
 function formatearTexto(text) {
@@ -297,7 +332,7 @@ function agregarEventosMensaje(div, msgId, data) {
   let toques = 0, td = null;
   div.addEventListener('click', () => { toques++; if (toques===1) td = setTimeout(()=>{toques=0;},300); else if (toques===2) { clearTimeout(td); toques=0; socket.emit('reaccion',{sala,msgId,usuario,reaccion:'\u2764\uFE0F'}); mostrarReaccion(div,'\u2764\uFE0F'); } });
   let lp = null;
-  div.addEventListener('pointerdown', e => { lp = setTimeout(() => { const r = div.getBoundingClientRect(); quickReactions.style.top = (r.top - 50) + 'px'; quickReactions.style.left = Math.min(r.left + r.width/2 - 100, window.innerWidth - 220) + 'px'; quickReactionMsgId = msgId; quickReactions.classList.remove('oculto'); }, 600); });
+  div.addEventListener('pointerdown', e => { lp = setTimeout(() => { vibrar(20); const r = div.getBoundingClientRect(); quickReactions.style.top = (r.top - 50) + 'px'; quickReactions.style.left = Math.min(r.left + r.width/2 - 100, window.innerWidth - 220) + 'px'; quickReactionMsgId = msgId; quickReactions.classList.remove('oculto'); }, 600); });
   div.addEventListener('pointerup', () => { clearTimeout(lp); limpiarSwipe(); });
   div.addEventListener('pointerleave', () => { clearTimeout(lp); });
   div.addEventListener('pointercancel', () => { clearTimeout(lp); });
