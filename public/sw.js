@@ -1,7 +1,21 @@
-self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', () => self.clients.claim());
+self.addEventListener('install', (e) => { e.waitUntil(self.skipWaiting()); });
+self.addEventListener('activate', (e) => { e.waitUntil(self.clients.claim()); });
 
-self.addEventListener('fetch', () => {});
+self.addEventListener('fetch', (e) => {
+  if (e.request.method !== 'GET') return;
+  e.respondWith(
+    caches.match(e.request).then((cached) => {
+      const fetchPromise = fetch(e.request).then((response) => {
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open('chat-static-v1').then((cache) => cache.put(e.request, clone));
+        }
+        return response;
+      }).catch(() => cached);
+      return cached || fetchPromise;
+    })
+  );
+});
 
 self.addEventListener('message', (event) => {
   const data = event.data;

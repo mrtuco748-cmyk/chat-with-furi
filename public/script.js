@@ -79,10 +79,34 @@ function conectarAlSala() {
 }
 async function registrarServiceWorker() { if ('serviceWorker' in navigator) { try { await navigator.serviceWorker.register('/sw.js'); } catch (e) {} } }
 function pedirPermisoNotificacion() { if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission(); }
-function marcarPresente() { presente = true; socket.emit('presente', { usuario }); headerEstado.textContent = 'en l\u00ednea'; }
-function marcarAusente() { presente = false; socket.emit('ausente', { usuario }); }
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') marcarPresente(); else { marcarAusente(); headerEstado.textContent = 'ausente'; } });
-window.addEventListener('focus', () => marcarPresente());
+function marcarPresente() { 
+  presente = true; 
+  socket.emit('presente', { usuario }); 
+  headerEstado.textContent = 'en l\u00ednea'; 
+  emitirLeidosPendientes();
+}
+function marcarAusente() { 
+  presente = false; 
+  socket.emit('ausente', { usuario }); 
+}
+
+let leidosTimer = null;
+function emitirLeidosPendientes() {
+  if (leidosTimer) clearTimeout(leidosTimer);
+  leidosTimer = setTimeout(() => {
+    try {
+      const arr = JSON.parse(localStorage.getItem(keyMsgs()) || '[]');
+      const noLeidos = arr.filter(m => m.tipo === 'otro' && !m.leido);
+      for (const m of noLeidos) {
+        socket.emit('mensaje-leido', { msgId: m.msgId });
+        m.leido = true;
+      }
+      if (noLeidos.length) localStorage.setItem(keyMsgs(), JSON.stringify(arr));
+    } catch(e) {}
+  }, 500);
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { marcarPresente(); } else { marcarAusente(); headerEstado.textContent = 'ausente'; } });
+window.addEventListener('focus', () => { marcarPresente(); emitirLeidosPendientes(); });
 window.addEventListener('blur', () => { marcarAusente(); headerEstado.textContent = 'ausente'; });
 socket.on('connect', () => { estadoConexion.className = 'conectado'; headerEstado.textContent = 'en l\u00ednea'; if (sala && usuario) conectarAlSala(); const d = escribiendoDiv.querySelector('.typing-dots'); if (d) d.style.display = 'none'; });
 socket.on('disconnect', () => { estadoConexion.className = 'desconectado'; headerEstado.textContent = 'desconectado'; });
@@ -97,10 +121,10 @@ function actualizarBotonEnvio() {
   else { microfonoBtn2.classList.remove('oculto'); enviarBtn.classList.add('oculto'); }
 }
 enviarBtn.addEventListener('click', enviarMensaje);
-mensajeInput.addEventListener('keypress', e => { if (e.key === 'Enter') enviarMensaje(); });
+mensajeInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviarMensaje(); } });
 function enviarMensaje() {
   const texto = mensajeInput.value.trim(); if (!texto) return;
-  vibrar(15);
+  try { vibrar(15); } catch(e) {}
   if (editandoMsgId) {
     const el = document.getElementById('msg-' + editandoMsgId);
     if (el && el.dataset.texto !== texto) {
@@ -113,7 +137,7 @@ function enviarMensaje() {
   const msgId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
   const d = { msgId, usuario, texto }; if (respondiendoA) d.respondiendoA = respondiendoA;
   socket.emit('mensaje', d);
-  agregarMensajePropio(msgId, { usuario, texto, audio: null, imagen: null, respondiendoA });
+  try { agregarMensajePropio(msgId, { usuario, texto, audio: null, imagen: null, respondiendoA }); } catch(e) {}
   mensajeInput.value = ''; actualizarBotonEnvio(); mensajeInput.focus();
   emojiPicker.classList.add('oculto'); cancelarReply();
   msgCount++; actualizarStats();
@@ -313,7 +337,7 @@ function mostrarToast(texto, duracion) {
   setTimeout(() => { t.style.animation = 'toastOut 0.25s ease forwards'; setTimeout(() => t.remove(), 250); }, duracion);
 }
 
-function vibrar(ms) { if (navigator.vibrate) navigator.vibrate(ms); }
+function vibrar(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch(e) {} }
 
 function keyMsgs() { return 'chat-msgs-' + sala; }
 function guardarMsgLocal(m) {
@@ -324,7 +348,17 @@ function cargarMsgsLocal() {
   try {
     const arr = JSON.parse(localStorage.getItem(keyMsgs()) || '[]');
     for (const m of arr) {
-      if (m.tipo === 'propio') renderMsgPropio(m);
+      if (m.tipo === 'propio') {
+        renderMsgPropio(m);
+        const div = document.getElementById('msg-'+m.msgId);
+        if (div) {
+          const estadoSpan = document.createElement('span'); estadoSpan.className = 'estado-msg'; estadoSpan.id = 'estado-'+m.msgId;
+          estadoSpan.innerHTML = '<span class="tick doble visto">\u2713\u2713</span>';
+          div.querySelector('.hora-estado')?.appendChild(estadoSpan);
+          mensajesEnviados.set(m.msgId, div);
+          agregarEventosMensaje(div, m.msgId, m);
+        }
+      }
       else if (m.tipo === 'otro') renderMsgOtro(m);
       else if (m.tipo === 'sistema') { const d = document.createElement('div'); d.classList.add('mensaje','sistema'); d.textContent = m.texto; mensajesDiv.appendChild(d); }
       if (m.tipo !== 'sistema') { msgCount++; if (m.imagen) fotoCount++; if (m.audio) audioCount++; }
@@ -380,7 +414,7 @@ function initAudioPlayers(container) {
 function injectIconsIn(el) { el.querySelectorAll('[data-icon]').forEach(e => { const n = e.dataset.icon; if (ICONS[n]) e.innerHTML = ICONS[n]; }); }
 
 function renderMsgPropio(m) {
-  insertarSeparadorFecha();
+  insertarSeparadorFecha(m.fecha);
   const div = document.createElement('div'); div.id = 'msg-'+m.msgId; div.classList.add('mensaje','propio');
   div.dataset.usuario = m.usuario; div.dataset.texto = m.texto||'';
   let rh='', c='';
@@ -396,7 +430,7 @@ function renderMsgPropio(m) {
   initAudioPlayers(div);
 }
 function renderMsgOtro(m) {
-  insertarSeparadorFecha();
+  insertarSeparadorFecha(m.fecha);
   const div = document.createElement('div'); div.id = 'msg-'+m.msgId; div.classList.add('mensaje','otro');
   div.dataset.usuario = m.usuario; div.dataset.texto = m.texto||'';
   const esSistema = m.usuario === '\uD83D\uDCE2 Sistema';
@@ -417,13 +451,26 @@ function formatearTexto(text) {
   const escaped = escapeHtml(text);
   return escaped.replace(/\*(.*?)\*/g, '<b>$1</b>').replace(/_(.*?)_/g, '<i>$1</i>').replace(/~(.*?)~/g, '<s>$1</s>').replace(urlRegex, m => { const u = m.startsWith('http') ? m : 'https://' + m; return '<a href="' + u + '" target="_blank" rel="noopener">' + m + '</a>'; });
 }
-function debeInsertarSeparador() { const a = new Date(); const c = a.getFullYear()+'-'+a.getMonth()+'-'+a.getDate(); if (c !== ultimaFecha) { ultimaFecha = c; return true; } return false; }
-function textoSeparador() { const a = new Date(); const h = new Date(a.getFullYear(),a.getMonth(),a.getDate()); if (a >= h) return 'Hoy'; if (a >= new Date(h.getTime()-86400000) && a < h) return 'Ayer'; return a.toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long' }); }
-function insertarSeparadorFecha() { if (debeInsertarSeparador()) { const d = document.createElement('div'); d.classList.add('separador-fecha'); d.textContent = textoSeparador(); mensajesDiv.appendChild(d); } }
+function insertarSeparadorFecha(fechaMsg) {
+  if (!fechaMsg) return;
+  const d = new Date(fechaMsg);
+  const c = d.getFullYear()+'-'+d.getMonth()+'-'+d.getDate();
+  if (c !== ultimaFecha) { ultimaFecha = c;
+    const sep = document.createElement('div'); sep.classList.add('separador-fecha');
+    const h = new Date(d.getFullYear(),d.getMonth(),d.getDate());
+    const hoy = new Date(); hoy.setHours(0,0,0,0);
+    if (d.getTime() === hoy.getTime()) sep.textContent = 'Hoy';
+    else if (d.getTime() === new Date(hoy.getTime()-86400000).getTime()) sep.textContent = 'Ayer';
+    else sep.textContent = d.toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long' });
+    mensajesDiv.appendChild(sep);
+  }
+}
 
 function agregarMensajePropio(msgId, data) {
-  const hora = new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
-  const m = { msgId, usuario, texto: data.texto||'', audio: data.audio||null, imagen: data.imagen||null, respondiendoA: data.respondiendoA||null, hora, tipo: 'propio' };
+  const ahora = new Date();
+  const hora = ahora.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+  const fechaISO = ahora.toISOString();
+  const m = { msgId, usuario, texto: data.texto||'', audio: data.audio||null, imagen: data.imagen||null, respondiendoA: data.respondiendoA||null, hora, fecha: fechaISO, tipo: 'propio' };
   guardarMsgLocal(m);
   renderMsgPropio(m);
   const div = document.getElementById('msg-'+msgId);
@@ -485,7 +532,7 @@ socket.on('mensaje', (data) => {
   try {
     if (data.usuario === usuario) return;
     const esSistema = data.usuario === '\uD83D\uDCE2 Sistema';
-    const mData = { msgId: data.msgId, usuario: data.usuario, texto: data.texto||'', hora: data.hora, tipo: esSistema ? 'sistema' : 'otro' };
+    const mData = { msgId: data.msgId, usuario: data.usuario, texto: data.texto||'', hora: data.hora, fecha: data.hora ? new Date().toISOString() : new Date().toISOString(), tipo: esSistema ? 'sistema' : 'otro' };
     if (data.respondiendoA) mData.respondiendoA = data.respondiendoA;
     if (data.imagen) mData.imagen = { data: 'data:'+data.imagen.type+';base64,'+data.imagen.data, type: data.imagen.type };
     if (data.audio) mData.audio = { data: 'data:'+data.audio.type+';base64,'+data.audio.data, type: data.audio.type, duracion: data.audio.duracion };
@@ -499,6 +546,7 @@ socket.on('mensaje', (data) => {
       let cuerpo = data.texto; if (data.audio) cuerpo = 'Audio ('+(data.audio.duracion||0)+'s)'; else if (data.imagen) cuerpo = 'Foto';
       navigator.serviceWorker.controller.postMessage({ tipo:'notificacion', titulo:'\u2764\uFE0F '+data.usuario, cuerpo, tag:'chat-'+data.msgId });
     }
+    socket.emit('mensaje-leido', { msgId: data.msgId });
   } catch(e) {}
 });
 socket.on('estado-msg', (data) => { const el = document.getElementById('estado-'+data.msgId); if (!el) return; if (data.estado==='enviado') el.innerHTML = '<span class="tick">\u2713</span>'; else if (data.estado==='entregado') el.innerHTML = '<span class="tick doble">\u2713\u2713</span>'; else if (data.estado==='visto') el.innerHTML = '<span class="tick doble visto">\u2713\u2713</span>'; });
@@ -539,12 +587,22 @@ socket.on('escribiendo', (data) => {
   const texto = document.getElementById('escribiendoTexto');
   if (data.usuario && data.usuario !== usuario) {
     if (dots) dots.style.display = 'inline-flex';
-    if (texto) texto.textContent = data.usuario + ' está escribiendo';
+    if (texto) texto.textContent = data.usuario + ' est\u00e1 escribiendo';
   } else {
     if (dots) dots.style.display = 'none';
     if (texto) texto.textContent = '';
   }
 });
+
+function limpiarRecursos() {
+  if (escribiendoTimeout) clearTimeout(escribiendoTimeout);
+  if (leidosTimer) clearTimeout(leidosTimer);
+  if (intervaloTiempo) clearInterval(intervaloTiempo);
+  mensajesEnviados.clear();
+}
+
+window.addEventListener('beforeunload', limpiarRecursos);
+window.addEventListener('pagehide', limpiarRecursos);
 
 (function() { const d = escribiendoDiv.querySelector('.typing-dots'); if (d) d.style.display = 'none'; })();
 
