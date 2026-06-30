@@ -27,19 +27,26 @@
       <div class="header-left">
         <span class="avatar-ring"><span class="avatar-heart" data-icon="heart-filled"></span></span>
         <div>
-          <div class="header-title">Mi amor</div>
-          <div class="header-status"><span id="estadoConexion" class="conectado"></span> <span id="headerEstado">en línea</span></div>
+          <div class="header-title" id="headerTitle">Mi amor</div>
+          <div class="header-status"><span id="estadoConexion" class="conectado"></span> <span id="headerEstado">en l&iacute;nea</span></div>
         </div>
       </div>
       <div class="header-right">
+        <button class="header-btn" id="searchBtn" data-icon="search"></button>
+        <button class="header-btn" id="statsBtn" data-icon="heart-filled"></button>
         <button class="header-btn" id="wallpaperBtn" data-icon="image"></button>
       </div>
     </div>
+    <div id="searchBar" class="oculto glass">
+      <button class="search-back" id="searchBack" data-icon="arrow-left"></button>
+      <input type="text" id="searchInput" placeholder="Buscar mensajes..." maxlength="100">
+      <span class="search-count" id="searchCount"></span>
+    </div>
     <div class="chat-mensajes" id="mensajes"></div>
-    <div id="escribiendo"></div>
+    <div id="escribiendo"><div class="typing-dots"><span></span><span></span><span></span></div></div>
     <div id="grabando" class="oculto glass">
       <span class="grabando-indicator"></span> Grabando... <span id="tiempoGrabacion">0s</span>
-      <span class="grabando-lock" id="lockHint">⬆ bloquear</span>
+      <span class="grabando-lock" id="lockHint">&uarr; bloquear</span>
       <span class="grabando-cancel" id="cancelarGrabacion" data-icon="x"></span>
     </div>
     <div id="replyBar" class="oculto glass">
@@ -50,12 +57,20 @@
       </div>
       <button class="reply-close" id="replyClose" data-icon="x"></button>
     </div>
+    <div id="romanticPanel" class="oculto glass">
+      <button class="rp-option" data-msg="Te amo ❤️">Te amo ❤️</button>
+      <button class="rp-option" data-msg="Buenos días mi amor 🌅">Buenos d&iacute;as 🌅</button>
+      <button class="rp-option" data-msg="Buenas noches preciosa 🌙">Buenas noches 🌙</button>
+      <button class="rp-option" data-msg="Te extraño mucho 💕">Te extra&ntilde;o 💕</button>
+      <button class="rp-option" data-msg="Eres lo mejor que me pasó">Eres lo mejor ❤️</button>
+      <button class="rp-option" data-msg="Sonríe que te amo 😊">Sonr&iacute;e 😊</button>
+    </div>
     <div id="emojiPicker" class="oculto glass"></div>
     <div id="attachMenu" class="oculto">
       <div class="attach-overlay" id="attachOverlay"></div>
       <div class="attach-sheet glass">
-        <button class="attach-option" data-tipo="camara"><span data-icon="camera"></span> Cámara</button>
-        <button class="attach-option" data-tipo="galeria"><span data-icon="image"></span> Galería</button>
+        <button class="attach-option" data-tipo="camara"><span data-icon="camera"></span> C&aacute;mara</button>
+        <button class="attach-option" data-tipo="galeria"><span data-icon="image"></span> Galer&iacute;a</button>
       </div>
     </div>
     <div id="wallpaperMenu" class="oculto">
@@ -71,18 +86,40 @@
         </div>
       </div>
     </div>
+    <div id="quickReactions" class="oculto glass">
+      <span class="qr-emoji" data-reaccion="❤️">❤️</span>
+      <span class="qr-emoji" data-reaccion="😂">😂</span>
+      <span class="qr-emoji" data-reaccion="😮">😮</span>
+      <span class="qr-emoji" data-reaccion="😢">😢</span>
+      <span class="qr-emoji" data-reaccion="🙏">🙏</span>
+      <span class="qr-emoji" data-reaccion="🔥">🔥</span>
+    </div>
+    <div id="statsModal" class="oculto">
+      <div class="stats-overlay" id="statsOverlay"></div>
+      <div class="stats-sheet glass">
+        <div class="stats-title">Nuestro amor 💕</div>
+        <div class="stats-grid">
+          <div class="stat-item"><span class="stat-num" id="statDias">0</span><span class="stat-label">d&iacuteas juntos</span></div>
+          <div class="stat-item"><span class="stat-num" id="statMsgs">0</span><span class="stat-label">mensajes</span></div>
+          <div class="stat-item"><span class="stat-num" id="statFotos">0</span><span class="stat-label">fotos</span></div>
+          <div class="stat-item"><span class="stat-num" id="statAudios">0</span><span class="stat-label">audios</span></div>
+        </div>
+        <button class="stats-btn" id="statsSetDate">Fijar fecha de inicio</button>
+      </div>
+    </div>
     <div id="msgMenu" class="oculto">
       <div class="msgmenu-overlay" id="msgmenuOverlay"></div>
       <div class="msgmenu-sheet glass">
         <button class="msgmenu-option" id="menuResponder"><span data-icon="reply"></span> Responder</button>
         <button class="msgmenu-option" id="menuCopiar"><span data-icon="copy"></span> Copiar</button>
-        <button class="msgmenu-option oculto" id="menuEliminar"><span data-icon="trash"></span> Eliminar para mí</button>
+        <button class="msgmenu-option oculto" id="menuEliminar"><span data-icon="trash"></span> Eliminar para m&iacute;</button>
       </div>
     </div>
     <button class="scroll-btn oculto" id="scrollBtn" data-icon="heart-filled"></button>
     <div class="chat-input glass">
       <button class="input-btn" id="attachBtn" data-icon="paperclip"></button>
       <button class="input-btn camara-btn" id="camaraBtn" data-icon="camera"></button>
+      <button class="input-btn" id="romanticBtn">💕</button>
       <button class="input-btn" id="emojiBtn" data-icon="smile"></button>
       <input type="text" id="mensajeInput" placeholder="Mensaje" maxlength="500">
       <button class="input-btn mic-btn2" id="microfonoBtn2" data-icon="mic"></button>
