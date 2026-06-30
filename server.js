@@ -10,13 +10,16 @@ const server = http.createServer(app);
 const io = new Server(server, { maxHttpBufferSize: 5e7, pingTimeout: 10000, pingInterval: 5000 });
 
 app.use(express.json({ limit: '1mb' }));
-app.post('/api/ausente', (req, res) => {
-  const { usuario, sala } = req.body;
-  if (sala && usuario && salas[sala] && salas[sala].usuarios[usuario]) {
-    salas[sala].usuarios[usuario].presente = false;
-    salas[sala].usuarios[usuario].ultimaVez = Date.now();
-    io.to(sala).emit('presencia', { usuario, presente: false, ultimaVez: Date.now() });
-  }
+app.post('/api/ausente', express.text({ type: '*/*' }), (req, res) => {
+  try {
+    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+    const { usuario, sala } = body;
+    if (sala && usuario && salas[sala] && salas[sala].usuarios[usuario]) {
+      salas[sala].usuarios[usuario].presente = false;
+      salas[sala].usuarios[usuario].ultimaVez = Date.now();
+      io.to(sala).emit('presencia', { usuario, presente: false, ultimaVez: Date.now() });
+    }
+  } catch(e) {}
   res.end();
 });
 app.use(express.static(path.join(__dirname, 'public')));
