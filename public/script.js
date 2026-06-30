@@ -218,7 +218,9 @@ socket.on('estado-msg', (data) => {
   const estadoEl = document.getElementById('estado-' + data.msgId);
   if (!estadoEl) return;
 
-  if (data.estado === 'entregado') {
+  if (data.estado === 'enviado') {
+    estadoEl.innerHTML = '<span class="tick">✓</span>';
+  } else if (data.estado === 'entregado') {
     estadoEl.innerHTML = '<span class="tick doble">✓✓</span>';
   } else if (data.estado === 'visto') {
     estadoEl.innerHTML = '<span class="tick doble visto">✓✓</span>';

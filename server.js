@@ -36,6 +36,8 @@ io.on('connection', (socket) => {
     const sala = salas[socket.sala];
     if (!sala) return;
 
+    socket.emit('estado-msg', { msgId: data.msgId, estado: 'enviado' });
+
     io.to(socket.sala).emit('mensaje', {
       msgId: data.msgId,
       usuario: data.usuario,
