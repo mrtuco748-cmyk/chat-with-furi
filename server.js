@@ -113,6 +113,8 @@ io.on('connection', (socket) => {
     const respondiendoA = data.respondiendoA ? { msgId: String(data.respondiendoA.msgId).slice(0, 64), usuario: String(data.respondiendoA.usuario).slice(0, 30), texto: String(data.respondiendoA.texto).slice(0, 500) } : null;
     const silencio = !!data.silencio;
     const silencioDe = data.silencioDe ? (Array.isArray(data.silencioDe) ? data.silencioDe.slice(0, 10).map(id => String(id).slice(0, 64)) : [String(data.silencioDe).slice(0, 64)]) : null;
+    const ubicacion = data.ubicacion ? { lat: data.ubicacion.lat, lng: data.ubicacion.lng, nombre: String(data.ubicacion.nombre).slice(0, 100), url: String(data.ubicacion.url).slice(0, 500) } : null;
+    const encuesta = data.encuesta ? { pregunta: String(data.encuesta.pregunta).slice(0, 256), opciones: Array.isArray(data.encuesta.opciones) ? data.encuesta.opciones.slice(0, 10).map(o => String(o).slice(0, 100)) : [], votos: data.encuesta.votos || {} } : null;
 
     socket.emit('estado-msg', { msgId, estado: 'enviado' });
 
@@ -125,6 +127,8 @@ io.on('connection', (socket) => {
       respondiendoA,
       silencio,
       silencioDe,
+      ubicacion,
+      encuesta,
       hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
