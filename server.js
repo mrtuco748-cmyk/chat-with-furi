@@ -2,12 +2,43 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
+const https = require('https');
+const httpMod = require('http');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { maxHttpBufferSize: 5e7 });
 
 app.use(express.static(path.join(__dirname, 'public')));
+
+app.get('/api/link-preview', (req, res) => {
+  const url = req.query.url;
+  if (!url) return res.json(null);
+  const fetchUrl = (u) => new Promise((resolve, reject) => {
+    const mod = u.startsWith('https') ? https : httpMod;
+    mod.get(u, { timeout: 5000, headers: { 'User-Agent': 'Mozilla/5.0' } }, (resp) => {
+      let data = '';
+      resp.on('data', chunk => { data += chunk; if (data.length > 50000) { resp.destroy(); reject(new Error('Too big')); } });
+      resp.on('end', () => resolve(data));
+    }).on('error', reject).on('timeout', function() { this.destroy(); reject(new Error('timeout')); });
+  });
+  (async () => {
+    try {
+      const html = await fetchUrl(url);
+      const getMeta = (prop) => {
+        const re = new RegExp('<meta[^>]+' + prop + '[^>]+>', 'i');
+        const m = html.match(re);
+        if (!m) return null;
+        const content = m[0].match(/content=["']([^"']*)["']/i);
+        return content ? content[1] : null;
+      };
+      const title = getMeta('property="og:title"') || getMeta('name="twitter:title"') || html.match(/<title>([^<]*)<\/title>/i)?.[1] || '';
+      const description = getMeta('property="og:description"') || getMeta('name="description"') || getMeta('name="twitter:description"') || '';
+      const image = getMeta('property="og:image"') || getMeta('name="twitter:image"') || '';
+      res.json({ url, title: String(title).slice(0, 200), description: String(description).slice(0, 300), image: String(image).slice(0, 500) });
+    } catch(e) { res.json(null); }
+  })();
+});
 
 const salas = {};
 
