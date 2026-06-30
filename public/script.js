@@ -751,7 +751,11 @@ function cargarMsgsLocal() {
         if (div) {
           if (m.favorito) mostrarFavorito(div, true);
           const estadoSpan = document.createElement('span'); estadoSpan.className = 'estado-msg'; estadoSpan.id = 'estado-'+m.msgId;
-          estadoSpan.innerHTML = '<span class="tick doble visto">\u2713\u2713</span>';
+          const est = m.estado || 'enviado';
+          if (est === 'visto') estadoSpan.innerHTML = '<span class="tick doble visto">\u2713\u2713</span>';
+          else if (est === 'entregado') estadoSpan.innerHTML = '<span class="tick doble">\u2713\u2713</span>';
+          else if (est === 'enviado') estadoSpan.innerHTML = '<span class="tick">\u2713</span>';
+          else estadoSpan.innerHTML = '<span class="tick-enviando">\u23F3</span>';
           div.querySelector('.hora-estado')?.appendChild(estadoSpan);
           mensajesEnviados.set(m.msgId, div);
           agregarEventosMensaje(div, m.msgId, m);
@@ -922,7 +926,7 @@ function agregarMensajePropio(msgId, data) {
   const ahora = new Date();
   const hora = ahora.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
   const fechaISO = ahora.toISOString();
-  const m = { msgId, usuario, texto: data.texto||'', audio: data.audio||null, imagen: data.imagen||null, respondiendoA: data.respondiendoA||null, hora, fecha: fechaISO, tipo: 'propio' };
+  const m = { msgId, usuario, texto: data.texto||'', audio: data.audio||null, imagen: data.imagen||null, respondiendoA: data.respondiendoA||null, hora, fecha: fechaISO, tipo: 'propio', estado: 'enviando' };
   guardarMsgLocal(m);
   renderMsgPropio(m);
   const div = document.getElementById('msg-'+msgId);
@@ -1050,7 +1054,17 @@ socket.on('mensaje', (data) => {
     }
   } catch(e) {}
 });
-socket.on('estado-msg', (data) => { const el = document.getElementById('estado-'+data.msgId); if (!el) return; if (data.estado==='enviado') el.innerHTML = '<span class="tick">\u2713</span>'; else if (data.estado==='entregado') el.innerHTML = '<span class="tick doble">\u2713\u2713</span>'; else if (data.estado==='visto') el.innerHTML = '<span class="tick doble visto">\u2713\u2713</span>'; });
+socket.on('estado-msg', (data) => {
+  const el = document.getElementById('estado-'+data.msgId); if (!el) return;
+  if (data.estado==='enviado') el.innerHTML = '<span class="tick">\u2713</span>';
+  else if (data.estado==='entregado') el.innerHTML = '<span class="tick doble">\u2713\u2713</span>';
+  else if (data.estado==='visto') el.innerHTML = '<span class="tick doble visto">\u2713\u2713</span>';
+  try {
+    const arr = JSON.parse(localStorage.getItem(keyMsgs()) || '[]');
+    const m = arr.find(x => x.msgId === data.msgId);
+    if (m) { m.estado = data.estado; localStorage.setItem(keyMsgs(), JSON.stringify(arr)); }
+  } catch(e) {}
+});
 socket.on('reaccion', (data) => { const d = document.getElementById('msg-'+data.msgId); if (d) { if (data.reaccion) { mostrarReaccion(d, data.reaccion); setReaccionMsg(data.msgId, data.reaccion); } else { mostrarReaccion(d, ''); setReaccionMsg(data.msgId, null); } } });
 socket.on('voto-encuesta', (data) => {
   const d = document.getElementById('msg-'+data.msgId);
