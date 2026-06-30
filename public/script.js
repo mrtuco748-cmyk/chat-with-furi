@@ -234,6 +234,7 @@ settingsParejaNombre.addEventListener('input', () => {
   const nombre = settingsParejaNombre.value.trim() || 'Mi amor';
   localStorage.setItem('chat-pareja-nombre', nombre);
   headerTitle.textContent = nombre;
+  actualizarTituloApp(nombre);
 });
 
 // Custom background
@@ -249,7 +250,8 @@ wpCustomBg.addEventListener('click', () => {
       localStorage.setItem('chat-fondo-personalizado', bg);
       aplicarFondoPersonalizado(bg);
       oscurecerRow?.classList.remove('oculto');
-      oscurecerSlider.value = localStorage.getItem('chat-fondo-oscurecer') || '0';
+      const ov = localStorage.getItem('chat-fondo-oscurecer') || '0'; oscurecerSlider.value = ov;
+      oscurecerSlider.style.background = 'linear-gradient(to right, var(--accent) 0%, var(--accent) ' + ov + '%, var(--border) ' + ov + '%)';
       mostrarToast('Fondo personalizado aplicado');
     };
     reader.readAsDataURL(file);
@@ -276,34 +278,74 @@ function limpiarFondoPersonalizado() {
 wpClearBg?.addEventListener('click', limpiarFondoPersonalizado);
 oscurecerSlider?.addEventListener('input', () => {
   localStorage.setItem('chat-fondo-oscurecer', oscurecerSlider.value);
+  oscurecerSlider.style.background = 'linear-gradient(to right, var(--accent) 0%, var(--accent) ' + oscurecerSlider.value + '%, var(--border) ' + oscurecerSlider.value + '%)';
   const bg = localStorage.getItem('chat-fondo-personalizado');
   if (bg) aplicarFondoPersonalizado(bg);
 });
 const fondoGuardado = localStorage.getItem('chat-fondo-personalizado');
-if (fondoGuardado) { aplicarFondoPersonalizado(fondoGuardado); if (wpClearBg) wpClearBg.classList.remove('oculto'); oscurecerRow?.classList.remove('oculto'); oscurecerSlider.value = localStorage.getItem('chat-fondo-oscurecer') || '0'; }
+if (fondoGuardado) { aplicarFondoPersonalizado(fondoGuardado); if (wpClearBg) wpClearBg.classList.remove('oculto'); oscurecerRow?.classList.remove('oculto'); const ov = localStorage.getItem('chat-fondo-oscurecer') || '0'; oscurecerSlider.value = ov; oscurecerSlider.style.background = 'linear-gradient(to right, var(--accent) 0%, var(--accent) ' + ov + '%, var(--border) ' + ov + '%)'; }
 
 // Restore partner name & profile photo (runs after sala is set in iniciarSesion)
 function restaurarPerfil() {
   const pn = localStorage.getItem('chat-pareja-nombre');
-  if (pn) headerTitle.textContent = pn;
+  if (pn) { headerTitle.textContent = pn; actualizarTituloApp(pn); }
   settingsParejaNombre.value = pn || '';
   const fg = localStorage.getItem('chat-foto-' + sala);
   if (fg) { fotoPerfilLocal = fg; settingsFotoPreview.src = fg; settingsFotoPreview.parentElement.style.display = 'flex'; }
   const rf = localStorage.getItem('chat-foto-remoto-' + sala);
-  if (rf) { fotoPerfilRemoto = rf; actualizarAvatar(rf); }
+  if (rf) { fotoPerfilRemoto = rf; actualizarAvatar(rf); actualizarFavicon(rf); }
 }
 socket.on('foto-perfil', (data) => {
   if (data.foto) {
     fotoPerfilRemoto = data.foto;
     localStorage.setItem('chat-foto-remoto-' + sala, data.foto);
     actualizarAvatar(data.foto);
+    actualizarFavicon(data.foto);
   } else {
     fotoPerfilRemoto = null;
     localStorage.removeItem('chat-foto-remoto-' + sala);
     actualizarAvatar(null);
+    let link = document.querySelector('link[rel="icon"]');
+    if (link) link.href = 'icon-192.png';
+    link = document.querySelector('link[rel="apple-touch-icon"]');
+    if (link) link.href = 'icon-192.png';
   }
 });
 
+function actualizarTituloApp(nombre) {
+  document.title = nombre;
+  const meta = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+  if (meta) meta.content = nombre;
+  const m = document.querySelector('link[rel="manifest"]');
+  if (m) {
+    const href = m.getAttribute('href');
+    if (href && href.startsWith('data:')) {
+      try {
+        const obj = JSON.parse(decodeURIComponent(href.split(',')[1]));
+        obj.name = nombre; obj.short_name = nombre.substring(0, 12);
+        m.setAttribute('href', 'data:application/json,' + encodeURIComponent(JSON.stringify(obj)));
+      } catch(e) {}
+    }
+  }
+}
+function actualizarFavicon(foto) {
+  const img = new Image(); img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    try {
+      const c = document.createElement('canvas'); c.width = 192; c.height = 192;
+      const ctx = c.getContext('2d');
+      ctx.beginPath(); ctx.arc(96, 96, 90, 0, Math.PI*2); ctx.clip();
+      ctx.drawImage(img, 0, 0, 192, 192);
+      const dataUrl = c.toDataURL('image/png');
+      let link = document.querySelector('link[rel="icon"]');
+      if (link) link.href = dataUrl;
+      link = document.querySelector('link[rel="apple-touch-icon"]');
+      if (link) link.href = dataUrl;
+    } catch(e) {}
+  };
+  img.onerror = () => {};
+  img.src = foto;
+}
 mensajeInput.addEventListener('input', () => {
   actualizarBotonEnvio(); socket.emit('escribiendo', { usuario });
   clearTimeout(escribiendoTimeout); escribiendoTimeout = setTimeout(() => socket.emit('escribiendo', { usuario: '' }), 1000);
