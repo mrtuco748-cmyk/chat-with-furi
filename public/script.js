@@ -960,7 +960,6 @@ function agregarEventosMensaje(div, msgId, data) {
     div.classList.remove('swiping'); div.style.boxShadow = ''; swiping = false;
   });
   div.addEventListener('touchcancel', () => { cancelAnimationFrame(animFrame); div.classList.remove('swiping'); div.style.boxShadow = ''; swiping = false; });
-  div.addEventListener('contextmenu', e => { e.preventDefault(); if (!selectMode) abrirMenuMensaje(msgId, div); });
 }
 
 function abrirMenuMensaje(msgId, div, desdeSelect) {
