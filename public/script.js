@@ -253,8 +253,7 @@ wpCustomBg.addEventListener('click', () => {
       localStorage.setItem('chat-fondo-personalizado', bg);
       aplicarFondoPersonalizado(bg);
       oscurecerRow?.classList.remove('oculto');
-      const ov = localStorage.getItem('chat-fondo-oscurecer') || '0'; oscurecerSlider.value = ov;
-      oscurecerSlider.style.background = 'linear-gradient(to right, var(--accent) 0%, var(--accent) ' + ov + '%, var(--border) ' + ov + '%)';
+      const ov = localStorage.getItem('chat-fondo-oscurecer') || '0'; oscurecerSlider.value = ov; oscurecerSlider.style.background = 'linear-gradient(to right, var(--inverse, #fff) 0%, rgba(0,0,0,' + (ov/100) + ') ' + ov + '%, var(--border) ' + ov + '%)';
       mostrarToast('Fondo personalizado aplicado');
     };
     reader.readAsDataURL(file);
@@ -281,12 +280,12 @@ function limpiarFondoPersonalizado() {
 wpClearBg?.addEventListener('click', limpiarFondoPersonalizado);
 oscurecerSlider?.addEventListener('input', () => {
   localStorage.setItem('chat-fondo-oscurecer', oscurecerSlider.value);
-  oscurecerSlider.style.background = 'linear-gradient(to right, var(--accent) 0%, var(--accent) ' + oscurecerSlider.value + '%, var(--border) ' + oscurecerSlider.value + '%)';
+  oscurecerSlider.style.background = 'linear-gradient(to right, var(--inverse, #fff) 0%, rgba(0,0,0,' + (oscurecerSlider.value/100) + ') ' + oscurecerSlider.value + '%, var(--border) ' + oscurecerSlider.value + '%)';
   const bg = localStorage.getItem('chat-fondo-personalizado');
   if (bg) aplicarFondoPersonalizado(bg);
 });
 const fondoGuardado = localStorage.getItem('chat-fondo-personalizado');
-if (fondoGuardado) { aplicarFondoPersonalizado(fondoGuardado); if (wpClearBg) wpClearBg.classList.remove('oculto'); oscurecerRow?.classList.remove('oculto'); const ov = localStorage.getItem('chat-fondo-oscurecer') || '0'; oscurecerSlider.value = ov; oscurecerSlider.style.background = 'linear-gradient(to right, var(--accent) 0%, var(--accent) ' + ov + '%, var(--border) ' + ov + '%)'; }
+if (fondoGuardado) { aplicarFondoPersonalizado(fondoGuardado); if (wpClearBg) wpClearBg.classList.remove('oculto'); oscurecerRow?.classList.remove('oculto'); const ov = localStorage.getItem('chat-fondo-oscurecer') || '0'; oscurecerSlider.value = ov; oscurecerSlider.style.background = 'linear-gradient(to right, var(--inverse, #fff) 0%, rgba(0,0,0,' + (ov/100) + ') ' + ov + '%, var(--border) ' + ov + '%)'; }
 
 // Restore partner name & profile photo (runs after sala is set in iniciarSesion)
 function restaurarPerfil() {
@@ -1349,7 +1348,6 @@ async function obtenerStreamCamara() {
 }
 
 function callRejectClick() {
-  if (callActive) return;
   incomingCall.classList.add('oculto');
   callAccept.style.display = '';
   if (_pendingOffer) { _pendingOffer = null; socket.emit('call-reject', { sala }); }
