@@ -156,7 +156,7 @@ function abrirCamara() { const i = document.createElement('input'); i.type = 'fi
 function abrirGaleria() { const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; i.addEventListener('change', e => { if (e.target.files?.[0]) enviarImagen(e.target.files[0]); }); i.click(); }
 function enviarImagen(file) {
   const r = new FileReader(); const msgId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-  r.onloadend = () => { const b = r.result.split(',')[1]; socket.emit('mensaje', { msgId, usuario, texto: '', imagen: { data: b, type: file.type }, respondiendoA }); agregarMensajePropio(msgId, { usuario, texto: '', audio: null, imagen: { type: file.type }, respondiendoA }); if (respondiendoA) cancelarReply(); fotoCount++; actualizarStats(); };
+  r.onloadend = () => { const b64 = r.result; const b = b64.split(',')[1]; socket.emit('mensaje', { msgId, usuario, texto: '', imagen: { data: b, type: file.type }, respondiendoA }); agregarMensajePropio(msgId, { usuario, texto: '', audio: null, imagen: { data: b64, type: file.type }, respondiendoA }); if (respondiendoA) cancelarReply(); fotoCount++; actualizarStats(); };
   r.readAsDataURL(file);
 }
 replyClose.addEventListener('click', cancelarReply);
@@ -194,6 +194,34 @@ scrollBtn.addEventListener('click', () => mensajesDiv.scrollTo({ top: mensajesDi
 mensajesDiv.addEventListener('scroll', () => { scrollBtn.classList.toggle('oculto', mensajesDiv.scrollHeight - mensajesDiv.scrollTop - mensajesDiv.clientHeight < 100); });
 camaraBtn.addEventListener('click', abrirCamara);
 
+const iv = $('imageViewer'), ivImg = $('ivImage'), ivInfo = $('ivInfo');
+mensajesDiv.addEventListener('click', e => {
+  const img = e.target.closest('.imagen-msg');
+  if (img) abrirVisorImagen(img.currentSrc || img.src, img.closest('.mensaje')?.dataset?.usuario || '');
+});
+$('ivOverlay').addEventListener('click', cerrarVisorImagen);
+let ivZoom = 1, ivPinchDist = 0;
+ivImg.addEventListener('touchstart', e => {
+  if (e.touches.length === 2) { ivPinchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); }
+});
+ivImg.addEventListener('touchmove', e => {
+  if (e.touches.length === 2) {
+    e.preventDefault();
+    const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+    ivZoom = Math.max(1, Math.min(5, ivZoom * (d / ivPinchDist)));
+    ivPinchDist = d;
+    ivImg.style.transform = 'scale(' + ivZoom + ')';
+    ivImg.classList.toggle('zoomed', ivZoom > 1);
+  }
+}, { passive: false });
+ivImg.addEventListener('click', () => { if (ivZoom > 1) { ivZoom = 1; ivImg.style.transform = ''; ivImg.classList.remove('zoomed'); } else cerrarVisorImagen(); });
+function abrirVisorImagen(src, usuario) {
+  ivImg.src = src; ivZoom = 1; ivImg.style.transform = ''; ivImg.classList.remove('zoomed');
+  ivInfo.textContent = usuario ? 'Enviado por ' + usuario : '';
+  iv.classList.remove('oculto');
+}
+function cerrarVisorImagen() { iv.classList.add('oculto'); ivImg.src = ''; ivZoom = 1; ivImg.style.transform = ''; }
+
 statsBtn.addEventListener('click', () => { emojiPicker.classList.add('oculto'); attachMenu.classList.add('oculto'); wallpaperMenu.classList.add('oculto'); statsModal.classList.remove('oculto'); });
 statsOverlay.addEventListener('click', () => statsModal.classList.add('oculto'));
 statsSetDate.addEventListener('click', () => { const d = prompt('Ingres\u00E1 la fecha que empezaron (DD/MM/AAAA):'); if (d) { localStorage.setItem('chat-fecha-inicio', d); actualizarStats(); } });
@@ -230,7 +258,7 @@ function agregarMensajePropio(msgId, data) {
   const ahora = new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
   let rh='', c='';
   if (data.respondiendoA) rh = '<div class="reply-quote"><div class="rq-user">'+escapeHtml(data.respondiendoA.usuario)+'</div><div class="rq-text">'+escapeHtml(data.respondiendoA.texto)+'</div></div>';
-  if (data.imagen) c += '<div class="duracion-audio">\uD83D\uDDBC Foto</div>';
+  if (data.imagen) { const s = data.imagen.data || 'data:'+data.imagen.type+';base64,'; c += '<img src="'+s+'" class="imagen-msg" loading="lazy">'; }
   else if (data.audio) c += '<div class="duracion-audio">\uD83C\uDFA4 Audio '+(data.audio.duracion||0)+'s</div>';
   else c += '<div class="texto">'+formatearTexto(data.texto)+'</div>';
   div.innerHTML = rh+c+'<div class="hora-estado"><span class="hora">'+ahora+'</span><span class="estado-msg" id="estado-'+msgId+'"><span class="tick-enviando">\u23F3</span></span></div>';

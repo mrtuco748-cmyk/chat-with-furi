@@ -117,6 +117,13 @@
       <button class="send-btn oculto" id="enviarBtn" data-icon="heart"></button>
     </div>
     <div id="toastContainer"></div>
+    <div id="imageViewer" class="oculto">
+      <div class="iv-overlay" id="ivOverlay"></div>
+      <div class="iv-content">
+        <img id="ivImage" src="" alt="">
+        <div class="iv-info" id="ivInfo"></div>
+      </div>
+    </div>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
