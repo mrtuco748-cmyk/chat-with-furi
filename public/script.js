@@ -129,9 +129,9 @@ function emitirLeidosPendientes() {
     } catch(e) {}
   }, 500);
 }
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { marcarPresente(); } else { marcarAusente(); headerEstado.textContent = 'ausente'; } });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { marcarPresente(); } else { marcarAusente(); } });
 window.addEventListener('focus', () => { marcarPresente(); emitirLeidosPendientes(); });
-window.addEventListener('blur', () => { marcarAusente(); headerEstado.textContent = 'ausente'; });
+window.addEventListener('blur', () => { marcarAusente(); });
 socket.on('connect', () => { estadoConexion.className = 'conectado'; headerEstado.textContent = 'en l\u00ednea'; if (sala && usuario) conectarAlSala(); const d = escribiendoDiv.querySelector('.typing-dots'); if (d) d.style.display = 'none'; });
 socket.on('disconnect', () => { estadoConexion.className = 'desconectado'; headerEstado.textContent = 'desconectado'; });
 socket.io.on('reconnect_attempt', () => { estadoConexion.className = 'reconectando'; headerEstado.textContent = 'reconectando...'; });

@@ -86,13 +86,6 @@ io.on('connection', (socket) => {
     }
 
     socket.to(salaNombre).emit('escribiendo', { usuario: '' });
-
-    socket.to(salaNombre).emit('mensaje', {
-      msgId: 'sys-' + Date.now(),
-      usuario: '📢 Sistema',
-      texto: `${usuarioNombre} se conectó`,
-      hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    });
   });
 
   socket.on('mensaje', (data) => {
@@ -175,7 +168,8 @@ io.on('connection', (socket) => {
     if (!usuario || !salas[socket.sala].usuarios[usuario]) return;
 
     salas[socket.sala].usuarios[usuario].presente = false;
-    socket.to(socket.sala).emit('presencia', { usuario, presente: false, ultimaVez: null });
+    salas[socket.sala].usuarios[usuario].ultimaVez = Date.now();
+    socket.to(socket.sala).emit('presencia', { usuario, presente: false, ultimaVez: Date.now() });
   });
 
   socket.on('reaccion', (data) => {
@@ -216,12 +210,6 @@ io.on('connection', (socket) => {
         sala.usuarios[socket.usuario].ultimaVez = Date.now();
         socket.to(socket.sala).emit('presencia', { usuario: socket.usuario, presente: false, ultimaVez: Date.now() });
       }
-      io.to(socket.sala).emit('mensaje', {
-        msgId: 'sys-' + Date.now(),
-        usuario: '📢 Sistema',
-        texto: `${socket.usuario} se desconectó`,
-        hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      });
       limpiarSalaVacia(socket.sala);
     }
   });
