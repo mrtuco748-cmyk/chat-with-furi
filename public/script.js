@@ -73,7 +73,10 @@ function iniciarSesion() {
   registrarServiceWorker(); pedirPermisoNotificacion();
   construirEmojiPicker(); actualizarStats();
 }
-function conectarAlSala() { if (socket.connected) { socket.emit('unirse', { sala, usuario }); marcarPresente(); } }
+function conectarAlSala() {
+  if (socket.connected) { socket.emit('unirse', { sala, usuario }); marcarPresente(); }
+  else socket.once('connect', () => { socket.emit('unirse', { sala, usuario }); marcarPresente(); });
+}
 async function registrarServiceWorker() { if ('serviceWorker' in navigator) { try { await navigator.serviceWorker.register('/sw.js'); } catch (e) {} } }
 function pedirPermisoNotificacion() { if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission(); }
 function marcarPresente() { presente = true; socket.emit('presente', { usuario }); headerEstado.textContent = 'en l\u00ednea'; }
@@ -400,8 +403,8 @@ function renderMsgOtro(m) {
   if (esSistema) div.classList.add('sistema');
   let rh='', c='';
   if (m.respondiendoA) rh = '<div class="reply-quote"><div class="rq-user">'+escapeHtml(m.respondiendoA.usuario)+'</div><div class="rq-text">'+escapeHtml(m.respondiendoA.texto)+'</div></div>';
-  if (m.imagen) { const s='data:'+m.imagen.type+';base64,'+m.imagen.data; c+='<img src="'+s+'" class="imagen-msg" loading="lazy">'; }
-  if (m.audio) { const s='data:'+m.audio.type+';base64,'+m.audio.data; c += htmlPlayerAudio(s, m.audio.duracion||0); }
+  if (m.imagen) { const s = m.imagen.data && m.imagen.data.startsWith('data:') ? m.imagen.data : 'data:'+m.imagen.type+';base64,'+ (m.imagen.data||''); c+='<img src="'+s+'" class="imagen-msg" loading="lazy">'; }
+  if (m.audio) { const src = m.audio.data && m.audio.data.startsWith('data:') ? m.audio.data : (m.audio.data ? 'data:'+m.audio.type+';base64,'+m.audio.data : ''); c += htmlPlayerAudio(src, m.audio.duracion||0); }
   if (m.texto) c+='<div class="texto">'+formatearTexto(m.texto)+'</div>';
   div.innerHTML = (esSistema?'':'<div class="usuario">'+m.usuario+'</div>')+rh+c+'<div class="hora">'+(m.hora||'')+'</div>';
   mensajesDiv.appendChild(div);
