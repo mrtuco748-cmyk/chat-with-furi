@@ -18,7 +18,10 @@ const ICONS = {
   'more': '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>',
   'log-out': '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>',
   'download': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
-  'moon': '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>'
+  'moon': '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>',
+  'file': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
+  'map-pin': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>',
+  'bar-chart': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>'
 };
 
 function injectIcons() { document.querySelectorAll('[data-icon]').forEach(el => { const n = el.dataset.icon; if (ICONS[n]) el.innerHTML = ICONS[n]; }); }
@@ -256,6 +259,92 @@ function enviarAudio(blob) {
   }; r.readAsDataURL(blob);
 }
 
+function abrirDocumento() {
+  const i = document.createElement('input'); i.type = 'file';
+  i.addEventListener('change', e => { if (e.target.files?.[0]) enviarDocumento(e.target.files[0]); });
+  i.click();
+}
+function enviarDocumento(file) {
+  const r = new FileReader(); const msgId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+  r.onloadend = () => {
+    const b64 = r.result; const b = b64.split(',')[1];
+    const d = { msgId, usuario, texto: file.name, documento: { data: b, type: file.type, nombre: file.name, tamano: file.size }, respondiendoA };
+    socket.emit('mensaje', d);
+    agregarMensajePropio(msgId, { usuario, texto: file.name, documento: { data: b64, type: file.type, nombre: file.name, tamano: file.size }, respondiendoA });
+    if (respondiendoA) cancelarReply();
+  }; r.readAsDataURL(file);
+}
+
+function solicitarUbicacion() {
+  if (!navigator.geolocation) { mostrarToast('Geolocalizaci\u00F3n no disponible'); return; }
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      const { latitude, longitude } = pos.coords;
+      const nombre = prompt('Nombre del lugar (opcional):') || 'Ubicaci\u00F3n';
+      enviarUbicacion(latitude, longitude, nombre);
+    },
+    () => mostrarToast('No se pudo obtener la ubicaci\u00F3n'),
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+}
+function enviarUbicacion(lat, lng, nombre) {
+  const msgId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+  const mapsUrl = 'https://www.google.com/maps?q=' + lat + ',' + lng;
+  const d = { msgId, usuario, texto: nombre, ubicacion: { lat, lng, nombre, url: mapsUrl }, respondiendoA };
+  socket.emit('mensaje', d);
+  agregarMensajePropio(msgId, { usuario, texto: nombre, ubicacion: { lat, lng, nombre, url: mapsUrl }, respondiendoA });
+  if (respondiendoA) cancelarReply();
+}
+
+function mostrarCrearEncuesta() {
+  const pregunta = prompt('Pregunta de la encuesta:');
+  if (!pregunta) return;
+  const opcsStr = prompt('Opciones (separadas por coma):');
+  if (!opcsStr) return;
+  const opciones = opcsStr.split(',').map(s => s.trim()).filter(s => s);
+  if (opciones.length < 2) { mostrarToast('M\u00EDnimo 2 opciones'); return; }
+  enviarEncuesta(pregunta, opciones);
+}
+function enviarEncuesta(pregunta, opciones) {
+  const msgId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+  const votos = {};
+  opciones.forEach((_, i) => { votos[msgId + '-opc-' + i] = []; });
+  const d = { msgId, usuario, texto: pregunta, encuesta: { pregunta, opciones, votos }, respondiendoA };
+  socket.emit('mensaje', d);
+  agregarMensajePropio(msgId, { usuario, texto: pregunta, encuesta: { pregunta, opciones, votos }, respondiendoA });
+  if (respondiendoA) cancelarReply();
+}
+function votarEncuesta(msgId, opcionIdx) {
+  if (!socket.connected) return;
+  socket.emit('votar-encuesta', { sala, msgId, opcionIdx, usuario });
+  // Optimistic update
+  const div = document.getElementById('msg-' + msgId);
+  if (div) actualizarVotosEnBurbuja(div, msgId, opcionIdx, usuario);
+}
+function actualizarVotosEnBurbuja(div, msgId, opcionIdx, votante) {
+  const data = div.dataset;
+  let votos;
+  try { votos = JSON.parse(data.encuestaVotos || '{}'); } catch(e) { votos = {}; }
+  const key = msgId + '-opc-' + opcionIdx;
+  if (!votos[key]) votos[key] = [];
+  if (!votos[key].includes(votante)) votos[key].push(votante);
+  data.encuestaVotos = JSON.stringify(votos);
+  const bars = div.querySelectorAll('.encuesta-bar');
+  if (bars[opcionIdx]) {
+    const total = Object.values(votos).reduce((s, v) => s + v.length, 0);
+    const count = votos[key].length;
+    const pct = total > 0 ? (count / total) * 100 : 0;
+    bars[opcionIdx].querySelector('.eb-fill').style.width = pct + '%';
+    bars[opcionIdx].querySelector('.eb-pct').textContent = Math.round(pct) + '%';
+    bars[opcionIdx].querySelector('.eb-count').textContent = count + ' voto' + (count !== 1 ? 's' : '');
+  }
+  try {
+    const arr = JSON.parse(localStorage.getItem(keyMsgs()) || '[]');
+    const idx = arr.findIndex(m => m.msgId === msgId);
+    if (idx >= 0) { arr[idx].encuesta.votos = votos; localStorage.setItem(keyMsgs(), JSON.stringify(arr)); }
+  } catch(e) {}
+}
+
 const EMOJI_CATS = [
   { name:'Caritas', i:'😊', e:['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','😉','😊','😇','🥰','😍','🤩','😘','😗','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🥵','🥶','🥴','😵','🤯','🤠','🥳','🥸','😎','🤓','🧐','😕','😟','🙁','😮','😯','😲','😳','🥺','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','💀','☠️','💩','🤡','👹','👺','👻','👽','👾','🤖'] },
   { name:'Corazones', i:'❤️', e:['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❣️','💕','💞','💓','💗','💖','💘','💝','💟','💌','💋','💑','💏','👩‍❤️‍👨'] },
@@ -302,7 +391,7 @@ moreSettings.addEventListener('click', () => { moreMenu.classList.add('oculto');
 moreClearChat.addEventListener('click', () => { moreMenu.classList.add('oculto'); if (confirm('\u00BFVaciar chat?')) limpiarChat(); });
 moreExport.addEventListener('click', () => { moreMenu.classList.add('oculto'); exportarChat(); });
 const wpGuardado = localStorage.getItem('chat-wallpaper'); if (wpGuardado) document.body.className = 'wallpaper-' + wpGuardado;
-document.querySelectorAll('.attach-option').forEach(btn => { btn.addEventListener('click', () => { attachMenu.classList.add('oculto'); if (btn.dataset.tipo === 'camara') abrirCamara(); else if (btn.dataset.tipo === 'galeria') abrirGaleria(); else if (btn.dataset.tipo === 'sticker') stickerPicker.classList.remove('oculto'); }); });
+document.querySelectorAll('.attach-option').forEach(btn => { btn.addEventListener('click', () => { attachMenu.classList.add('oculto'); const t = btn.dataset.tipo; if (t === 'camara') abrirCamara(); else if (t === 'galeria') abrirGaleria(); else if (t === 'sticker') stickerPicker.classList.remove('oculto'); else if (t === 'documento') abrirDocumento(); else if (t === 'encuesta') mostrarCrearEncuesta(); else if (t === 'ubicacion') solicitarUbicacion(); }); });
 function abrirCamara() { const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; i.capture = 'environment'; i.addEventListener('change', e => { if (e.target.files?.[0]) mostrarPreviewImagen(e.target.files[0]); }); i.click(); }
 function abrirGaleria() { const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; i.addEventListener('change', e => { if (e.target.files?.[0]) mostrarPreviewImagen(e.target.files[0]); }); i.click(); }
 function mostrarPreviewImagen(file) {
@@ -539,11 +628,31 @@ function renderMsgPropio(m) {
   let rh='', c='';
   if (m.reenviado) div.dataset.reenviado = '1';
   if (m.respondiendoA) rh = '<div class="reply-quote"><div class="rq-user">'+escapeHtml(m.respondiendoA.usuario)+'</div><div class="rq-text">'+escapeHtml(m.respondiendoA.texto)+'</div></div>';
-  if (m.imagen) { const s = m.imagen.data && m.imagen.data.startsWith('data:') ? m.imagen.data : 'data:'+m.imagen.type+';base64,'+ (m.imagen.data||''); c += '<img src="'+s+'" class="imagen-msg" loading="lazy">'; if (m.texto) c += '<div class="img-caption">'+formatearTexto(m.texto)+'</div>'; }
+  if (m.imagen) { const s = m.imagen.data && m.imagen.data.startsWith('data:') ? m.imagen.data : 'data:'+m.imagen.type+';base64,'+ (m.imagen.data||''); c += '<img src="'+s+'" class="imagen-msg" loading="lazy">'; if (m.texto && !m.ubicacion && !m.encuesta) c += '<div class="img-caption">'+formatearTexto(m.texto)+'</div>'; }
   else if (m.audio) {
     const src = m.audio.data && m.audio.data.startsWith('data:') ? m.audio.data : (m.audio.data ? 'data:'+m.audio.type+';base64,'+m.audio.data : '');
     c += htmlPlayerAudio(src, m.audio.duracion||0);
     if (m.texto) c += '<div class="img-caption">'+formatearTexto(m.texto)+'</div>';
+  }
+  else if (m.documento) {
+    const ext = (m.documento.nombre||'archivo').split('.').pop().toUpperCase();
+    const tam = m.documento.tamano ? ((m.documento.tamano/1024).toFixed(1)+' KB') : '';
+    const src = m.documento.data && m.documento.data.startsWith('data:') ? m.documento.data : 'data:'+m.documento.type+';base64,'+ (m.documento.data||'');
+    c += '<div class="doc-msg" onclick="window.open(\''+src+'\')"><span class="doc-icon" data-icon="file"></span><div class="doc-info"><div class="doc-name">'+escapeHtml(m.texto||m.documento.nombre)+'</div><div class="doc-meta">'+ext+' \u2022 '+tam+'</div></div></div>';
+  }
+  else if (m.ubicacion) {
+    c += '<div class="ubic-msg" onclick="window.open(\''+escapeHtml(m.ubicacion.url)+'\',\'_blank\')"><span class="ubic-icon" data-icon="map-pin"></span><div class="ubic-info"><div class="ubic-name">'+escapeHtml(m.texto||m.ubicacion.nombre)+'</div><div class="ubic-meta">Abrir en Google Maps</div></div></div>';
+  }
+  else if (m.encuesta) {
+    div.dataset.encuestaVotos = JSON.stringify(m.encuesta.votos || {});
+    const opcs = m.encuesta.opciones.map((o, i) => {
+      const key = m.msgId+'-opc-'+i;
+      const v = (m.encuesta.votos||{})[key]||[];
+      const total = Object.values(m.encuesta.votos||{}).reduce((s,x) => s + x.length, 0);
+      const pct = total > 0 ? (v.length/total)*100 : 0;
+      return '<div class="encuesta-bar" data-idx="'+i+'" onclick="votarEncuesta(\''+m.msgId+'\','+i+')"><div class="eb-fill" style="width:'+pct+'%"></div><div class="eb-label">'+escapeHtml(o)+'</div><div class="eb-pct">'+Math.round(pct)+'%</div><div class="eb-count">'+v.length+' voto'+(v.length!==1?'s':'')+'</div></div>';
+    }).join('');
+    c += '<div class="encuesta-msg"><div class="encuesta-preg">'+formatearTexto(m.texto)+'</div><div class="encuesta-opcs">'+opcs+'</div></div>';
   }
   else c += '<div class="texto">'+formatearTexto(m.texto)+'</div>';
   if (m.reenviado) c = '<span class="msg-forward-tag">Reenviado</span>' + c;
@@ -561,9 +670,29 @@ function renderMsgOtro(m) {
   let rh='', c='';
   if (m.reenviado) div.dataset.reenviado = '1';
   if (m.respondiendoA) rh = '<div class="reply-quote"><div class="rq-user">'+escapeHtml(m.respondiendoA.usuario)+'</div><div class="rq-text">'+escapeHtml(m.respondiendoA.texto)+'</div></div>';
-  if (m.imagen) { const s = m.imagen.data && m.imagen.data.startsWith('data:') ? m.imagen.data : 'data:'+m.imagen.type+';base64,'+ (m.imagen.data||''); c+='<img src="'+s+'" class="imagen-msg" loading="lazy">'; if (m.texto) c += '<div class="img-caption">'+formatearTexto(m.texto)+'</div>'; }
+  if (m.imagen) { const s = m.imagen.data && m.imagen.data.startsWith('data:') ? m.imagen.data : 'data:'+m.imagen.type+';base64,'+ (m.imagen.data||''); c+='<img src="'+s+'" class="imagen-msg" loading="lazy">'; if (m.texto && !m.ubicacion && !m.encuesta) c += '<div class="img-caption">'+formatearTexto(m.texto)+'</div>'; }
   if (m.audio) { const src = m.audio.data && m.audio.data.startsWith('data:') ? m.audio.data : (m.audio.data ? 'data:'+m.audio.type+';base64,'+m.audio.data : ''); c += htmlPlayerAudio(src, m.audio.duracion||0); if (m.texto) c += '<div class="img-caption">'+formatearTexto(m.texto)+'</div>'; }
-  if (m.texto) c+='<div class="texto">'+formatearTexto(m.texto)+'</div>';
+  if (m.texto && !m.imagen && !m.documento && !m.ubicacion && !m.encuesta) c+='<div class="texto">'+formatearTexto(m.texto)+'</div>';
+  if (m.documento) {
+    const ext = (m.documento.nombre||'archivo').split('.').pop().toUpperCase();
+    const tam = m.documento.tamano ? ((m.documento.tamano/1024).toFixed(1)+' KB') : '';
+    const src = m.documento.data && m.documento.data.startsWith('data:') ? m.documento.data : 'data:'+m.documento.type+';base64,'+ (m.documento.data||'');
+    c += '<div class="doc-msg" onclick="window.open(\''+src+'\')"><span class="doc-icon" data-icon="file"></span><div class="doc-info"><div class="doc-name">'+escapeHtml(m.texto||m.documento.nombre)+'</div><div class="doc-meta">'+ext+' \u2022 '+tam+'</div></div></div>';
+  }
+  if (m.ubicacion) {
+    c += '<div class="ubic-msg" onclick="window.open(\''+escapeHtml(m.ubicacion.url)+'\',\'_blank\')"><span class="ubic-icon" data-icon="map-pin"></span><div class="ubic-info"><div class="ubic-name">'+escapeHtml(m.texto||m.ubicacion.nombre)+'</div><div class="ubic-meta">Abrir en Google Maps</div></div></div>';
+  }
+  if (m.encuesta) {
+    div.dataset.encuestaVotos = JSON.stringify(m.encuesta.votos || {});
+    const opcs = m.encuesta.opciones.map((o, i) => {
+      const key = m.msgId+'-opc-'+i;
+      const v = (m.encuesta.votos||{})[key]||[];
+      const total = Object.values(m.encuesta.votos||{}).reduce((s,x) => s + x.length, 0);
+      const pct = total > 0 ? (v.length/total)*100 : 0;
+      return '<div class="encuesta-bar" data-idx="'+i+'" onclick="votarEncuesta(\''+m.msgId+'\','+i+')"><div class="eb-fill" style="width:'+pct+'%"></div><div class="eb-label">'+escapeHtml(o)+'</div><div class="eb-pct">'+Math.round(pct)+'%</div><div class="eb-count">'+v.length+' voto'+(v.length!==1?'s':'')+'</div></div>';
+    }).join('');
+    c += '<div class="encuesta-msg"><div class="encuesta-preg">'+formatearTexto(m.texto)+'</div><div class="encuesta-opcs">'+opcs+'</div></div>';
+  }
   if (m.reenviado) c = '<span class="msg-forward-tag">Reenviado</span>' + c;
   div.innerHTML = (esSistema?'':'<div class="usuario">'+m.usuario+'</div>')+rh+c+'<div class="hora">'+(m.hora||'')+'</div>';
   mensajesDiv.appendChild(div);
@@ -686,6 +815,9 @@ socket.on('mensaje', (data) => {
     if (data.respondiendoA) mData.respondiendoA = data.respondiendoA;
     if (data.imagen) mData.imagen = { data: 'data:'+data.imagen.type+';base64,'+data.imagen.data, type: data.imagen.type };
     if (data.audio) mData.audio = { data: 'data:'+data.audio.type+';base64,'+data.audio.data, type: data.audio.type, duracion: data.audio.duracion };
+    if (data.documento) mData.documento = { data: 'data:'+data.documento.type+';base64,'+data.documento.data, type: data.documento.type, nombre: data.documento.nombre, tamano: data.documento.tamano };
+    if (data.ubicacion) mData.ubicacion = { lat: data.ubicacion.lat, lng: data.ubicacion.lng, nombre: data.ubicacion.nombre, url: data.ubicacion.url };
+    if (data.encuesta) mData.encuesta = { pregunta: data.encuesta.pregunta, opciones: data.encuesta.opciones, votos: data.encuesta.votos || {} };
     if (data.reenviado) mData.reenviado = true;
     guardarMsgLocal(mData);
     if (esSistema) { const d = document.createElement('div'); d.classList.add('mensaje','sistema'); d.textContent = data.texto; mensajesDiv.appendChild(d); mensajesDiv.scrollTop = mensajesDiv.scrollHeight; return; }
@@ -706,6 +838,22 @@ socket.on('mensaje', (data) => {
 });
 socket.on('estado-msg', (data) => { const el = document.getElementById('estado-'+data.msgId); if (!el) return; if (data.estado==='enviado') el.innerHTML = '<span class="tick">\u2713</span>'; else if (data.estado==='entregado') el.innerHTML = '<span class="tick doble">\u2713\u2713</span>'; else if (data.estado==='visto') el.innerHTML = '<span class="tick doble visto">\u2713\u2713</span>'; });
 socket.on('reaccion', (data) => { const d = document.getElementById('msg-'+data.msgId); if (d) mostrarReaccion(d, data.reaccion); });
+socket.on('voto-encuesta', (data) => {
+  const d = document.getElementById('msg-'+data.msgId);
+  if (d) actualizarVotosEnBurbuja(d, data.msgId, data.opcionIdx, data.usuario);
+  try {
+    const arr = JSON.parse(localStorage.getItem(keyMsgs()) || '[]');
+    const idx = arr.findIndex(m => m.msgId === data.msgId);
+    if (idx >= 0) {
+      const key = data.msgId+'-opc-'+data.opcionIdx;
+      if (!arr[idx].encuesta) arr[idx].encuesta = { votos: {} };
+      if (!arr[idx].encuesta.votos) arr[idx].encuesta.votos = {};
+      if (!arr[idx].encuesta.votos[key]) arr[idx].encuesta.votos[key] = [];
+      if (!arr[idx].encuesta.votos[key].includes(data.usuario)) arr[idx].encuesta.votos[key].push(data.usuario);
+      localStorage.setItem(keyMsgs(), JSON.stringify(arr));
+    }
+  } catch(e) {}
+});
 socket.on('presencia', (data) => {
   if (data.presente) { headerEstado.textContent = 'en línea'; }
   else if (data.ultimaVez) {

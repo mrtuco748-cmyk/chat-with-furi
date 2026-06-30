@@ -466,14 +466,14 @@ body {
 }
 @keyframes sheetIn { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
-#attachMenu .attach-sheet { display: flex; gap: 16px; justify-content: center; }
+#attachMenu .attach-sheet { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; justify-items: center; }
 .attach-option {
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
-  background: rgba(255,255,255,0.3); border: none; font-size: 14px;
-  cursor: pointer; padding: 16px 24px; border-radius: 16px; color: var(--text-primary);
-  transition: all 0.2s;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  background: rgba(255,255,255,0.3); border: none; font-size: 12px;
+  cursor: pointer; padding: 14px 16px; border-radius: 16px; color: var(--text-primary);
+  transition: all 0.2s; width: 100%; max-width: 100px;
 }
-.attach-option span { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; }
+.attach-option span { width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; }
 .attach-option:hover { background: rgba(255,255,255,0.5); transform: translateY(-2px); }
 
 .wallpaper-title { font-size: 16px; font-weight: 600; color: var(--text-primary); text-align: center; margin-bottom: 16px; }
@@ -651,6 +651,34 @@ body {
 .settings-btn:hover { background: rgba(255,20,147,0.12); }
 .settings-btn.danger { color: #e53935; border-color: rgba(229,57,53,0.2); background: rgba(229,57,53,0.06); }
 .settings-btn.danger:hover { background: rgba(229,57,53,0.1); }
+
+.doc-msg { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; cursor: pointer; background: rgba(0,0,0,0.03); margin-bottom: 2px; transition: background 0.12s; }
+.mensaje.propio .doc-msg { background: rgba(255,255,255,0.12); }
+.doc-msg:hover { background: rgba(255,20,147,0.08); }
+.doc-icon { width: 36px; height: 36px; border-radius: 10px; background: rgba(255,20,147,0.12); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--accent); }
+.doc-info { min-width: 0; flex: 1; }
+.doc-name { font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.doc-meta { font-size: 11px; opacity: 0.5; margin-top: 2px; }
+
+.ubic-msg { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; cursor: pointer; background: rgba(0,0,0,0.03); margin-bottom: 2px; transition: background 0.12s; }
+.mensaje.propio .ubic-msg { background: rgba(255,255,255,0.12); }
+.ubic-msg:hover { background: rgba(255,20,147,0.08); }
+.ubic-icon { width: 36px; height: 36px; border-radius: 10px; background: rgba(0,150,255,0.12); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #2196f3; }
+.ubic-info { min-width: 0; flex: 1; }
+.ubic-name { font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ubic-meta { font-size: 11px; opacity: 0.5; margin-top: 2px; }
+
+.encuesta-msg { padding: 4px 0; }
+.encuesta-preg { font-size: 15px; line-height: 1.4; margin-bottom: 8px; font-weight: 500; }
+.encuesta-opcs { display: flex; flex-direction: column; gap: 6px; }
+.encuesta-bar { position: relative; padding: 9px 12px; border-radius: 10px; cursor: pointer; overflow: hidden; background: rgba(0,0,0,0.04); transition: background 0.12s; min-height: 40px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+.mensaje.propio .encuesta-bar { background: rgba(255,255,255,0.08); }
+.encuesta-bar:hover { background: rgba(255,20,147,0.06); }
+.encuesta-bar .eb-fill { position: absolute; top: 0; left: 0; bottom: 0; background: rgba(255,20,147,0.1); border-radius: 10px; transition: width 0.3s ease; }
+.mensaje.propio .encuesta-bar .eb-fill { background: rgba(255,255,255,0.12); }
+.encuesta-bar .eb-label { position: relative; z-index: 1; font-size: 14px; font-weight: 500; }
+.encuesta-bar .eb-pct { position: relative; z-index: 1; font-size: 12px; opacity: 0.6; margin-left: auto; }
+.encuesta-bar .eb-count { position: relative; z-index: 1; font-size: 11px; opacity: 0.4; width: 100%; }
 
 .link-preview { margin-top: 6px; border-radius: 10px; overflow: hidden; background: rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.06); }
 .mensaje.propio .link-preview { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.15); }
