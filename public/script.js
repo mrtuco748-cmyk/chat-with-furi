@@ -512,7 +512,7 @@ function construirEmojiPicker() {
     const panel = document.createElement('div'); panel.className = 'emoji-panel';
     cat.e.forEach(em => {
       const btn = document.createElement('button'); btn.textContent = em;
-      btn.addEventListener('click', () => { if (emojiPicker._modoReaccion) { const mid = emojiPicker._msgId; const d2 = document.getElementById('msg-'+mid); if (mid && d2) { vibrar(10); setReaccionMsg(mid, em); mostrarReaccion(d2, em); registrarReaccionUsada(em); socket.emit('reaccion',{sala,msgId:mid,usuario,reaccion:em}); } emojiPicker._modoReaccion = false; emojiPicker.classList.add('oculto'); } else { mensajeInput.value += em; mensajeInput.focus(); actualizarBotonEnvio(); } });
+      btn.addEventListener('click', () => { if (emojiPicker._modoReaccion) { const mid = emojiPicker._msgId; const d2 = document.getElementById('msg-'+mid); if (mid && d2) { vibrar(10); setReaccionMsg(mid, em); mostrarReaccion(d2, em); registrarReaccionUsada(em); socket.emit('reaccion',{sala,msgId:mid,usuario,reaccion:em}); } emojiPicker._modoReaccion = false; emojiPicker.classList.add('oculto'); salirSelectMode(); } else { mensajeInput.value += em; mensajeInput.focus(); actualizarBotonEnvio(); } });
       panel.appendChild(btn);
     });
     panels.appendChild(panel);
@@ -707,11 +707,11 @@ function getReaccFrecuentes() { return JSON.parse(localStorage.getItem(keyReaccF
 function registrarReaccionUsada(emoji) { try { let c = JSON.parse(localStorage.getItem(keyReaccConteo()) || '{}'); c[emoji] = (c[emoji]||0) + 1; const ord = Object.keys(c).sort((a,b) => c[b] - c[a]); localStorage.setItem(keyReaccFrec(), JSON.stringify(ord.slice(0,5))); localStorage.setItem(keyReaccConteo(), JSON.stringify(c)); } catch(e) {} }
 function onClickReaccion(e) {
   vibrar(10); const el = e.currentTarget; const emoji = el.dataset.reaccion; const msgId = quickReactionMsgId; const div = document.getElementById('msg-' + msgId);
-  if (!msgId || !div) { quickReactions.classList.add('oculto'); quickReactionsOverlay.classList.add('oculto'); return; }
+  if (!msgId || !div) { quickReactions.classList.add('oculto'); quickReactionsOverlay.classList.add('oculto'); salirSelectMode(); return; }
   const actual = getReaccionMsg(msgId);
   if (actual === emoji) { setReaccionMsg(msgId, null); mostrarReaccion(div, ''); socket.emit('reaccion', { sala, msgId, usuario, reaccion: '' }); }
   else { setReaccionMsg(msgId, emoji); mostrarReaccion(div, emoji); registrarReaccionUsada(emoji); socket.emit('reaccion', { sala, msgId, usuario, reaccion: emoji }); }
-  quickReactions.classList.add('oculto'); quickReactionsOverlay.classList.add('oculto');
+  quickReactions.classList.add('oculto'); quickReactionsOverlay.classList.add('oculto'); salirSelectMode();
 }
 function construirQuickReactions() {
   quickReactions.innerHTML = '';
@@ -720,7 +720,7 @@ function construirQuickReactions() {
     s.addEventListener('click', onClickReaccion); quickReactions.appendChild(s);
   });
   const p = document.createElement('span'); p.className = 'qr-emoji qr-plus'; p.textContent = '+';
-  p.addEventListener('click', () => { quickReactions.classList.add('oculto'); quickReactionsOverlay.classList.add('oculto'); emojiPicker._modoReaccion = true; emojiPicker._msgId = quickReactionMsgId; emojiPicker.classList.remove('oculto'); });
+  p.addEventListener('click', () => { quickReactions.classList.add('oculto'); quickReactionsOverlay.classList.add('oculto'); salirSelectMode(); emojiPicker._modoReaccion = true; emojiPicker._msgId = quickReactionMsgId; emojiPicker.classList.remove('oculto'); });
   quickReactions.appendChild(p);
 }
 function guardarMsgLocal(m) {
