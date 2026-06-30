@@ -1259,25 +1259,15 @@ function mostrarFavorito(el, on) {
 function agregarQuietToggle(containerEl, replyMsgId, texto) {
   let c = containerEl.querySelector('.quiet-reply-container');
   if (!c) {
-    c = document.createElement('div'); c.className = 'quiet-reply-container'; c.id = 'qr-'+containerEl.id;
-    const toggle = document.createElement('span'); toggle.className = 'quiet-toggle';
-    toggle.innerHTML = '<span data-icon="message-circle"></span> 1 respuesta';
-    injectIconsIn(toggle);
-    toggle.addEventListener('click', () => c.classList.toggle('abierto'));
-    containerEl.appendChild(toggle);
-    const msgDiv = document.createElement('div'); msgDiv.className = 'quiet-reply-msg'; msgDiv.id = 'qr-msg-'+replyMsgId;
-    msgDiv.innerHTML = '<div class="quiet-reply-label">Respuesta silenciosa</div><div>'+escapeHtml(texto)+'</div>';
-    c.appendChild(msgDiv);
+    c = document.createElement('div'); c.className = 'quiet-reply-container';
+    c.innerHTML = '<div class="quiet-reply-label">Mensaje silencioso <span class="quiet-chevron">\u25B8</span></div><div class="quiet-reply-msg" id="qr-msg-'+replyMsgId+'">'+escapeHtml(texto)+'</div>';
+    c.addEventListener('click', () => c.classList.toggle('abierto'));
     containerEl.appendChild(c);
   } else {
-    const existing = c.querySelector('#qr-msg-'+replyMsgId);
-    if (existing) return;
+    if (c.querySelector('#qr-msg-'+replyMsgId)) return;
     const msgDiv = document.createElement('div'); msgDiv.className = 'quiet-reply-msg'; msgDiv.id = 'qr-msg-'+replyMsgId;
-    msgDiv.innerHTML = '<div class="quiet-reply-label">Respuesta silenciosa</div><div>'+escapeHtml(texto)+'</div>';
+    msgDiv.innerHTML = escapeHtml(texto);
     c.appendChild(msgDiv);
-    const toggle = containerEl.querySelector('.quiet-toggle');
-    const count = c.querySelectorAll('.quiet-reply-msg').length;
-    if (toggle) { toggle.innerHTML = '<span data-icon="message-circle"></span> '+count+' respuesta'+(count!==1?'s':''); injectIconsIn(toggle); }
   }
 }
 
