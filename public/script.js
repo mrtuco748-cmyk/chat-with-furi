@@ -66,7 +66,8 @@ const moreBtn = $('moreBtn'), moreMenu = $('moreMenu'), moreOverlay = $('moreOve
 const moreTheme = $('moreTheme'), moreSelect = $('moreSelect'), moreSettings = $('moreSettings'), moreClearChat = $('moreClearChat'), moreExport = $('moreExport'), moreLogout = $('moreLogout');
 const statsBtn = $('statsBtn'), statsModal = $('statsModal'), statsOverlay = $('statsOverlay'), statsSetDate = $('statsSetDate');
 const statDias = $('statDias'), statMsgs = $('statMsgs'), statFotos = $('statFotos'), statAudios = $('statAudios');
-const quickReactions = $('quickReactions');
+const quickReactions = $('quickReactions'), quickReactionsOverlay = $('quickReactionsOverlay');
+quickReactionsOverlay.addEventListener('click', () => { quickReactions.classList.add('oculto'); quickReactionsOverlay.classList.add('oculto'); });
 const imgPreview = $('imagePreview'), imgPrevImage = $('imgPrevImage'), imgPrevOverlay = $('imgPrevOverlay'), imgPrevSend = $('imgPrevSend'), imgPrevCaption = $('imgPrevCaption');
 const iv = $('imageViewer'), ivImg = $('ivImage'), ivInfo = $('ivInfo'), ivShareBtn = $('ivShareBtn'), ivCloseBtn = $('ivCloseBtn');
 const stickerPicker = $('stickerPicker');
@@ -692,11 +693,11 @@ function getReaccFrecuentes() { return JSON.parse(localStorage.getItem(keyReaccF
 function registrarReaccionUsada(emoji) { try { let c = JSON.parse(localStorage.getItem(keyReaccConteo()) || '{}'); c[emoji] = (c[emoji]||0) + 1; const ord = Object.keys(c).sort((a,b) => c[b] - c[a]); localStorage.setItem(keyReaccFrec(), JSON.stringify(ord.slice(0,5))); localStorage.setItem(keyReaccConteo(), JSON.stringify(c)); } catch(e) {} }
 function onClickReaccion(e) {
   vibrar(10); const el = e.currentTarget; const emoji = el.dataset.reaccion; const msgId = quickReactionMsgId; const div = document.getElementById('msg-' + msgId);
-  if (!msgId || !div) { quickReactions.classList.add('oculto'); return; }
+  if (!msgId || !div) { quickReactions.classList.add('oculto'); quickReactionsOverlay.classList.add('oculto'); return; }
   const actual = getReaccionMsg(msgId);
   if (actual === emoji) { setReaccionMsg(msgId, null); mostrarReaccion(div, ''); socket.emit('reaccion', { sala, msgId, usuario, reaccion: '' }); }
   else { setReaccionMsg(msgId, emoji); mostrarReaccion(div, emoji); registrarReaccionUsada(emoji); socket.emit('reaccion', { sala, msgId, usuario, reaccion: emoji }); }
-  quickReactions.classList.add('oculto');
+  quickReactions.classList.add('oculto'); quickReactionsOverlay.classList.add('oculto');
 }
 function construirQuickReactions() {
   quickReactions.innerHTML = '';
@@ -705,7 +706,7 @@ function construirQuickReactions() {
     s.addEventListener('click', onClickReaccion); quickReactions.appendChild(s);
   });
   const p = document.createElement('span'); p.className = 'qr-emoji qr-plus'; p.textContent = '+';
-  p.addEventListener('click', () => { quickReactions.classList.add('oculto'); emojiPicker._modoReaccion = true; emojiPicker._msgId = quickReactionMsgId; emojiPicker.classList.remove('oculto'); });
+  p.addEventListener('click', () => { quickReactions.classList.add('oculto'); quickReactionsOverlay.classList.add('oculto'); emojiPicker._modoReaccion = true; emojiPicker._msgId = quickReactionMsgId; emojiPicker.classList.remove('oculto'); });
   quickReactions.appendChild(p);
 }
 function guardarMsgLocal(m) {
@@ -917,7 +918,7 @@ function agregarEventosMensaje(div, msgId, data) {
       else selectedMsgs.delete(msgId);
       actualizarSelectCount();
       if (selectedMsgs.size === 0) salirSelectMode();
-      quickReactions.classList.add('oculto');
+      quickReactions.classList.add('oculto'); quickReactionsOverlay.classList.add('oculto');
       return;
     }
     toques++; if (toques===1) td = setTimeout(()=>{toques=0;},300); else if (toques===2) { clearTimeout(td); toques=0; const frec = getReaccFrecuentes(); const emoji = frec[0] || '\u2764\uFE0F'; socket.emit('reaccion',{sala,msgId,usuario,reaccion:emoji}); mostrarReaccion(div,emoji); setReaccionMsg(msgId, emoji); registrarReaccionUsada(emoji); }
@@ -935,7 +936,7 @@ function agregarEventosMensaje(div, msgId, data) {
       quickReactions.style.left = Math.max(10, (window.innerWidth - qw) / 2) + 'px';
       quickReactionMsgId = msgId;
       construirQuickReactions();
-      quickReactions.classList.remove('oculto');
+      quickReactions.classList.remove('oculto'); quickReactionsOverlay.classList.remove('oculto');
     }, 600);
   });
   div.addEventListener('pointerup', () => { clearTimeout(lp); if (!selectMode) limpiarSwipe(); });
@@ -1177,14 +1178,14 @@ function entrSelectMode(msgId) {
   selectedMsgs.clear();
   if (msgId) { selectedMsgs.add(msgId); document.getElementById('msg-'+msgId)?.classList.add('seleccionado'); }
   actualizarSelectCount();
-  quickReactions.classList.add('oculto'); deleteOptions.classList.add('oculto'); quietBar.classList.add('oculto');
+  quickReactions.classList.add('oculto'); quickReactionsOverlay.classList.add('oculto'); deleteOptions.classList.add('oculto'); quietBar.classList.add('oculto');
 }
 function salirSelectMode() {
   selectMode = false;
   headerNormal.classList.remove('oculto'); headerSelect.classList.add('oculto');
   document.querySelectorAll('.mensaje.seleccionado').forEach(el => el.classList.remove('seleccionado'));
   selectedMsgs.clear();
-  deleteOptions.classList.add('oculto'); quietBar.classList.add('oculto'); quickReactions.classList.add('oculto');
+  deleteOptions.classList.add('oculto'); quietBar.classList.add('oculto'); quickReactions.classList.add('oculto'); quickReactionsOverlay.classList.add('oculto');
 }
 function actualizarSelectCount() {
   const n = selectedMsgs.size;
