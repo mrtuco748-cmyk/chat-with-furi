@@ -86,6 +86,8 @@ const installBanner = $('installBanner'), installBtn = $('installBtn'), installC
 const wpCustomBg = $('wpCustomBg'), wpClearBg = $('wpClearBg'), avatarRing = document.querySelector('.avatar-ring'), avatarHeart = document.querySelector('.avatar-heart');
 avatarRing.addEventListener('click', () => {
   const foto = fotoPerfilRemoto || fotoPerfilLocal;
+  const hash = btoa(foto?.substring(0, 200) || '');
+  console.log('[Perfil] avatarRing click:', { remoto: !!fotoPerfilRemoto, local: !!fotoPerfilLocal, hash });
   if (foto) abrirVisorImagen(foto, 'Foto de perfil');
 });
 const headerTitle = $('headerTitle');
@@ -293,9 +295,10 @@ function restaurarPerfil() {
   if (pn) { headerTitle.textContent = pn; actualizarTituloApp(pn); }
   settingsParejaNombre.value = pn || '';
   const fg = localStorage.getItem('chat-foto-' + sala);
-  if (fg) { fotoPerfilLocal = fg; settingsFotoPreview.src = fg; settingsFotoPreview.parentElement.style.display = 'flex'; }
+  if (fg) { fotoPerfilLocal = fg; settingsFotoPreview.src = fg; settingsFotoPreview.parentElement.style.display = 'flex'; console.log('[Perfil] Foto local restaurada:', fg?.substring(0, 50) + '...'); }
   const rf = localStorage.getItem('chat-foto-remoto-' + sala);
-  if (rf) { fotoPerfilRemoto = rf; actualizarAvatar(rf); actualizarFavicon(rf); }
+  if (rf) { fotoPerfilRemoto = rf; actualizarAvatar(rf); actualizarFavicon(rf); console.log('[Perfil] Foto remota restaurada:', rf?.substring(0, 50) + '...'); }
+  console.log('[Perfil] estado:', { local: !!fotoPerfilLocal, remoto: !!fotoPerfilRemoto, sala });
 }
 socket.on('foto-perfil', (data) => {
   if (data.foto) {
