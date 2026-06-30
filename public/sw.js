@@ -1,3 +1,8 @@
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', () => self.clients.claim());
+
+self.addEventListener('fetch', () => {});
+
 self.addEventListener('message', (event) => {
   const data = event.data;
   if (data && data.tipo === 'notificacion') {
