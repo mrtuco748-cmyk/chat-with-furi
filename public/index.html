@@ -133,6 +133,7 @@
       <button class="attach-option" data-tipo="encuesta"><span data-icon="bar-chart"></span> Encuesta</button>
       <button class="attach-option" data-tipo="ubicacion"><span data-icon="map-pin"></span> Ubicaci&oacute;n</button>
       <button class="attach-option" data-tipo="sticker"><span data-icon="smile"></span> Sticker</button>
+      <button class="attach-option" data-tipo="dibujo"><span data-icon="edit-3"></span> Dibujo</button>
     </div>
   </div>
 
@@ -334,6 +335,43 @@
         <button class="vc-btn" id="vcSpeakerBtn" data-icon="speaker"></button>
       </div>
       <div class="vc-timer" id="vcTimer">00:00</div>
+    </div>
+  </div>
+
+  <!-- Drawing Modal (Instagram style) -->
+  <div id="drawingModal" class="oculto">
+    <div class="drawing-container">
+      <div class="drawing-header">
+        <button class="drawing-btn" id="drawingCloseBtn" data-icon="x"></button>
+        <div class="drawing-brush-types">
+          <button class="brush-type-btn activa" id="brushPen" data-tipo="normal">L&aacute;piz</button>
+          <button class="brush-type-btn" id="brushNeon" data-tipo="neon">Ne&oacute;n</button>
+        </div>
+        <div class="drawing-top-actions">
+          <button class="drawing-btn" id="drawingUndoBtn" data-icon="arrow-left" title="Deshacer"></button>
+          <button class="drawing-btn" id="drawingClearBtn" data-icon="trash" title="Limpiar"></button>
+          <button class="drawing-send-btn" id="drawingSendBtn">Listo</button>
+        </div>
+      </div>
+
+      <div class="drawing-canvas-wrapper">
+        <canvas id="drawingCanvas"></canvas>
+      </div>
+
+      <div class="drawing-controls">
+        <div class="brush-size-container">
+          <input type="range" id="brushSizeSlider" min="2" max="50" value="10" class="brush-slider">
+        </div>
+        <div class="drawing-colors">
+          <button class="color-dot activa" style="background:#ff007f" data-color="#ff007f"></button>
+          <button class="color-dot" style="background:#00ffff" data-color="#00ffff"></button>
+          <button class="color-dot" style="background:#ffff00" data-color="#ffff00"></button>
+          <button class="color-dot" style="background:#00ff00" data-color="#00ff00"></button>
+          <button class="color-dot" style="background:#bd00ff" data-color="#bd00ff"></button>
+          <button class="color-dot" style="background:#ffffff" data-color="#ffffff"></button>
+          <button class="color-dot" style="background:#000000" data-color="#000000"></button>
+        </div>
+      </div>
     </div>
   </div>
 

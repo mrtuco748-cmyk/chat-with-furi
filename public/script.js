@@ -31,7 +31,8 @@ const ICONS = {
   'speaker': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg>',
   'speaker-off': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>',
   'mic-off': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 005.12 2.12M15 9.34V4a3 3 0 00-5.94-.6"/><path d="M17 16.95A7 7 0 015 12v-2m14 0v2a7 7 0 01-.11 1.23"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>',
-  'video-off': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 16v1a2 2 0 01-2 2H3a2 2 0 01-2-2V7a2 2 0 012-2h2m5.66 0H14a2 2 0 012 2v3.34l1 1L23 7v10"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'
+  'video-off': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 16v1a2 2 0 01-2 2H3a2 2 0 01-2-2V7a2 2 0 012-2h2m5.66 0H14a2 2 0 012 2v3.34l1 1L23 7v10"/><line x1="1" y1="1" x2="23" y2="23"/></svg>',
+  'edit-3': '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>'
 };
 
 function injectIcons() { document.querySelectorAll('[data-icon]').forEach(el => { const n = el.dataset.icon; if (ICONS[n]) el.innerHTML = ICONS[n]; }); }
@@ -697,7 +698,7 @@ moreSettings.addEventListener('click', () => { moreMenu.classList.add('oculto');
 moreClearChat.addEventListener('click', () => { moreMenu.classList.add('oculto'); if (confirm('\u00BFVaciar chat?')) limpiarChat(); });
 moreExport.addEventListener('click', () => { moreMenu.classList.add('oculto'); exportarChat(); });
 const wpGuardado = localStorage.getItem('chat-wallpaper'); if (wpGuardado) { document.body.classList.remove('wallpaper-default', 'wallpaper-rose', 'wallpaper-sunset', 'wallpaper-ocean', 'wallpaper-lavender'); document.body.classList.add('wallpaper-' + wpGuardado); }
-document.querySelectorAll('.attach-option').forEach(btn => { btn.addEventListener('click', () => { attachMenu.classList.add('oculto'); const t = btn.dataset.tipo; if (t === 'camara') abrirCamara(); else if (t === 'galeria') abrirGaleria(); else if (t === 'sticker') stickerPicker.classList.remove('oculto'); else if (t === 'documento') abrirDocumento(); else if (t === 'encuesta') abrirPollModal(); else if (t === 'ubicacion') solicitarUbicacion(); }); });
+document.querySelectorAll('.attach-option').forEach(btn => { btn.addEventListener('click', () => { attachMenu.classList.add('oculto'); const t = btn.dataset.tipo; if (t === 'camara') abrirCamara(); else if (t === 'galeria') abrirGaleria(); else if (t === 'sticker') stickerPicker.classList.remove('oculto'); else if (t === 'documento') abrirDocumento(); else if (t === 'encuesta') abrirPollModal(); else if (t === 'ubicacion') solicitarUbicacion(); else if (t === 'dibujo') abrirDibujo(); }); });
 
 // Poll Modal
 const pollModal = document.getElementById('pollModal');
@@ -776,6 +777,230 @@ function enviarImagen(file) {
   r.onloadend = () => { const b64 = r.result; const b = b64.split(',')[1]; socket.emit('mensaje', { msgId, usuario, texto: caption, imagen: { data: b, type: file.type }, respondiendoA }); agregarMensajePropio(msgId, { usuario, texto: caption, audio: null, imagen: { data: b64, type: file.type }, respondiendoA }); if (respondiendoA) cancelarReply(); fotoCount++; actualizarStats(); };
   r.readAsDataURL(file);
 }
+
+// Drawing Feature (Instagram Style)
+let drawingCanvas = null;
+let drawingCtx = null;
+let isDrawing = false;
+let lastX = 0;
+let lastY = 0;
+let brushColor = '#ff007f';
+let brushSize = 10;
+let brushType = 'normal';
+let drawingHistory = [];
+
+function enviarDibujo(base64DataUrl) {
+  const msgId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+  const b = base64DataUrl.split(',')[1];
+  const type = 'image/png';
+  socket.emit('mensaje', { msgId, usuario, texto: '', imagen: { data: b, type }, respondiendoA });
+  agregarMensajePropio(msgId, { usuario, texto: '', audio: null, imagen: { data: base64DataUrl, type }, respondiendoA });
+  if (respondiendoA) cancelarReply();
+  fotoCount++;
+  actualizarStats();
+}
+
+function abrirDibujo() {
+  const modal = document.getElementById('drawingModal');
+  modal.classList.remove('oculto');
+  injectIcons();
+  
+  if (!drawingCanvas) {
+    drawingCanvas = document.getElementById('drawingCanvas');
+    drawingCtx = drawingCanvas.getContext('2d');
+    setupDrawingEvents();
+    window.addEventListener('resize', resizeCanvas);
+  }
+  
+  resizeCanvas();
+  clearDrawingCanvas();
+  drawingHistory = [];
+}
+
+function resizeCanvas() {
+  if (!drawingCanvas) return;
+  const rect = drawingCanvas.parentElement.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  drawingCanvas.width = rect.width * dpr;
+  drawingCanvas.height = rect.height * dpr;
+  drawingCanvas.style.width = rect.width + 'px';
+  drawingCanvas.style.height = rect.height + 'px';
+  drawingCtx.scale(dpr, dpr);
+  
+  // Re-draw history on resize
+  if (drawingHistory.length > 0) {
+    const img = new Image();
+    img.src = drawingHistory[drawingHistory.length - 1];
+    img.onload = () => {
+      drawingCtx.save();
+      drawingCtx.setTransform(1, 0, 0, 1, 0, 0);
+      drawingCtx.drawImage(img, 0, 0);
+      drawingCtx.restore();
+    };
+  }
+}
+
+function clearDrawingCanvas() {
+  if (!drawingCtx) return;
+  drawingCtx.save();
+  drawingCtx.setTransform(1, 0, 0, 1, 0, 0);
+  drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+  drawingCtx.restore();
+}
+
+function saveCanvasState() {
+  if (!drawingCanvas) return;
+  drawingHistory.push(drawingCanvas.toDataURL());
+  if (drawingHistory.length > 30) {
+    drawingHistory.shift();
+  }
+}
+
+function undoDrawing() {
+  if (drawingHistory.length === 0) return;
+  drawingHistory.pop();
+  clearDrawingCanvas();
+  if (drawingHistory.length > 0) {
+    const img = new Image();
+    img.src = drawingHistory[drawingHistory.length - 1];
+    img.onload = () => {
+      drawingCtx.save();
+      drawingCtx.setTransform(1, 0, 0, 1, 0, 0);
+      drawingCtx.drawImage(img, 0, 0);
+      drawingCtx.restore();
+    };
+  }
+}
+
+function setupDrawingEvents() {
+  document.getElementById('brushPen').addEventListener('click', () => {
+    document.getElementById('brushPen').classList.add('activa');
+    document.getElementById('brushNeon').classList.remove('activa');
+    brushType = 'normal';
+  });
+  
+  document.getElementById('brushNeon').addEventListener('click', () => {
+    document.getElementById('brushNeon').classList.add('activa');
+    document.getElementById('brushPen').classList.remove('activa');
+    brushType = 'neon';
+  });
+  
+  document.getElementById('drawingCloseBtn').addEventListener('click', () => {
+    document.getElementById('drawingModal').classList.add('oculto');
+  });
+  
+  document.getElementById('drawingUndoBtn').addEventListener('click', undoDrawing);
+  document.getElementById('drawingClearBtn').addEventListener('click', () => {
+    clearDrawingCanvas();
+    drawingHistory = [];
+  });
+  
+  document.getElementById('brushSizeSlider').addEventListener('input', (e) => {
+    brushSize = parseInt(e.target.value);
+  });
+  
+  document.querySelectorAll('.color-dot').forEach(dot => {
+    dot.addEventListener('click', () => {
+      document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('activa'));
+      dot.classList.add('activa');
+      brushColor = dot.dataset.color;
+    });
+  });
+  
+  document.getElementById('drawingSendBtn').addEventListener('click', () => {
+    const dataUrl = drawingCanvas.toDataURL('image/png');
+    enviarDibujo(dataUrl);
+    document.getElementById('drawingModal').classList.add('oculto');
+  });
+  
+  const getCoordinates = (e) => {
+    const rect = drawingCanvas.getBoundingClientRect();
+    let clientX, clientY;
+    if (e.touches && e.touches.length > 0) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top
+    };
+  };
+
+  const startDraw = (e) => {
+    isDrawing = true;
+    saveCanvasState();
+    const coords = getCoordinates(e);
+    lastX = coords.x;
+    lastY = coords.y;
+  };
+
+  const processDraw = (e) => {
+    if (!isDrawing) return;
+    const coords = getCoordinates(e);
+    
+    drawingCtx.lineCap = 'round';
+    drawingCtx.lineJoin = 'round';
+    
+    if (brushType === 'neon') {
+      drawingCtx.shadowColor = brushColor;
+      drawingCtx.shadowBlur = brushSize * 1.2;
+      drawingCtx.strokeStyle = brushColor;
+      drawingCtx.lineWidth = brushSize;
+      
+      drawingCtx.beginPath();
+      drawingCtx.moveTo(lastX, lastY);
+      drawingCtx.lineTo(coords.x, coords.y);
+      drawingCtx.stroke();
+      
+      drawingCtx.shadowBlur = 0;
+      drawingCtx.strokeStyle = '#ffffff';
+      drawingCtx.lineWidth = brushSize / 3.5;
+      
+      drawingCtx.beginPath();
+      drawingCtx.moveTo(lastX, lastY);
+      drawingCtx.lineTo(coords.x, coords.y);
+      drawingCtx.stroke();
+    } else {
+      drawingCtx.shadowBlur = 0;
+      drawingCtx.strokeStyle = brushColor;
+      drawingCtx.lineWidth = brushSize;
+      
+      drawingCtx.beginPath();
+      drawingCtx.moveTo(lastX, lastY);
+      drawingCtx.lineTo(coords.x, coords.y);
+      drawingCtx.stroke();
+    }
+    
+    lastX = coords.x;
+    lastY = coords.y;
+  };
+
+  const stopDraw = () => {
+    isDrawing = false;
+  };
+
+  drawingCanvas.addEventListener('mousedown', startDraw);
+  drawingCanvas.addEventListener('mousemove', processDraw);
+  drawingCanvas.addEventListener('mouseup', stopDraw);
+  drawingCanvas.addEventListener('mouseleave', stopDraw);
+  
+  drawingCanvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    startDraw(e);
+  }, { passive: false });
+  drawingCanvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    processDraw(e);
+  }, { passive: false });
+  drawingCanvas.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    stopDraw();
+  }, { passive: false });
+}
+
 replyClose.addEventListener('click', cancelarReply);
 function scrollBtnBottom() {
   let b = 64;
