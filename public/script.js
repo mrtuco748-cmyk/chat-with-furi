@@ -550,18 +550,23 @@ function enviarEncuesta(pregunta, opciones) {
 }
 function votarEncuesta(msgId, opcionIdx) {
   if (!socket.connected) return;
-  socket.emit('votar-encuesta', { sala, msgId, opcionIdx, usuario });
-  // Optimistic update
   const div = document.getElementById('msg-' + msgId);
-  if (div) actualizarVotosEnBurbuja(div, msgId, opcionIdx, usuario);
+  const bar = div?.querySelector('.encuesta-bar[data-idx="'+opcionIdx+'"]');
+  const yaVotado = bar?.classList.contains('votada');
+  socket.emit('votar-encuesta', { sala, msgId, opcionIdx, usuario, quitar: yaVotado });
+  if (div) actualizarVotosEnBurbuja(div, msgId, opcionIdx, usuario, yaVotado);
 }
-function actualizarVotosEnBurbuja(div, msgId, opcionIdx, votante) {
+function actualizarVotosEnBurbuja(div, msgId, opcionIdx, votante, quitar) {
   const data = div.dataset;
   let votos;
   try { votos = JSON.parse(data.encuestaVotos || '{}'); } catch(e) { votos = {}; }
   const key = msgId + '-opc-' + opcionIdx;
   if (!votos[key]) votos[key] = [];
-  if (!votos[key].includes(votante)) votos[key].push(votante);
+  if (quitar) {
+    votos[key] = votos[key].filter(u => u !== votante);
+  } else {
+    if (!votos[key].includes(votante)) votos[key].push(votante);
+  }
   data.encuestaVotos = JSON.stringify(votos);
   const bars = div.querySelectorAll('.encuesta-bar');
   if (bars[opcionIdx]) {
@@ -573,8 +578,10 @@ function actualizarVotosEnBurbuja(div, msgId, opcionIdx, votante) {
     barEl.querySelector('.eb-bar-fill').style.width = barW + '%';
     barEl.querySelector('.eb-pct').textContent = Math.round(pct) + '%';
     barEl.querySelector('.eb-count').textContent = count + ' voto' + (count !== 1 ? 's' : '');
-    // Mark as voted by current user
-    if (votante === usuario) barEl.classList.add('votada');
+    if (votante === usuario) {
+      if (quitar) barEl.classList.remove('votada');
+      else barEl.classList.add('votada');
+    }
   }
   try {
     const arr = JSON.parse(localStorage.getItem(keyMsgs()) || '[]');
@@ -1062,7 +1069,7 @@ else if (m.encuesta) {
       const voted = v.includes(usuario) ? ' votada' : '';
       return '<div class="encuesta-bar'+voted+'" data-idx="'+i+'" onclick="votarEncuesta(\''+m.msgId+'\','+i+')"><div class="encuesta-bar-row"><span class="eb-label">'+escapeHtml(o)+'</span><span class="eb-pct">'+Math.round(pct)+'%</span><span class="eb-count">'+v.length+' voto'+(v.length!==1?'s':'')+'</span></div><div class="eb-bar-bg"><div class="eb-bar-fill" style="width:'+pct+'%"></div></div></div>';
     }).join('');
-    c += '<div class="encuesta-msg"><div class="encuesta-preg">'+formatearTexto(m.texto)+'</div><div class="encuesta-opcs">'+opcs+'</div></div></div>';
+    c += '<div class="encuesta-msg"><div class="encuesta-header"><span class="encuesta-badge" data-icon="bar-chart"></span><span class="encuesta-title">Encuesta</span></div><div class="encuesta-preg">'+formatearTexto(m.texto)+'</div><div class="encuesta-opcs">'+opcs+'</div></div></div>';
   }
   else c += '<div class="texto">'+formatearTexto(m.texto)+'</div>';
   if (m.reenviado) c = '<span class="msg-forward-tag">Reenviado</span>' + c;
@@ -1091,8 +1098,19 @@ function renderMsgOtro(m) {
 }
     if (m.ubicacion) {
       const mapImg = `https://maps.googleapis.com/maps/api/staticmap?center=${m.ubicacion.lat},${m.ubicacion.lng}&zoom=15&size=300x140&maptype=roadmap&markers=color:red%7C${m.ubicacion.lat},${m.ubicacion.lng}&key=`;
-      c += '<div class="ubic-msg" onclick="window.open(\''+escapeHtml(m.ubicacion.url)+'\',\'_blank\')"><span class="ubic-icon" data-icon="map-pin"></span><div class="ubic-info"><div class="ubic-name">'+escapeHtml(m.texto||m.ubicacion.nombre)+'</div><div class="ubic-meta">Abrir en Google Maps</div></div></div>';
-      c += '<img class="ubic-map-preview" src="'+mapImg+'" alt="Mapa" loading="lazy">';
+      c += '<div class="ubic-msg">';
+      c += '<div class="ubic-content">';
+      c += '<div class="ubic-header">';
+      c += '<span class="ubic-icon" data-icon="map-pin"></span>';
+      c += '<span class="ubic-name">' + escapeHtml(m.texto || m.ubicacion.nombre) + '</span>';
+      c += '<span class="ubic-meta">1.2 km</span>';
+      c += '</div>';
+      c += '<div class="ubic-map-preview-container">';
+      c += '<img class="ubic-map-preview" src="' + mapImg + '" alt="Mapa" loading="lazy">';
+      c += '<div class="ubic-preview-label">Ver en mapas</div>';
+      c += '</div>';
+      c += '</div>';
+      c += '</div>';
     }
     if (m.encuesta) {
       div.dataset.encuestaVotos = JSON.stringify(m.encuesta.votos || {});
@@ -1292,7 +1310,7 @@ socket.on('audio-played', (data) => {
 socket.on('reaccion', (data) => { const d = document.getElementById('msg-'+data.msgId); if (d) { if (data.reaccion) { mostrarReaccion(d, data.reaccion); setReaccionMsg(data.msgId, data.reaccion); } else { mostrarReaccion(d, ''); setReaccionMsg(data.msgId, null); } } });
 socket.on('voto-encuesta', (data) => {
   const d = document.getElementById('msg-'+data.msgId);
-  if (d) actualizarVotosEnBurbuja(d, data.msgId, data.opcionIdx, data.usuario);
+  if (d) actualizarVotosEnBurbuja(d, data.msgId, data.opcionIdx, data.usuario, data.quitar);
   try {
     const arr = JSON.parse(localStorage.getItem(keyMsgs()) || '[]');
     const idx = arr.findIndex(m => m.msgId === data.msgId);
@@ -1301,7 +1319,11 @@ socket.on('voto-encuesta', (data) => {
       if (!arr[idx].encuesta) arr[idx].encuesta = { votos: {} };
       if (!arr[idx].encuesta.votos) arr[idx].encuesta.votos = {};
       if (!arr[idx].encuesta.votos[key]) arr[idx].encuesta.votos[key] = [];
-      if (!arr[idx].encuesta.votos[key].includes(data.usuario)) arr[idx].encuesta.votos[key].push(data.usuario);
+      if (data.quitar) {
+        arr[idx].encuesta.votos[key] = arr[idx].encuesta.votos[key].filter(u => u !== data.usuario);
+      } else {
+        if (!arr[idx].encuesta.votos[key].includes(data.usuario)) arr[idx].encuesta.votos[key].push(data.usuario);
+      }
       localStorage.setItem(keyMsgs(), JSON.stringify(arr));
     }
   } catch(e) {}

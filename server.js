@@ -208,7 +208,7 @@ io.on('connection', (socket) => {
 
   socket.on('votar-encuesta', (data) => {
     if (socket.sala && data.msgId && typeof data.opcionIdx === 'number') {
-      socket.to(socket.sala).emit('voto-encuesta', { msgId: String(data.msgId).slice(0, 64), opcionIdx: data.opcionIdx, usuario: String(data.usuario).slice(0, 30) });
+      socket.to(socket.sala).emit('voto-encuesta', { msgId: String(data.msgId).slice(0, 64), opcionIdx: data.opcionIdx, usuario: String(data.usuario).slice(0, 30), quitar: !!data.quitar });
     }
   });
 
