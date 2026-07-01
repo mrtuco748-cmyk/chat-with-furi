@@ -65,11 +65,8 @@ function limpiarSalaVacia(salaNombre) {
 }
 
 io.on('connection', (socket) => {
-  socket.on('unirse', (data) => {
-    const salaNombre = data.sala?.toString().trim().slice(0, 50);
-    const usuarioNombre = data.usuario?.toString().trim().slice(0, 30);
+  function unirseASala(salaNombre, usuarioNombre) {
     if (!salaNombre || !usuarioNombre) return;
-
     socket.join(salaNombre);
     socket.sala = salaNombre;
     socket.usuario = usuarioNombre;
@@ -99,40 +96,53 @@ io.on('connection', (socket) => {
     }
 
     socket.to(salaNombre).emit('escribiendo', { usuario: '' });
+  }
+
+  socket.on('unirse', (data) => {
+    const salaNombre = data.sala?.toString().trim().slice(0, 50);
+    const usuarioNombre = data.usuario?.toString().trim().slice(0, 30);
+    unirseASala(salaNombre, usuarioNombre);
   });
 
   socket.on('mensaje', (data) => {
-    if (!socket.sala || !socket.usuario) return;
-    const sala = salas[socket.sala];
-    if (!sala) return;
+    try {
+      // Si el servidor se reinició, intentar recuperar sala/usuario del payload
+      if (!socket.sala && data.sala && data.usuario) {
+        const s = data.sala.toString().trim().slice(0, 50);
+        const u = data.usuario.toString().trim().slice(0, 30);
+        unirseASala(s, u);
+      }
+      if (!socket.sala || !socket.usuario) return;
+      const sala = salas[socket.sala];
+      if (!sala) return;
 
-    const msgId = data.msgId?.toString().slice(0, 64);
-    const texto = data.texto?.toString().slice(0, 2000) || '';
-    const audio = data.audio ? { data: String(data.audio.data).slice(0, 1e7), type: String(data.audio.type).slice(0, 50), duracion: Math.min(Number(data.audio.duracion) || 0, 300) } : null;
-    const imagen = data.imagen ? { data: String(data.imagen.data).slice(0, 1e7), type: String(data.imagen.type).slice(0, 50) } : null;
-    const respondiendoA = data.respondiendoA ? { msgId: String(data.respondiendoA.msgId).slice(0, 64), usuario: String(data.respondiendoA.usuario).slice(0, 30), texto: String(data.respondiendoA.texto).slice(0, 500) } : null;
-    const silencio = !!data.silencio;
-    const silencioDe = data.silencioDe ? (Array.isArray(data.silencioDe) ? data.silencioDe.slice(0, 10).map(id => String(id).slice(0, 64)) : [String(data.silencioDe).slice(0, 64)]) : null;
-    const ubicacion = data.ubicacion ? { lat: data.ubicacion.lat, lng: data.ubicacion.lng, nombre: String(data.ubicacion.nombre).slice(0, 100), url: String(data.ubicacion.url).slice(0, 500) } : null;
-    const encuesta = data.encuesta ? { pregunta: String(data.encuesta.pregunta).slice(0, 256), opciones: Array.isArray(data.encuesta.opciones) ? data.encuesta.opciones.slice(0, 10).map(o => String(o).slice(0, 100)) : [], votos: data.encuesta.votos || {} } : null;
+      const msgId = data.msgId?.toString().slice(0, 64);
+      const texto = data.texto?.toString().slice(0, 2000) || '';
+      const audio = data.audio ? { data: String(data.audio.data).slice(0, 1e7), type: String(data.audio.type).slice(0, 50), duracion: Math.min(Number(data.audio.duracion) || 0, 300) } : null;
+      const imagen = data.imagen ? { data: String(data.imagen.data).slice(0, 1e7), type: String(data.imagen.type).slice(0, 50) } : null;
+      const respondiendoA = data.respondiendoA ? { msgId: String(data.respondiendoA.msgId).slice(0, 64), usuario: String(data.respondiendoA.usuario).slice(0, 30), texto: String(data.respondiendoA.texto).slice(0, 500) } : null;
+      const silencio = !!data.silencio;
+      const silencioDe = data.silencioDe ? (Array.isArray(data.silencioDe) ? data.silencioDe.slice(0, 10).map(id => String(id).slice(0, 64)) : [String(data.silencioDe).slice(0, 64)]) : null;
+      const ubicacion = data.ubicacion ? { lat: data.ubicacion.lat, lng: data.ubicacion.lng, nombre: String(data.ubicacion.nombre).slice(0, 100), url: String(data.ubicacion.url).slice(0, 500) } : null;
+      const encuesta = data.encuesta ? { pregunta: String(data.encuesta.pregunta).slice(0, 256), opciones: Array.isArray(data.encuesta.opciones) ? data.encuesta.opciones.slice(0, 10).map(o => String(o).slice(0, 100)) : [], votos: data.encuesta.votos || {} } : null;
 
-    socket.emit('estado-msg', { msgId, estado: 'enviado' });
+      socket.emit('estado-msg', { msgId, estado: 'enviado' });
 
-    const mensajeCompleto = {
-      msgId,
-      usuario: socket.usuario,
-      texto,
-      audio,
-      imagen,
-      respondiendoA,
-      silencio,
-      silencioDe,
-      ubicacion,
-      encuesta,
-      hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
+      const mensajeCompleto = {
+        msgId,
+        usuario: socket.usuario,
+        texto,
+        audio,
+        imagen,
+        respondiendoA,
+        silencio,
+        silencioDe,
+        ubicacion,
+        encuesta,
+        hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
 
-    io.to(socket.sala).emit('mensaje', mensajeCompleto);
+      io.to(socket.sala).emit('mensaje', mensajeCompleto);
 
       const otros = Object.keys(sala.usuarios).filter(n => n !== socket.usuario);
       for (const otro of otros) {
@@ -146,6 +156,9 @@ io.on('connection', (socket) => {
       }
 
       socket.emit('estado-msg', { msgId, estado: 'entregado' });
+    } catch (err) {
+      console.error('Error procesando mensaje en servidor:', err);
+    }
   });
 
   socket.on('mensaje-leido', (data) => {

@@ -177,7 +177,7 @@ window.addEventListener('beforeunload', () => { marcarAusente(); });
 socket.on('connect', () => { estadoConexion.className = 'conectado'; headerEstado.textContent = 'en l\u00ednea'; if (sala && usuario) conectarAlSala(); const d = escribiendoDiv.querySelector('.typing-dots'); if (d) d.style.display = 'none'; });
 socket.on('disconnect', () => { estadoConexion.className = 'desconectado'; headerEstado.textContent = 'desconectado'; });
 socket.io.on('reconnect_attempt', () => { estadoConexion.className = 'reconectando'; headerEstado.textContent = 'reconectando...'; });
-socket.io.on('reconnect', () => { estadoConexion.className = 'conectado'; headerEstado.textContent = 'en l\u00ednea'; });
+socket.io.on('reconnect', () => { estadoConexion.className = 'conectado'; headerEstado.textContent = 'en l\u00ednea'; if (sala && usuario) conectarAlSala(); });
 
 // Install prompt
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; setTimeout(() => installBanner.classList.remove('oculto'), 3000); });
@@ -368,7 +368,7 @@ function enviarMensaje() {
   if (!quietBar.classList.contains('oculto')) {
     const ids = JSON.parse(quietBar.dataset.targetIds || '[]');
     const msgId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-    const d = { msgId, usuario, texto, silencio: true, silencioDe: ids };
+    const d = { msgId, usuario, sala, texto, silencio: true, silencioDe: ids };
     socket.emit('mensaje', d);
     try {
       const arr = JSON.parse(localStorage.getItem(keyMsgs()) || '[]');
@@ -395,7 +395,7 @@ function enviarMensaje() {
     return;
   }
   const msgId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-  const d = { msgId, usuario, texto }; if (respondiendoA) d.respondiendoA = respondiendoA;
+  const d = { msgId, usuario, sala, texto }; if (respondiendoA) d.respondiendoA = respondiendoA;
   socket.emit('mensaje', d);
   try { agregarMensajePropio(msgId, { usuario, texto, audio: null, imagen: null, respondiendoA }); } catch(e) {}
   mensajeInput.value = ''; actualizarBotonEnvio(); mensajeInput.focus();
@@ -488,7 +488,7 @@ function enviarAudio(blob) {
   const r = new FileReader(); const msgId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
   r.onloadend = () => {
     const b64 = r.result; const b = b64.split(',')[1];
-    socket.emit('mensaje', { msgId, usuario, texto: '', audio: { data: b, type: blob.type, duracion: tiempoGrabacion }, respondiendoA });
+    socket.emit('mensaje', { msgId, usuario, sala, texto: '', audio: { data: b, type: blob.type, duracion: tiempoGrabacion }, respondiendoA });
     agregarMensajePropio(msgId, { usuario, texto: '', audio: { data: b64, type: blob.type, duracion: tiempoGrabacion }, imagen: null, respondiendoA });
     if (respondiendoA) cancelarReply(); audioCount++; actualizarStats();
   }; r.readAsDataURL(blob);
@@ -503,7 +503,7 @@ function enviarDocumento(file) {
   const r = new FileReader(); const msgId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
   r.onloadend = () => {
     const b64 = r.result; const b = b64.split(',')[1];
-    const d = { msgId, usuario, texto: file.name, documento: { data: b, type: file.type, nombre: file.name, tamano: file.size }, respondiendoA };
+    const d = { msgId, usuario, sala, texto: file.name, documento: { data: b, type: file.type, nombre: file.name, tamano: file.size }, respondiendoA };
     socket.emit('mensaje', d);
     agregarMensajePropio(msgId, { usuario, texto: file.name, documento: { data: b64, type: file.type, nombre: file.name, tamano: file.size }, respondiendoA });
     if (respondiendoA) cancelarReply();
@@ -525,7 +525,7 @@ function solicitarUbicacion() {
 function enviarUbicacion(lat, lng, nombre) {
   const msgId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
   const mapsUrl = 'https://www.google.com/maps?q=' + lat + ',' + lng;
-  const d = { msgId, usuario, texto: nombre, ubicacion: { lat, lng, nombre, url: mapsUrl }, respondiendoA };
+  const d = { msgId, usuario, sala, texto: nombre, ubicacion: { lat, lng, nombre, url: mapsUrl }, respondiendoA };
   socket.emit('mensaje', d);
   agregarMensajePropio(msgId, { usuario, texto: nombre, ubicacion: { lat, lng, nombre, url: mapsUrl }, respondiendoA });
   if (respondiendoA) cancelarReply();
@@ -544,7 +544,7 @@ function enviarEncuesta(pregunta, opciones) {
   const msgId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
   const votos = {};
   opciones.forEach((_, i) => { votos[msgId + '-opc-' + i] = []; });
-  const d = { msgId, usuario, texto: pregunta, encuesta: { pregunta, opciones, votos }, respondiendoA };
+  const d = { msgId, usuario, sala, texto: pregunta, encuesta: { pregunta, opciones, votos }, respondiendoA };
   socket.emit('mensaje', d);
   agregarMensajePropio(msgId, { usuario, texto: pregunta, encuesta: { pregunta, opciones, votos }, respondiendoA });
   if (respondiendoA) cancelarReply();
@@ -774,7 +774,7 @@ imgPrevSend.addEventListener('click', () => { if (imgPreviewFile) enviarImagen(i
 function enviarImagen(file) {
   const caption = imgPrevCaption.value.trim();
   const r = new FileReader(); const msgId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-  r.onloadend = () => { const b64 = r.result; const b = b64.split(',')[1]; socket.emit('mensaje', { msgId, usuario, texto: caption, imagen: { data: b, type: file.type }, respondiendoA }); agregarMensajePropio(msgId, { usuario, texto: caption, audio: null, imagen: { data: b64, type: file.type }, respondiendoA }); if (respondiendoA) cancelarReply(); fotoCount++; actualizarStats(); };
+  r.onloadend = () => { const b64 = r.result; const b = b64.split(',')[1]; socket.emit('mensaje', { msgId, usuario, sala, texto: caption, imagen: { data: b, type: file.type }, respondiendoA }); agregarMensajePropio(msgId, { usuario, texto: caption, audio: null, imagen: { data: b64, type: file.type }, respondiendoA }); if (respondiendoA) cancelarReply(); fotoCount++; actualizarStats(); };
   r.readAsDataURL(file);
 }
 
@@ -793,8 +793,8 @@ function enviarDibujo(base64DataUrl) {
   const msgId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
   const b = base64DataUrl.split(',')[1];
   const type = 'image/png';
-  socket.emit('mensaje', { msgId, usuario, texto: '', imagen: { data: b, type }, respondiendoA });
   agregarMensajePropio(msgId, { usuario, texto: '', audio: null, imagen: { data: base64DataUrl, type }, respondiendoA });
+  socket.emit('mensaje', { msgId, usuario, sala, texto: '', imagen: { data: b, type }, respondiendoA });
   if (respondiendoA) cancelarReply();
   fotoCount++;
   actualizarStats();
@@ -1923,6 +1923,7 @@ function mostrarForwardPicker() {
       if (m.imagen) d.imagen = { data: m.imagen.data, type: m.imagen.type };
       if (m.audio) d.audio = { data: m.audio.data, type: m.audio.type, duracion: m.audio.duracion };
       if (respondiendoA) d.respondiendoA = respondiendoA;
+      d.sala = sala;
       socket.emit('mensaje', d);
       agregarMensajePropio(msgId, d);
       if (respondiendoA) cancelarReply();
